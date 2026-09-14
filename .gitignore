@@ -1,0 +1,38 @@
+# ---------- Java / Maven ----------
+target/
+*.class
+*.jar
+*.war
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+
+# ---------- Node ----------
+node_modules/
+node-modules/
+dist/
+npm-debug.log*
+yarn-error.log*
+
+# ---------- 日志 ----------
+logs/
+*.log
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 课程资料与二进制运行环境 ----------
+# 体积大且非源码，留在磁盘上供查阅，但不纳入版本管理
+docs/
+tools/
+
+# ---------- 本地私有配置 ----------
+application-local.yml
+.env.local
