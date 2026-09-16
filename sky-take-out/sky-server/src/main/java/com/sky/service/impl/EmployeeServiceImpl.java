@@ -121,4 +121,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setPassword("****");   // 不让看密码
         return employee;
     }
+
+    /**
+     * 更新员工信息
+     * @param employeeDTO
+     */
+    public void  update(EmployeeDTO employeeDTO) {
+        Employee employee = new Employee();
+        BeanUtils.copyProperties(employeeDTO, employee);    // 拷贝属性
+        // 单独设置修改时间与修改人
+        employee.setUpdateTime(LocalDateTime.now());
+        employee.setUpdateUser(BaseContext.getCurrentId());
+        employeeMapper.update(employee);
+    }
 }
