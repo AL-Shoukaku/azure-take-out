@@ -5,6 +5,7 @@ import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.dto.EmployeePageQueryDTO;
 import com.sky.entity.Employee;
+import com.sky.mapper.EmployeeMapper;
 import com.sky.properties.JwtProperties;
 import com.sky.result.PageResult;
 import com.sky.result.Result;
@@ -31,6 +32,8 @@ public class EmployeeController {
     private EmployeeService employeeService;
     @Autowired
     private JwtProperties jwtProperties;
+    @Autowired
+    private EmployeeMapper employeeMapper;
 
     /**
      * 登录
@@ -99,5 +102,18 @@ public class EmployeeController {
         log.info("启用禁用员工账号：{},{}", status, id);
         employeeService.startOrStop(status, id);
         return Result.success();
+    }
+
+    /**
+     * 根据 id 来查询一个员工的信息
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("查询员工信息")
+    public Result<Employee> get(@PathVariable Integer id) {
+        log.info("查询员工{}", id);
+        Employee employee = employeeService.getById(id);
+        return Result.success(employee);
     }
 }
