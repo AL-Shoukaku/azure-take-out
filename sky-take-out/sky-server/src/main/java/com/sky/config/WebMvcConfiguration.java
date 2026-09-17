@@ -4,6 +4,7 @@ import com.sky.interceptor.JwtTokenAdminInterceptor;
 import com.sky.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -18,6 +19,8 @@ import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -29,6 +32,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     @Autowired
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
+
+    @Value("${sky.upload-path}")
+    private String uploadPath;
 
     /**
      * 注册自定义拦截器
@@ -67,8 +73,20 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
      * @param registry
      */
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // knife4j的静态资源映射
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
+
+        // 本地存储
+        // 访问/images/** 映射到本地文件系统的 uploadPath 目录
+        Path directory = Paths.get(uploadPath).toAbsolutePath().normalize();
+        String location = directory.toUri().toString();
+        if (!location.endsWith("/")) {
+            location += "/";
+        }
+
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations(location);
     }
 
     /**

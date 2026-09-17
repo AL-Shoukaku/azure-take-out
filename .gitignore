@@ -36,3 +36,6 @@ tools/
 # ---------- 本地私有配置 ----------
 application-local.yml
 .env.local
+
+# ---------- 本地存储 ----------
+uploads
