@@ -77,12 +77,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setStatus(StatusConstant.ENABLE);
         // 密码默认123456，加密
         employee.setPassword(DigestUtils.md5DigestAsHex(PasswordConstant.DEFAULT_PASSWORD.getBytes()));
-        // 设置创建时间与系统时间
-        employee.setCreateTime(LocalDateTime.now());
-        employee.setUpdateTime(LocalDateTime.now());
-        // 设置创建人与修改人，暂时写死
-        employee.setCreateUser(BaseContext.getCurrentId());
-        employee.setUpdateUser(BaseContext.getCurrentId());
+        // 创建人，修改人，创建时间，修改时间在切面中自动填充
 
         // 调用持久层，存入数据库
         employeeMapper.insert(employee);
@@ -129,9 +124,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void  update(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
         BeanUtils.copyProperties(employeeDTO, employee);    // 拷贝属性
-        // 单独设置修改时间与修改人
-        employee.setUpdateTime(LocalDateTime.now());
-        employee.setUpdateUser(BaseContext.getCurrentId());
+        // 修改时间和修改人会在切面中自动填充
         employeeMapper.update(employee);
     }
 }
