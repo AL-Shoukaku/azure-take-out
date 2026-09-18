@@ -6,7 +6,6 @@ import com.sky.entity.Dish;
 import com.sky.result.PageResult;
 import com.sky.result.Result;
 import com.sky.service.DishService;
-import com.sky.service.impl.DishServiceImpl;
 import com.sky.vo.DishVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -74,5 +73,13 @@ public class DishController {
         log.info("起售/停售菜品：{},{}", status, id);
         dishService.startOrStop(status, id);
         return Result.success();
+    }
+
+    @GetMapping("/list")
+    @ApiOperation("根据条件查询菜品")
+    public Result<List<Dish>> list(@RequestParam Long categoryId) {
+        log.info("根据条件查询菜品：{}", categoryId);
+        List<Dish> dishes = dishService.queryWithCategoryId(categoryId);
+        return Result.success(dishes);
     }
 }
