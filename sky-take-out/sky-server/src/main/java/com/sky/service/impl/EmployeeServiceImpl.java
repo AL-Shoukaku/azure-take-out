@@ -83,6 +83,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeMapper.insert(employee);
     }
 
+    /**
+     * 员工分页查询
+     * @param employeePageQueryDTO
+     * @return
+     */
     public PageResult pageQuery(EmployeePageQueryDTO employeePageQueryDTO) {
         PageResult pageResult = new PageResult();
         // 使用 mybatis 里的 pageHelper 进行分页查询，基于threadLocal
