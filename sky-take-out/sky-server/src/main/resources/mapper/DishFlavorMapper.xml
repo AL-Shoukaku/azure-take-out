@@ -12,4 +12,10 @@
         </foreach>
     </insert>
 
+    <delete id="batchDeleteByDishIds" parameterType="java.lang.Long">
+        delete from dish_flavor where dish_id in
+        <foreach collection="dishIds" item="dishId" open="(" separator="," close=")">
+            #{dishId}
+        </foreach>
+    </delete>
 </mapper>

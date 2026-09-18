@@ -27,4 +27,11 @@
         </where> order by create_time desc
     </select>
 
+    <delete id="batchDeleteByIds" parameterType="java.lang.Long">
+        delete from dish where id in
+        <foreach collection="ids" item="dishId" open="(" separator="," close=")">
+            #{dishId}
+        </foreach>
+    </delete>
+
 </mapper>
