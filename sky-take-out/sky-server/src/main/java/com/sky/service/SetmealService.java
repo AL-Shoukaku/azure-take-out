@@ -26,4 +26,11 @@ public interface SetmealService {
      * 修改套餐信息，同时修改套餐和菜品的关联关系
      */
     void updateWithDishes(SetmealDTO setmealDTO);
+
+    /**
+     *  起售或停售套餐
+     * @param status
+     * @param id
+     */
+    void startOrStop(Integer status, Long id);
 }
