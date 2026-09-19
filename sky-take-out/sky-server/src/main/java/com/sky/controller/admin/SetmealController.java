@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @Slf4j
 @RequestMapping("/admin/setmeal")
@@ -68,11 +70,25 @@ public class SetmealController {
         return Result.success();
     }
 
+    /**
+     * 启用或禁用套餐
+     * @param status
+     * @param id
+     * @return
+     */
     @PostMapping("/status/{status}")
     @ApiOperation("启用或禁用套餐")
     public Result startOrStop(@PathVariable Integer status, @RequestParam Long id) {
         log.info("启用或禁用套餐，参数为status={}, id={}", status, id);
         setmealService.startOrStop(status, id);
+        return Result.success();
+    }
+
+    @DeleteMapping
+    @ApiOperation("删除套餐以及套餐和菜品的关联关系")
+    public Result delete(@RequestParam List<Long> ids) {
+        log.info("删除套餐，id={}", ids);
+        setmealService.deleteWithDishes(ids);
         return Result.success();
     }
 }

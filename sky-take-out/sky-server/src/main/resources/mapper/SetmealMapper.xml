@@ -27,6 +27,7 @@
         </where> order by create_time desc
     </select>
 
+    <!-- 动态更新套餐信息 -->
     <update id="update" parameterType="com.sky.entity.Setmeal">
         update setmeal
         <set>
@@ -41,4 +42,12 @@
         </set>
         where id = #{id}
     </update>
+
+    <!-- 批量删除套餐信息 -->
+    <delete id="batchDeleteByIds" parameterType="java.lang.Long">
+        delete from  setmeal where id in
+        <foreach collection="ids" open="(" separator="," close=")" item="id">
+            #{id}
+        </foreach>
+    </delete>
 </mapper>

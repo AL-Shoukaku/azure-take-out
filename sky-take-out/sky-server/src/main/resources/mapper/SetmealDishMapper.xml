@@ -10,6 +10,7 @@
         </foreach>
     </select>
 
+    <!-- 批量插入套餐菜品关联数据 -->
     <insert id="batchInsert" parameterType="com.sky.entity.SetmealDish">
         insert into setmeal_dish (setmeal_id, dish_id, name, price, copies)
         values
@@ -18,4 +19,11 @@
         </foreach>
     </insert>
 
+    <!-- 根据套餐id删除套餐菜品关联数据,批量执行 -->
+    <delete id="batchDeleteBySetmealIds" parameterType="java.lang.Long">
+        delete from setmeal_dish where setmeal_id in
+        <foreach collection="setmealIds" item="setmealId" open="(" separator="," close=")">
+            #{setmealId}
+        </foreach>
+    </delete>
 </mapper>
