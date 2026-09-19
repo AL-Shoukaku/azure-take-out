@@ -21,4 +21,9 @@ public interface SetmealService {
      * 根据 id 查询套餐以及套餐对应的菜品信息
      */
     SetmealVO getByIdWithDish(Long dishId);
+
+    /**
+     * 修改套餐信息，同时修改套餐和菜品的关联关系
+     */
+    void updateWithDishes(SetmealDTO setmealDTO);
 }
