@@ -6,6 +6,7 @@ import com.sky.dto.SetmealDTO;
 import com.sky.dto.SetmealPageQueryDTO;
 import com.sky.entity.Setmeal;
 import com.sky.entity.SetmealDish;
+import com.sky.mapper.CategoryMapper;
 import com.sky.mapper.SetmealDishMapper;
 import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
@@ -26,6 +27,9 @@ public class SetmealServiceImpl implements SetmealService {
 
     @Autowired
     private SetmealDishMapper setmealDishMapper;
+
+    @Autowired
+    private CategoryMapper categoryMapper;
 
     /**
      * 保存套餐信息，同时保存套餐和菜品的关联关系
@@ -48,9 +52,31 @@ public class SetmealServiceImpl implements SetmealService {
         setmealDishMapper.batchInsert(dishes);
     }
 
+    /**
+     * 分页查询套餐信息
+     * @param setmealPageQueryDTO
+     * @return
+     */
     public PageResult pageQuery(SetmealPageQueryDTO setmealPageQueryDTO) {
         PageHelper.startPage(setmealPageQueryDTO.getPage(), setmealPageQueryDTO.getPageSize());
         Page<SetmealVO> page = setmealMapper.pageQuery(setmealPageQueryDTO);
         return new PageResult(page.getTotal(), page.getResult());
+    }
+
+    /**
+     * 根据 id 查询套餐以及套餐对应的菜品信息
+     * @param dishId
+     * @return
+     */
+    public SetmealVO getByIdWithDish(Long dishId) {
+        SetmealVO setmealVO = new SetmealVO();
+        // 获取套餐信息
+        Setmeal setmeal = setmealMapper.getById(dishId);
+        BeanUtils.copyProperties(setmeal, setmealVO);
+        // 设置好套餐对应菜品与分类名称
+        List<SetmealDish> setmealDishes = setmealDishMapper.getBySetmealId(dishId);
+        setmealVO.setSetmealDishes(setmealDishes);
+        setmealVO.setCategoryName(categoryMapper.getNameById(setmeal.getCategoryId()));
+        return setmealVO;
     }
 }

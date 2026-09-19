@@ -28,5 +28,16 @@ public interface SetmealMapper {
     @AutoFill(value= OperationType.INSERT)
     void save(Setmeal setmeal);
 
+    /**
+     * 分页查询套餐信息
+     * @param setmealPageQueryDTO
+     * @return
+     */
     Page<SetmealVO> pageQuery(SetmealPageQueryDTO setmealPageQueryDTO);
+
+    /**
+     * 根据 id 查询套餐以及套餐对应的菜品信息
+     */
+    @Select("select * from setmeal where id = #{id}")
+    Setmeal getById(Long id);
 }
