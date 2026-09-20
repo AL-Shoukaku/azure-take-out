@@ -9,6 +9,7 @@ import com.sky.vo.SetmealVO;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,9 @@ public class SetmealController {
     @Autowired
     private SetmealService setmealService;
 
+    /**
+     * 新增套餐,新增时默认停售，不用更新缓存
+     */
     @PostMapping
     @ApiOperation("新增套餐")
     public Result save(@RequestBody SetmealDTO setmealDTO) {
@@ -62,6 +66,7 @@ public class SetmealController {
      */
     @PutMapping
     @ApiOperation("修改套餐信息")
+    @CacheEvict(value = "setmealCache", allEntries = true) // 修改套餐时清除所有缓存
     public Result update(@RequestBody SetmealDTO setmealDTO) {
         log.info("修改套餐信息，参数为{}", setmealDTO);
         setmealService.updateWithDishes(setmealDTO);
@@ -76,6 +81,7 @@ public class SetmealController {
      */
     @PostMapping("/status/{status}")
     @ApiOperation("启用或禁用套餐")
+    @CacheEvict(value = "setmealCache", allEntries = true)
     public Result startOrStop(@PathVariable Integer status, @RequestParam Long id) {
         log.info("启用或禁用套餐，参数为status={}, id={}", status, id);
         setmealService.startOrStop(status, id);
@@ -84,6 +90,7 @@ public class SetmealController {
 
     @DeleteMapping
     @ApiOperation("删除套餐以及套餐和菜品的关联关系")
+    @CacheEvict(value = "setmealCache", allEntries = true)
     public Result delete(@RequestParam List<Long> ids) {
         log.info("删除套餐，id={}", ids);
         setmealService.deleteWithDishes(ids);
