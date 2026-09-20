@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -57,6 +58,8 @@ public class DishServiceImpl implements DishService {
         if (flavors != null && flavors.size() > 0) {
             dishFlavorMapper.insertBatch(flavors);
         }
+        // 清空对应类型的菜品缓存数据
+        clearCache("dish_" + dish.getCategoryId());
     }
 
     /**
@@ -76,7 +79,7 @@ public class DishServiceImpl implements DishService {
      * 批量删除菜品
      */
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void batchDelete(List<Long> ids) {
         // 判断是否有起售中的菜品，有则无法删除
         for (Long id : ids) {
             Dish dish = dishMapper.getById(id);
@@ -97,6 +100,8 @@ public class DishServiceImpl implements DishService {
             dishMapper.DeleteById(id);
             dishFlavorMapper.deleteByDishId(id);
         }*/
+        // 最后直接清空所有的菜品缓存，先用 keys 查询所有的键，然后再删除
+        clearCache("dish_*");
     }
 
     @Override
@@ -127,6 +132,9 @@ public class DishServiceImpl implements DishService {
             }
             dishFlavorMapper.insertBatch(flavors);
         }
+
+        // 清空所有的菜品缓存
+        clearCache("dish_*");
     }
 
     /**
@@ -138,6 +146,7 @@ public class DishServiceImpl implements DishService {
         dish.setId(id);
         dish.setStatus(status);
         dishMapper.update(dish);
+        clearCache("dish_*");
     }
 
     /**
@@ -160,7 +169,7 @@ public class DishServiceImpl implements DishService {
             // 缓存命中，直接返回缓存中的数据
             return dishVOList;
         }
-        
+
         // 缓存未命中，查询数据库并将结果存入缓存
         dishVOList = new ArrayList<>();
         List<Dish> dishList = dishMapper.queryWithCategoryId(categoryId);
@@ -178,5 +187,14 @@ public class DishServiceImpl implements DishService {
         return dishVOList;
     }
 
-
+    /**
+     * 根据指定 pattern 清空缓存
+     */
+    private void clearCache(String pattern) {
+        // 清空所有的菜品缓存
+        Set keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 }
