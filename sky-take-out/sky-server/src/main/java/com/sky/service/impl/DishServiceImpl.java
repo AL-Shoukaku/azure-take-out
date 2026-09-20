@@ -17,6 +17,7 @@ import com.sky.vo.DishVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,9 @@ public class DishServiceImpl implements DishService {
 
     @Autowired
     private SetmealDishMapper setMealDishMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     @Transactional  // 需要处理多个表，保证原子性
@@ -70,7 +74,6 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 批量删除菜品
-     * @param ids
      */
     @Override
     public void deleteBatch(List<Long> ids) {
@@ -128,8 +131,6 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 起售或停售菜品
-     * @param status
-     * @param id
      */
     @Override
     public void startOrStop(Integer status, Long id) {
@@ -141,8 +142,6 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 根据分类id查询菜品
-     * @param categoryId
-     * @return
      */
     @Override
     public List<Dish> queryWithCategoryId(Long categoryId) {
@@ -150,16 +149,21 @@ public class DishServiceImpl implements DishService {
     }
 
     /**
-     * 条件查询菜品和口味
-     * @param dish
-     * @return
+     * 根据类型 id 查询对应的**起售**的菜品列表，同时查询对应的口味信息
      */
     @Override
-    public List<DishVO> listWithFlavor(Dish dish) {
-        List<Dish> dishList = dishMapper.queryWithCategoryId(dish.getCategoryId());
-
-        List<DishVO> dishVOList = new ArrayList<>();
-
+    public List<DishVO> listWithFlavorByCategoryId(Long categoryId) {
+        // 首先查询是否在缓存中有数据
+        String key = "dish_" + categoryId;
+        List<DishVO> dishVOList = (List<DishVO>) redisTemplate.opsForValue().get(key);
+        if (dishVOList != null && !dishVOList.isEmpty()) {
+            // 缓存命中，直接返回缓存中的数据
+            return dishVOList;
+        }
+        
+        // 缓存未命中，查询数据库并将结果存入缓存
+        dishVOList = new ArrayList<>();
+        List<Dish> dishList = dishMapper.queryWithCategoryId(categoryId);
         for (Dish d : dishList) {
             DishVO dishVO = new DishVO();
             BeanUtils.copyProperties(d,dishVO);
@@ -170,7 +174,7 @@ public class DishServiceImpl implements DishService {
             dishVO.setFlavors(flavors);
             dishVOList.add(dishVO);
         }
-
+        redisTemplate.opsForValue().set(key,dishVOList);
         return dishVOList;
     }
 
