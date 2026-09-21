@@ -223,6 +223,7 @@ var _api = __webpack_require__(/*! @/pages/api/api.js */ 24);function ownKeys(ob
 
         (0, _api.paymentOrder)(params).then(function (res) {
           if (res.code === 1) {
+            /*
             wx.requestPayment({
               nonceStr: res.data.nonceStr,
               package: res.data.packageStr,
@@ -243,6 +244,18 @@ var _api = __webpack_require__(/*! @/pages/api/api.js */ 24);function ownKeys(ob
 
 
             //uni.redirectTo({url: '/pages/success/index?orderId=' + _this.orderId });
+            */
+
+            //===== 本地开发：没有微信支付商户号，跳过 wx.requestPayment，直接当支付成功 =====
+            // 后端 payment() 接口返回成功时订单已经是已支付状态，这里直接跳转成功页即可
+            wx.showModal({
+              title: '提示',
+              content: '支付成功',
+              showCancel: false,
+              success: function(){
+                uni.redirectTo({url: '/pages/success/index?orderId=' + _this.orderId });
+              }
+            });
 
           } else {
             wx.showModal({
