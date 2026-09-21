@@ -1,6 +1,7 @@
 package com.sky.mapper;
 
 import com.sky.entity.ShoppingCart;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -17,7 +18,7 @@ public interface ShoppingCartMapper {
     /**
      * 新增购物车数据
      */
-    List<ShoppingCart> update(ShoppingCart shoppingCart);
+    void update(ShoppingCart shoppingCart);
 
     /**
      * 向数据库中插入一项
@@ -25,4 +26,10 @@ public interface ShoppingCartMapper {
     @Insert("insert into shopping_cart (name, user_id, dish_id, setmeal_id, dish_flavor, number, amount, image, create_time) " +
             "values (#{name}, #{userId}, #{dishId}, #{setmealId}, #{dishFlavor}, #{number}, #{amount}, #{image}, #{createTime})")
     void insert(ShoppingCart shoppingCart);
+
+    /**
+     * 根据用户id清空购物车
+     */
+    @Delete("delete from shopping_cart where user_id = #{userId}")
+    void cleanAllByUserId(Long userId);
 }
