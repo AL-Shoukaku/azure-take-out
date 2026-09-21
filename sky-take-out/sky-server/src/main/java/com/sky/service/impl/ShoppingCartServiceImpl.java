@@ -67,16 +67,25 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         }
     }
 
+    /**
+     * 获取当前用户的购物车数据
+     */
     public List<ShoppingCart> showShoppingCart() {
         ShoppingCart shoppingCart = new ShoppingCart();
         shoppingCart.setUserId(BaseContext.getCurrentId());
         return shoppingCartMapper.list(shoppingCart);
     }
 
+    /**
+     * 清空当前用户的购物车
+     */
     public void cleanShoppingCart() {
         shoppingCartMapper.cleanAllByUserId(BaseContext.getCurrentId());
     }
 
+    /**
+     * 用户减少购物车中的菜品数量
+     */
     public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
         ShoppingCart shoppingCart = new ShoppingCart();
         BeanUtils.copyProperties(shoppingCartDTO, shoppingCart);
