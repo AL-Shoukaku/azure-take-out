@@ -24,6 +24,7 @@ import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
+import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
@@ -350,5 +351,16 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 将该订单对应的所有菜品信息拼接在一起
         return String.join("", orderDishList);
+    }
+
+    public OrderStatisticsVO statistics() {
+        OrderStatisticsVO orderStatisticsVO = new OrderStatisticsVO();
+        int toBeConfirmedCount = ordersMapper.countByStatus(Orders.TO_BE_CONFIRMED);
+        int confirmedCount = ordersMapper.countByStatus(Orders.CONFIRMED);
+        int deliverInProgressCount = ordersMapper.countByStatus(Orders.DELIVERY_IN_PROGRESS);
+        orderStatisticsVO.setConfirmed(confirmedCount);
+        orderStatisticsVO.setToBeConfirmed(toBeConfirmedCount);
+        orderStatisticsVO.setDeliveryInProgress(deliverInProgressCount);
+        return orderStatisticsVO;
     }
 }

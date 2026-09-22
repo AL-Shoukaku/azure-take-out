@@ -43,4 +43,6 @@ public interface OrdersMapper {
      * 分页查询商家的订单，支持条件查询
      */
     Page<Orders> adminPageSearch(OrdersPageQueryDTO ordersPageQueryDTO);
+
+    Integer countByStatus(Integer status);
 }

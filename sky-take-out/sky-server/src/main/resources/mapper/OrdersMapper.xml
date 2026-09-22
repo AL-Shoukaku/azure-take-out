@@ -66,4 +66,12 @@
             <if test="userId != null">and user_id = #{userId}</if>
         </where> order by order_time desc
     </select>
+
+    <!-- 根据状态值获取对应订单的数量 -->
+    <select id="countByStatus" resultType="java.lang.Integer">
+        select count(*) from orders
+        <where>
+            <if test="status != null">and status = #{status}</if>
+        </where>
+    </select>
 </mapper>

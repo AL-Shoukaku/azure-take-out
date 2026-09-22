@@ -34,7 +34,7 @@ public class OrderController {
     @ApiOperation("商家统计各个类别的订单")
     public Result<OrderStatisticsVO> statistics() {
         log.info("商家统计各个类别的订单");
-        OrderStatisticsVO orderStatisticsVO = new OrderStatisticsVO();
+        OrderStatisticsVO orderStatisticsVO = ordersService.statistics();
         return Result.success(orderStatisticsVO);
     }
 
