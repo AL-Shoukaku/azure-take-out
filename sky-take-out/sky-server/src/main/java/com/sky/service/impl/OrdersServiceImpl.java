@@ -13,23 +13,21 @@ import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
+import com.sky.mapper.ShoppingCartMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.result.PageResult;
 import com.sky.service.AddressBookService;
 import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
-import com.sky.service.UserService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +52,8 @@ public class OrdersServiceImpl implements OrdersService {
 
     @Autowired
     private WeChatPayUtil weChatPayUtil;
+    @Autowired
+    private ShoppingCartMapper shoppingCartMapper;
 
     @Transactional
     public OrderSubmitVO submitOrder(OrdersSubmitDTO ordersSubmitDTO) {
@@ -241,4 +241,21 @@ public class OrdersServiceImpl implements OrdersService {
         ordersMapper.update(newOrders);
     }
 
+    /**
+     * 用户再来一单
+     */
+    public void repetition(Long id) {
+        // 获取所有订单明细，然后将它们插入到购物车中
+        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
+        Long UserId = BaseContext.getCurrentId();
+        List<ShoppingCart> shoppingCartList = new ArrayList<>();
+        for (OrderDetail orderDetail : orderDetailList) {
+            ShoppingCart shoppingCart = new ShoppingCart();
+            BeanUtils.copyProperties(orderDetail, shoppingCart);
+            shoppingCart.setUserId(UserId);
+            shoppingCart.setCreateTime(LocalDateTime.now());
+            shoppingCartList.add(shoppingCart);
+        }
+        shoppingCartMapper.batchInsert(shoppingCartList);
+    }
 }
