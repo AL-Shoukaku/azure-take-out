@@ -32,5 +32,13 @@ public interface OrdersService {
      */
     PageResult historyOrdersPageQuery(Integer page, Integer pageSize, Integer status);
 
-    OrderVO queryOrderDetail(Integer id);
+    /**
+     * 用户查询订单详情
+     */
+    OrderVO queryOrderDetail(Long id);
+
+    /**
+     * 用户取消订单
+     */
+    void cancelOrder(Long id);
 }

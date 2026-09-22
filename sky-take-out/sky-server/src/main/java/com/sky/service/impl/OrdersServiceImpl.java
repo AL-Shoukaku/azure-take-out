@@ -191,7 +191,7 @@ public class OrdersServiceImpl implements OrdersService {
     /**
      * 用户查询订单详情
      */
-    public OrderVO queryOrderDetail(Integer id) {
+    public OrderVO queryOrderDetail(Long id) {
         // 获取订单order，然后根据orderId查询订单明细，最后封装成orderVO返回
         OrderVO orderVO = new OrderVO();
         Orders orders = ordersMapper.getById(id);
@@ -203,4 +203,42 @@ public class OrdersServiceImpl implements OrdersService {
         orderVO.setOrderDetailList(orderDetailList);
         return orderVO;
     }
+
+    /**
+     * 用户取消订单
+     */
+    public void cancelOrder(Long id) {
+        Orders orders = ordersMapper.getById(id);
+
+        // 检查订单是否存在
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        // 对于已经接单的订单，用户不能取消
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() > 2) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 修改订单状态为已经取消
+        Orders newOrders = new Orders();
+        newOrders.setId(id);
+        newOrders.setStatus(Orders.CANCELLED);
+
+        // 如果订单已经支付，则需要调用微信支付的退款接口
+        if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
+            //调用微信支付退款接口
+            //weChatPayUtil.refund(
+            //        ordersDB.getNumber(), //商户订单号
+            //        ordersDB.getNumber(), //商户退款单号
+            //        new BigDecimal(0.01),//退款金额，单位 元
+            //        new BigDecimal(0.01));//原订单金额
+            //支付状态修改为 退款
+            newOrders.setPayStatus(Orders.REFUND);
+        }
+
+        ordersMapper.update(newOrders);
+    }
+
 }
