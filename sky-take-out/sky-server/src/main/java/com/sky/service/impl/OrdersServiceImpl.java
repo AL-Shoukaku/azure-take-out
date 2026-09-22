@@ -6,10 +6,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
-import com.sky.dto.OrdersCancelDTO;
-import com.sky.dto.OrdersPageQueryDTO;
-import com.sky.dto.OrdersPaymentDTO;
-import com.sky.dto.OrdersSubmitDTO;
+import com.sky.dto.*;
 import com.sky.entity.*;
 import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
@@ -19,6 +16,7 @@ import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.result.PageResult;
+import com.sky.result.Result;
 import com.sky.service.AddressBookService;
 import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
@@ -27,10 +25,13 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -353,6 +354,10 @@ public class OrdersServiceImpl implements OrdersService {
         return String.join("", orderDishList);
     }
 
+    /**
+     * 商家统计各个类别的订单
+     * @return
+     */
     public OrderStatisticsVO statistics() {
         OrderStatisticsVO orderStatisticsVO = new OrderStatisticsVO();
         int toBeConfirmedCount = ordersMapper.countByStatus(Orders.TO_BE_CONFIRMED);
@@ -362,5 +367,87 @@ public class OrdersServiceImpl implements OrdersService {
         orderStatisticsVO.setToBeConfirmed(toBeConfirmedCount);
         orderStatisticsVO.setDeliveryInProgress(deliverInProgressCount);
         return orderStatisticsVO;
+    }
+
+    /**
+     * 商家完成订单
+     */
+    public void completeOrder(Long id) {
+        Orders orders = ordersMapper.getById(id);
+
+        // 检查订单是否存在
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        // 商家只能完成派送中的订单，其他状态的订单不能完成
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() != Orders.DELIVERY_IN_PROGRESS) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 修改订单状态为已完成
+        Orders newOrders = new Orders();
+        newOrders.setId(id);
+        newOrders.setStatus(Orders.COMPLETED);
+        ordersMapper.update(newOrders);
+    }
+
+    public void confirmOrder(OrdersConfirmDTO ordersConfirmDTO) {
+        Long id = ordersConfirmDTO.getId();
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        // 商家只能接收待接单的订单，其他状态的订单不能接单
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 修改订单状态为已接单
+        Orders newOrders = new Orders();
+        newOrders.setId(id);
+        newOrders.setStatus(Orders.CONFIRMED);
+        ordersMapper.update(newOrders);
+    }
+
+    public void rejectOrder(OrdersRejectionDTO ordersRejectionDTO) {
+        Long id = ordersRejectionDTO.getId();
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        // 商家只能拒绝待接单的订单，其他状态的订单不能拒单
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 修改订单状态为已取消，并设置拒单原因，支付状态为退款
+        Orders newOrders = new Orders();
+        newOrders.setId(id);
+        newOrders.setStatus(Orders.CANCELLED);
+        newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason());
+        newOrders.setPayStatus(Orders.REFUND);
+        ordersMapper.update(newOrders);
+    }
+
+    public void deliveryOrder(Long id) {
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        // 商家只能派送已接单的订单，其他状态的订单不能派送
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() != Orders.CONFIRMED) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 修改订单状态为派送中
+        Orders newOrders = new Orders();
+        newOrders.setId(id);
+        newOrders.setStatus(Orders.DELIVERY_IN_PROGRESS);
+        ordersMapper.update(newOrders);
     }
 }
