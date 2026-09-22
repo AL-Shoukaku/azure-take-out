@@ -1,6 +1,8 @@
 package com.sky.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersPaymentDTO;
@@ -12,6 +14,7 @@ import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.UserMapper;
+import com.sky.result.PageResult;
 import com.sky.service.AddressBookService;
 import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
@@ -19,6 +22,7 @@ import com.sky.service.UserService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -162,6 +166,25 @@ public class OrdersServiceImpl implements OrdersService {
                 .build();
 
         ordersMapper.update(orders);
+    }
+
+    /**
+     * 用户查询历史订单，可支持根据订单状态查询
+     */
+    public PageResult historyOrdersPageQuery(Integer pageNum, Integer pageSize, Integer status) {
+        PageHelper.startPage(pageNum, pageSize);
+
+        Page<Orders> page = ordersMapper.pageQuery(BaseContext.getCurrentId().intValue(), status);
+        List<Orders> ordersList = page.getResult();
+        List<OrderVO> orderVOList = new ArrayList<>();
+        for (Orders orders : ordersList) {
+            OrderVO orderVO = new OrderVO();
+            BeanUtils.copyProperties(orders, orderVO);
+            List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
+            orderVO.setOrderDetailList(orderDetailList);
+            orderVOList.add(orderVO);
+        }
+        return new PageResult(page.getTotal(), orderVOList);
     }
 
 }

@@ -2,6 +2,7 @@ package com.sky.service;
 
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersSubmitDTO;
+import com.sky.result.PageResult;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
 
@@ -25,5 +26,8 @@ public interface OrdersService {
      */
     void paySuccess(String outTradeNo);
 
-
+    /**
+     * 用户查询历史订单，可支持根据订单状态查询
+     */
+    PageResult historyOrdersPageQuery(Integer page, Integer pageSize, Integer status);
 }

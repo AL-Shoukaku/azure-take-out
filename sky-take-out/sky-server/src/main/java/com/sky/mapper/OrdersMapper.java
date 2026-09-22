@@ -1,5 +1,6 @@
 package com.sky.mapper;
 
+import com.github.pagehelper.Page;
 import com.sky.entity.Orders;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -24,4 +25,9 @@ public interface OrdersMapper {
      * @param orders
      */
     void update(Orders orders);
+
+    /**
+     * 分页查询用户的历史订单，支持按状态查询
+     */
+    Page<Orders> pageQuery(Integer userId, Integer status);
 }
