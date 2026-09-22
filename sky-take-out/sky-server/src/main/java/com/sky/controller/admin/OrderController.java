@@ -86,4 +86,12 @@ public class OrderController {
         ordersService.deliveryOrder(id);
         return Result.success();
     }
+
+    @GetMapping("/details/{id}")
+    @ApiOperation("商家查询订单详情")
+    public Result<OrderVO> queryOrderDetail(@PathVariable Long id) {
+        log.info("商家查询订单详情: {}", id);
+        OrderVO orderVO = ordersService.queryOrderDetail(id);
+        return Result.success(orderVO);
+    }
 }
