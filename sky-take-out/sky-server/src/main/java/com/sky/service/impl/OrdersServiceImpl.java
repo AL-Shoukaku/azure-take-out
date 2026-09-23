@@ -1,6 +1,5 @@
 package com.sky.service.impl;
 
-import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
@@ -16,7 +15,6 @@ import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.result.PageResult;
-import com.sky.result.Result;
 import com.sky.service.AddressBookService;
 import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
@@ -25,13 +23,10 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
-import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -306,9 +301,6 @@ public class OrdersServiceImpl implements OrdersService {
     public PageResult adminPageQuery(OrdersPageQueryDTO ordersPageQueryDTO) {
         PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
         Page<Orders> page = ordersMapper.adminPageSearch(ordersPageQueryDTO);
-        if (page.getResult() == null || page.getResult().isEmpty()) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
         // 需要额外风中一些信息
         List<OrderVO> orderVOList = getOrderVOList(page);
         return new PageResult(page.getTotal(), orderVOList);
