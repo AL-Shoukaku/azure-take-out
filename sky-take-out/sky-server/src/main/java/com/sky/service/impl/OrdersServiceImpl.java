@@ -1,5 +1,6 @@
 package com.sky.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
@@ -23,6 +24,7 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import com.sky.websocket.WebSocketServer;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,6 +59,8 @@ public class OrdersServiceImpl implements OrdersService {
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
+    @Autowired
+    private WebSocketServer webSocketServer;
 
     @Transactional
     public OrderSubmitVO submitOrder(OrdersSubmitDTO ordersSubmitDTO) {
@@ -168,6 +174,15 @@ public class OrdersServiceImpl implements OrdersService {
                 .build();
 
         ordersMapper.update(orders);
+
+        // 通过 websocket 把来单消息推送给商家端，商家端收到消息后可以播放提示音
+        // 封装 type, orderId 和 message 三个字段
+        Map map = new HashMap<>();
+        map.put("type", 1);
+        map.put("orderId", ordersDB.getId());   // 1.表示来单提醒，2.表示客户催单
+        map.put("content", "订单号 " + outTradeNo);
+        String jsonStr = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(jsonStr);
     }
 
     /**
