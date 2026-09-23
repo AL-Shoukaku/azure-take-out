@@ -457,4 +457,29 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setStatus(Orders.DELIVERY_IN_PROGRESS);
         ordersMapper.update(newOrders);
     }
+
+
+    /**
+     * 客户催单
+     */
+    public void remindOrder(Long id) {
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        // 客户只能催单待接单的订单，其他状态的订单不能催单
+        //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        // 通过 websocket 把催单消息推送给商家端，商家端收到消息后可以播放提示音
+        // 封装 type, orderId 和 message 三个字段
+        Map map = new HashMap<>();
+        map.put("type", 2); // 1.表示来单提醒，2.表示客户催单
+        map.put("orderId", id);
+        map.put("content", "订单号 " + orders.getNumber());
+        String jsonStr = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(jsonStr);
+    }
 }

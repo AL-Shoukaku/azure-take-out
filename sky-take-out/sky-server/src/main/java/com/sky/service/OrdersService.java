@@ -81,4 +81,9 @@ public interface OrdersService {
      * 商家派送订单
      */
     void deliveryOrder(Long id);
+
+    /**
+     * 客户催单
+     */
+    void remindOrder(Long id);
 }
