@@ -54,4 +54,10 @@ public interface OrdersMapper {
      */
     @Select("select * from orders where status = #{status} and order_time < #{orderTime}")
     List<Orders> getByStatusAndOrderTime(Integer status, LocalDateTime orderTime);
+
+    /**
+     * 跟去起始和终止时间，获取对应的营业额数据，即已完成的订单总金额
+     */
+    @Select("select sum(amount) from orders where status = 5 and order_time between #{beginTime} and #{endTime}")
+    Double getTurnoverByTime(LocalDateTime beginTime, LocalDateTime endTime);
 }
