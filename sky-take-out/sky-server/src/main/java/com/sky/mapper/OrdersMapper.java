@@ -60,4 +60,13 @@ public interface OrdersMapper {
      */
     @Select("select sum(amount) from orders where status = 5 and order_time between #{beginTime} and #{endTime}")
     Double getTurnoverByTime(LocalDateTime beginTime, LocalDateTime endTime);
+
+    /**
+     * 根据起始和终止时间以及订单状态，获取对应的订单总数
+     * @param beginTime 开始时间
+     * @param endTime   结束时间
+     * @param status    订单状态
+     * @return  总数
+     */
+    Integer getTotalOrderCountByTimeAndStatus(LocalDateTime beginTime, LocalDateTime endTime, Integer status);
 }
