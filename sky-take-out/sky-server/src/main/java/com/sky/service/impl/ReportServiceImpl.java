@@ -6,15 +6,19 @@ import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
-import com.sky.vo.OrderReportVO;
-import com.sky.vo.SalesTop10ReportVO;
-import com.sky.vo.TurnoverReportVO;
-import com.sky.vo.UserReportVO;
+import com.sky.service.WorkspaceService;
+import com.sky.vo.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -33,6 +37,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private OrderDetailMapper orderDetailMapper;
+
+    @Autowired
+    private WorkspaceService workspaceService;
 
     @Override
     public TurnoverReportVO getTurnoverStatistic(LocalDate begin, LocalDate end) {
@@ -218,5 +225,55 @@ public class ReportServiceImpl implements ReportService {
                 .nameList(nameList)
                 .numberList(numberList)
                 .build();
+    }
+
+    /**
+     * 导出运营数据报表
+     */
+    @Override
+    public void exportBusinessData(HttpServletResponse response) {
+        // 查询数据库获取营业数据
+        LocalDateTime begin = LocalDateTime.of(LocalDate.now().minusDays(30), LocalTime.MIN);
+        LocalDateTime end = LocalDateTime.of(LocalDate.now().minusDays(1), LocalTime.MAX);
+
+        BusinessDataVO businessData = workspaceService.getBusinessData(begin, end);
+
+        // 将数据写入Excel文件
+        // 先建立一个Excel文件对象，然后将数据写入到Excel文件中
+        InputStream in = this.getClass().getClassLoader().getResourceAsStream("template/运营数据报表模板.xlsx");
+        try {
+            XSSFWorkbook excel = new XSSFWorkbook(in);
+            // 填充数据
+            Sheet sheet = excel.getSheetAt(0);
+            sheet.getRow(1).getCell(1).setCellValue("时间:" + begin + "至" + end);
+            sheet.getRow(3).getCell(2).setCellValue(businessData.getTurnover());
+            sheet.getRow(3).getCell(4).setCellValue(businessData.getOrderCompletionRate());
+            sheet.getRow(3).getCell(6).setCellValue(businessData.getNewUsers());
+            sheet.getRow(4).getCell(2).setCellValue(businessData.getValidOrderCount());
+            sheet.getRow(4).getCell(4).setCellValue(businessData.getUnitPrice());
+
+            for (int i = 7; i < 37; i++) {
+                sheet.getRow(i).getCell(1).setCellValue(begin.plusDays(i - 7).toString());
+                LocalDateTime currentBegin = begin.plusDays(i - 7);
+                LocalDateTime currentEnd = currentBegin.with(LocalTime.MAX);
+                BusinessDataVO currentBusinessData = workspaceService.getBusinessData(currentBegin, currentEnd);
+                sheet.getRow(i).getCell(2).setCellValue(currentBusinessData.getTurnover());
+                sheet.getRow(i).getCell(3).setCellValue(currentBusinessData.getValidOrderCount());
+                sheet.getRow(i).getCell(4).setCellValue(currentBusinessData.getOrderCompletionRate());
+                sheet.getRow(i).getCell(5).setCellValue(currentBusinessData.getUnitPrice());
+                sheet.getRow(i).getCell(6).setCellValue(currentBusinessData.getNewUsers());
+            }
+
+
+            // 通过输出流将 Excel 文件下载到浏览器
+            ServletOutputStream out = response.getOutputStream();
+            excel.write(out);
+            excel.close();
+            out.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+
     }
 }
