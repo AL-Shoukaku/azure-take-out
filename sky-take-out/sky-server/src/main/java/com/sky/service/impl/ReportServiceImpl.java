@@ -1,14 +1,18 @@
 package com.sky.service.impl;
 
+import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.Orders;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
 import com.sky.vo.OrderReportVO;
+import com.sky.vo.SalesTop10ReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -26,6 +30,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private OrderDetailMapper orderDetailMapper;
 
     @Override
     public TurnoverReportVO getTurnoverStatistic(LocalDate begin, LocalDate end) {
@@ -63,6 +70,13 @@ public class ReportServiceImpl implements ReportService {
                 .build();
     }
 
+    /**
+     * 统计指定时间段内的用户数据
+     * @param begin 起始时间
+     * @param end   结束时间
+     * @return      统计结果
+     */
+    @Override
     public UserReportVO getUserStatistic(LocalDate begin, LocalDate end) {
         // 参数准备，包括日期列表，总用户和新增用户列表
         String dateList = "";
@@ -108,6 +122,13 @@ public class ReportServiceImpl implements ReportService {
                 .build();
     }
 
+    /**
+     * 统计指定时间段内的订单数据
+     * @param begin 起始时间
+     * @param end   结束时间
+     * @return      统计结果
+     */
+    @Override
     public OrderReportVO getOrderStatistic(LocalDate begin, LocalDate end) {
         // 参数准备，包括日期列表，总用户和新增用户列表
         String dateList = "";
@@ -161,6 +182,41 @@ public class ReportServiceImpl implements ReportService {
                 .totalOrderCount(totalOrderCount)
                 .validOrderCount(validOrderCount)
                 .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    /**
+     * 统计指定时间段内销量排名前十的菜品及其销量
+     * @param begin 起始时间
+     * @param end   结束时间
+     * @return    统计结果
+     */
+    @Override
+    public SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end) {
+        // top10商品的名称列表和销量列表
+        String nameList = "";
+        String numberList = "";
+
+        // 获取指定时间段内销量排名前十的商品列表
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTime = LocalDateTime.of(end, LocalTime.MAX);
+        List<GoodsSalesDTO> salesTop10 = orderDetailMapper.getSalesTop10(beginTime, endTime);
+
+        for (GoodsSalesDTO goodsSalesDTO : salesTop10) {
+            nameList += goodsSalesDTO.getName() + ",";
+            numberList += goodsSalesDTO.getNumber() + ",";
+        }
+        // 去掉最后一个逗号
+        if (!nameList.isEmpty()) {
+            nameList = nameList.substring(0, nameList.length() - 1);
+        }
+        if (!numberList.isEmpty()) {
+            numberList = numberList.substring(0, numberList.length() - 1);
+        }
+
+        return SalesTop10ReportVO.builder()
+                .nameList(nameList)
+                .numberList(numberList)
                 .build();
     }
 }
