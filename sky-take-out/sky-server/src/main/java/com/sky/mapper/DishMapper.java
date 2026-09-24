@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface DishMapper {
@@ -70,4 +71,11 @@ public interface DishMapper {
      */
     @Select("select * from dish where category_id = #{categoryId} and status = 1 order by update_time desc")
     List<Dish> queryWithCategoryId(Long categoryId);
+
+    /**
+     * 根据条件统计菜品数量
+     * @param map
+     * @return
+     */
+    Integer countByMap(Map map);
 }

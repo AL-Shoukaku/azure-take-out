@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Mapper
 public interface UserMapper {
@@ -46,4 +47,11 @@ public interface UserMapper {
      */
     @Select("select count(*) from user where create_time >= #{beginTime} and create_time <= #{endTime}")
     Integer getNewUserByTime(LocalDateTime beginTime, LocalDateTime endTime);
+
+    /**
+     * 根据 map 中的条件统计用户数量，包括起始和终止时间
+     * @param map
+     * @return
+     */
+    Integer countByMap(Map map);
 }
