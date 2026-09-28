@@ -159,7 +159,7 @@ CREATE TABLE `order_detail` (
 DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `number` varchar(50) COLLATE utf8_bin DEFAULT NULL COMMENT '订单号',
+  `number` varchar(50) COLLATE utf8_bin NOT NULL COMMENT '订单号',
   `status` int NOT NULL DEFAULT '1' COMMENT '订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消 7退款',
   `user_id` bigint NOT NULL COMMENT '下单用户',
   `address_book_id` bigint NOT NULL COMMENT '地址id',
@@ -182,7 +182,8 @@ CREATE TABLE `orders` (
   `pack_amount` int DEFAULT NULL COMMENT '打包费',
   `tableware_number` int DEFAULT NULL COMMENT '餐具数量',
   `tableware_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '餐具数量状态  1按餐量提供  0选择具体数量',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_orders_number` (`number`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='订单表';
 
 DROP TABLE IF EXISTS `setmeal`;

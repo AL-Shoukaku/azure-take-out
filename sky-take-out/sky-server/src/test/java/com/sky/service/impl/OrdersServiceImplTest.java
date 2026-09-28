@@ -14,6 +14,7 @@ import com.sky.mapper.ShoppingCartMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.AddressBookService;
 import com.sky.service.ShoppingCartService;
+import com.sky.vo.OrderSubmitVO;
 import com.sky.websocket.WebSocketServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -68,12 +70,14 @@ class OrdersServiceImplTest {
                 ShoppingCart.builder().amount(new BigDecimal("8.00")).number(1).build()));
         when(userMapper.getById(1L)).thenReturn(User.builder().name("测试用户").build());
 
-        ordersService.submitOrder(request);
+        OrderSubmitVO result = ordersService.submitOrder(request);
 
         ArgumentCaptor<Orders> order = ArgumentCaptor.forClass(Orders.class);
         verify(ordersMapper).submitOrder(order.capture());
         assertEquals(new BigDecimal("42.00"), order.getValue().getAmount());
         assertEquals(3, order.getValue().getPackAmount());
+        assertTrue(order.getValue().getNumber().matches("[0-9a-f]{32}"));
+        assertEquals(order.getValue().getNumber(), result.getOrderNumber());
         verify(shoppingCartService).cleanShoppingCart();
     }
 
