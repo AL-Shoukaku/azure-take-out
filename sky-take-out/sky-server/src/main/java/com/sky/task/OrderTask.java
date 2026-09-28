@@ -1,6 +1,5 @@
 package com.sky.task;
 
-import com.sky.constant.StatusConstant;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrdersMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +26,13 @@ public class OrderTask {
         List<Orders> ordersList = ordersMapper.getByStatusAndOrderTime(Orders.PENDING_PAYMENT, LocalDateTime.now().minusMinutes(15));
         if (ordersList != null && !ordersList.isEmpty()) {
             for (Orders orders : ordersList) {
-                orders.setStatus(Orders.CANCELLED);
-                orders.setCancelReason("订单超时未支付，系统自动取消");
-                orders.setCancelTime(LocalDateTime.now());
-                ordersMapper.update(orders);
+                Orders cancelled = Orders.builder()
+                        .id(orders.getId())
+                        .status(Orders.CANCELLED)
+                        .cancelReason("订单超时未支付，系统自动取消")
+                        .cancelTime(LocalDateTime.now())
+                        .build();
+                ordersMapper.update(cancelled, Orders.PENDING_PAYMENT);
             }
         }
     }
@@ -45,9 +47,12 @@ public class OrderTask {
         List<Orders> ordersList = ordersMapper.getByStatusAndOrderTime(Orders.DELIVERY_IN_PROGRESS, LocalDateTime.now().minusHours(1));
         if (ordersList != null && !ordersList.isEmpty()) {
             for (Orders orders : ordersList) {
-                orders.setStatus(Orders.COMPLETED);
-                orders.setDeliveryTime(LocalDateTime.now());
-                ordersMapper.update(orders);
+                Orders completed = Orders.builder()
+                        .id(orders.getId())
+                        .status(Orders.COMPLETED)
+                        .deliveryTime(LocalDateTime.now())
+                        .build();
+                ordersMapper.update(completed, Orders.DELIVERY_IN_PROGRESS);
             }
         }
     }

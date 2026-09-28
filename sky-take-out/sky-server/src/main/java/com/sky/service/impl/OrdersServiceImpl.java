@@ -135,6 +135,10 @@ public class OrdersServiceImpl implements OrdersService {
         if (paymentOrder == null || !userId.equals(paymentOrder.getUserId())) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        if (!Orders.PENDING_PAYMENT.equals(paymentOrder.getStatus())
+                || !Orders.UN_PAID.equals(paymentOrder.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
         User user = userMapper.getById(userId);
 
         /*
@@ -179,6 +183,17 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 根据订单号查询订单
         Orders ordersDB = ordersMapper.getByNumber(outTradeNo);
+        if (ordersDB == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        // 已处理的支付通知可能重试，直接返回，避免重复更新和重复推送。
+        if (Orders.PAID.equals(ordersDB.getPayStatus()) || Orders.REFUND.equals(ordersDB.getPayStatus())) {
+            return;
+        }
+        if (!Orders.PENDING_PAYMENT.equals(ordersDB.getStatus())
+                || !Orders.UN_PAID.equals(ordersDB.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
 
         // 根据订单id更新订单的状态、支付方式、支付状态、结账时间
         Orders orders = Orders.builder()
@@ -188,7 +203,15 @@ public class OrdersServiceImpl implements OrdersService {
                 .checkoutTime(LocalDateTime.now())
                 .build();
 
-        ordersMapper.update(orders);
+        if (ordersMapper.update(orders, Orders.PENDING_PAYMENT) == 0) {
+            // 与取消订单并发时，重新确认最终状态；仅已支付/已退款视为重复通知。
+            Orders latest = ordersMapper.getByNumber(outTradeNo);
+            if (latest != null && (Orders.PAID.equals(latest.getPayStatus())
+                    || Orders.REFUND.equals(latest.getPayStatus()))) {
+                return;
+            }
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
 
         // 通过 websocket 把来单消息推送给商家端，商家端收到消息后可以播放提示音
         // 封装 type, orderId 和 message 三个字段
@@ -240,7 +263,8 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 对于已经接单的订单，用户不能取消
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
-        if (orders.getStatus() > 2) {
+        if (!Orders.PENDING_PAYMENT.equals(orders.getStatus())
+                && !Orders.TO_BE_CONFIRMED.equals(orders.getStatus())) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
 
@@ -261,7 +285,7 @@ public class OrdersServiceImpl implements OrdersService {
             newOrders.setPayStatus(Orders.REFUND);
         }
 
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, orders.getStatus());
     }
 
     /**
@@ -296,7 +320,8 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 对于已经接单的订单，商家不能取消
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
-        if (orders.getStatus() > 2) {
+        if (!Orders.PENDING_PAYMENT.equals(orders.getStatus())
+                && !Orders.TO_BE_CONFIRMED.equals(orders.getStatus())) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
 
@@ -318,7 +343,7 @@ public class OrdersServiceImpl implements OrdersService {
             newOrders.setPayStatus(Orders.REFUND);
         }
 
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, orders.getStatus());
     }
 
     public PageResult adminPageQuery(OrdersPageQueryDTO ordersPageQueryDTO) {
@@ -405,7 +430,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.COMPLETED);
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, Orders.DELIVERY_IN_PROGRESS);
     }
 
     public void confirmOrder(OrdersConfirmDTO ordersConfirmDTO) {
@@ -424,7 +449,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.CONFIRMED);
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
     }
 
     public void rejectOrder(OrdersRejectionDTO ordersRejectionDTO) {
@@ -445,7 +470,7 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setStatus(Orders.CANCELLED);
         newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason());
         newOrders.setPayStatus(Orders.REFUND);
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
     }
 
     public void deliveryOrder(Long id) {
@@ -463,7 +488,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.DELIVERY_IN_PROGRESS);
-        ordersMapper.update(newOrders);
+        updateOrderIfStatus(newOrders, Orders.CONFIRMED);
     }
 
 
@@ -494,5 +519,11 @@ public class OrdersServiceImpl implements OrdersService {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
         return orders;
+    }
+
+    private void updateOrderIfStatus(Orders order, Integer expectedStatus) {
+        if (ordersMapper.update(order, expectedStatus) == 0) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
     }
 }

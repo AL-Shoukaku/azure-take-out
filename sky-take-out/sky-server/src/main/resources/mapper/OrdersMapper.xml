@@ -12,35 +12,35 @@
                 #{deliveryStatus}, #{packAmount}, #{tablewareNumber}, #{tablewareStatus})
     </insert>
 
-    <update id="update" parameterType="com.sky.entity.Orders">
+    <update id="update">
         update orders
         <set>
-            <if test="cancelReason != null and cancelReason!='' ">
-                cancel_reason=#{cancelReason},
+            <if test="order.cancelReason != null and order.cancelReason!='' ">
+                cancel_reason=#{order.cancelReason},
             </if>
-            <if test="rejectionReason != null and rejectionReason!='' ">
-                rejection_reason=#{rejectionReason},
+            <if test="order.rejectionReason != null and order.rejectionReason!='' ">
+                rejection_reason=#{order.rejectionReason},
             </if>
-            <if test="cancelTime != null">
-                cancel_time=#{cancelTime},
+            <if test="order.cancelTime != null">
+                cancel_time=#{order.cancelTime},
             </if>
-            <if test="payStatus != null">
-                pay_status=#{payStatus},
+            <if test="order.payStatus != null">
+                pay_status=#{order.payStatus},
             </if>
-            <if test="payMethod != null">
-                pay_method=#{payMethod},
+            <if test="order.payMethod != null">
+                pay_method=#{order.payMethod},
             </if>
-            <if test="checkoutTime != null">
-                checkout_time=#{checkoutTime},
+            <if test="order.checkoutTime != null">
+                checkout_time=#{order.checkoutTime},
             </if>
-            <if test="status != null">
-                status = #{status},
+            <if test="order.status != null">
+                status = #{order.status},
             </if>
-            <if test="deliveryTime != null">
-                delivery_time = #{deliveryTime}
+            <if test="order.deliveryTime != null">
+                delivery_time = #{order.deliveryTime}
             </if>
         </set>
-        where id = #{id}
+        where id = #{order.id} and status = #{expectedStatus}
     </update>
 
     <select id="pageQuery" resultType="com.sky.entity.Orders">

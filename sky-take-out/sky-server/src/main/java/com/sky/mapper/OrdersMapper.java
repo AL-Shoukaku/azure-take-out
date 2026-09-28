@@ -4,6 +4,7 @@ import com.github.pagehelper.Page;
 import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.entity.Orders;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
@@ -33,7 +34,7 @@ public interface OrdersMapper {
     /**
      * 修改订单信息
      */
-    void update(Orders orders);
+    int update(@Param("order") Orders order, @Param("expectedStatus") Integer expectedStatus);
 
     /**
      * 分页查询用户的历史订单，支持按状态查询

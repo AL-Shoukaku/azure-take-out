@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,7 +92,7 @@ class OrdersServiceImplTest {
         assertThrows(OrderBusinessException.class, () -> ordersService.remindOrder(9L));
 
         verifyNoInteractions(orderDetailMapper, shoppingCartMapper, webSocketServer);
-        verify(ordersMapper, never()).update(any(Orders.class));
+        verify(ordersMapper, never()).update(any(Orders.class), anyInt());
     }
 
     @Test
@@ -104,6 +105,6 @@ class OrdersServiceImplTest {
         assertThrows(OrderBusinessException.class, () -> ordersService.payment(request));
 
         verifyNoInteractions(userMapper);
-        verify(ordersMapper, never()).update(any(Orders.class));
+        verify(ordersMapper, never()).update(any(Orders.class), anyInt());
     }
 }
