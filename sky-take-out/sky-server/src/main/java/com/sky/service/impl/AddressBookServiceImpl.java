@@ -1,7 +1,9 @@
 package com.sky.service.impl;
 
 import com.sky.context.BaseContext;
+import com.sky.constant.MessageConstant;
 import com.sky.entity.AddressBook;
+import com.sky.exception.AddressBookBusinessException;
 import com.sky.mapper.AddressBookMapper;
 import com.sky.service.AddressBookService;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +47,8 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     public AddressBook getById(Long id) {
         AddressBook addressBook = addressBookMapper.getById(id);
-        return addressBook;
+        return addressBook != null && BaseContext.getCurrentId().equals(addressBook.getUserId())
+                ? addressBook : null;
     }
 
     /**
@@ -54,6 +57,7 @@ public class AddressBookServiceImpl implements AddressBookService {
      * @param addressBook
      */
     public void update(AddressBook addressBook) {
+        checkOwnership(addressBook.getId());
         addressBookMapper.update(addressBook);
     }
 
@@ -64,6 +68,7 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     @Transactional
     public void setDefault(AddressBook addressBook) {
+        checkOwnership(addressBook.getId());
         //1、将当前用户的所有地址修改为非默认地址 update address_book set is_default = ? where user_id = ?
         addressBook.setIsDefault(0);
         addressBook.setUserId(BaseContext.getCurrentId());
@@ -80,7 +85,14 @@ public class AddressBookServiceImpl implements AddressBookService {
      * @param id
      */
     public void deleteById(Long id) {
+        checkOwnership(id);
         addressBookMapper.deleteById(id);
+    }
+
+    private void checkOwnership(Long id) {
+        if (getById(id) == null) {
+            throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_NOT_FOUND);
+        }
     }
 
 }

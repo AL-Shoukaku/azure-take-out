@@ -43,7 +43,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         // 如果在则数量加 1,如果不在，执行插入操作
         if (shoppingCarts != null && !shoppingCarts.isEmpty()) {
             // 如果查出来了，只可能有一个
-            // amount 是单价，不用更新，总金额由前端计算
+            // amount 是单价，下单时由服务端按单价和数量计算总金额
             shoppingCart = shoppingCarts.get(0);
             shoppingCart.setNumber(shoppingCart.getNumber() + 1);
             shoppingCartMapper.update(shoppingCart);

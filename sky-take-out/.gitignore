@@ -2,5 +2,5 @@
 .idea
 *.iml
 *.class
-*Test.java
-**/test/
+# 课程自带的手动联调代码依赖外部服务，暂不纳入版本库
+sky-server/src/test/java/com/sky/test/

@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +40,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrdersServiceImpl implements OrdersService {
+
+    private static final BigDecimal DELIVERY_FEE = new BigDecimal("6.00");
 
     @Autowired
     private OrdersMapper ordersMapper;
@@ -75,7 +78,14 @@ public class OrdersServiceImpl implements OrdersService {
         }
         // 向订单表 orders 中插入一条数据
         Orders orders = new Orders();
-        BeanUtils.copyProperties(ordersSubmitDTO, orders);
+        // 直接复制 DTO 中的数据，手动计算 amount 和 packAmount，防止来自非前端的恶意数据
+        BeanUtils.copyProperties(ordersSubmitDTO, orders, "amount", "packAmount");
+        int packAmount = shoppingCartList.stream().mapToInt(ShoppingCart::getNumber).sum();
+        BigDecimal dishesAmount = shoppingCartList.stream()
+                .map(item -> item.getAmount().multiply(BigDecimal.valueOf(item.getNumber())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        orders.setPackAmount(packAmount);
+        orders.setAmount(dishesAmount.add(DELIVERY_FEE).add(BigDecimal.valueOf(packAmount)));
         orders.setUserId(BaseContext.getCurrentId());
         orders.setOrderTime(LocalDateTime.now());
         orders.setPayStatus(Orders.UN_PAID);
@@ -120,6 +130,10 @@ public class OrdersServiceImpl implements OrdersService {
     public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
         // 当前登录用户id
         Long userId = BaseContext.getCurrentId();
+        Orders paymentOrder = ordersMapper.getByNumber(ordersPaymentDTO.getOrderNumber());
+        if (paymentOrder == null || !userId.equals(paymentOrder.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
         User user = userMapper.getById(userId);
 
         /*
@@ -210,10 +224,7 @@ public class OrdersServiceImpl implements OrdersService {
     public OrderVO queryOrderDetail(Long id) {
         // 获取订单order，然后根据orderId查询订单明细，最后封装成orderVO返回
         OrderVO orderVO = new OrderVO();
-        Orders orders = ordersMapper.getById(id);
-        if (orders == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Orders orders = getCurrentUserOrder(id);
         BeanUtils.copyProperties(orders, orderVO);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
         orderVO.setOrderDetailList(orderDetailList);
@@ -224,12 +235,7 @@ public class OrdersServiceImpl implements OrdersService {
      * 用户取消订单
      */
     public void userCancelOrder(Long id) {
-        Orders orders = ordersMapper.getById(id);
-
-        // 检查订单是否存在
-        if (orders == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Orders orders = getCurrentUserOrder(id);
 
         // 对于已经接单的订单，用户不能取消
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
@@ -262,6 +268,7 @@ public class OrdersServiceImpl implements OrdersService {
      */
     public void repetition(Long id) {
         // 获取所有订单明细，然后将它们插入到购物车中
+        getCurrentUserOrder(id);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
         Long UserId = BaseContext.getCurrentId();
         List<ShoppingCart> shoppingCartList = new ArrayList<>();
@@ -463,10 +470,7 @@ public class OrdersServiceImpl implements OrdersService {
      * 客户催单
      */
     public void remindOrder(Long id) {
-        Orders orders = ordersMapper.getById(id);
-        if (orders == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Orders orders = getCurrentUserOrder(id);
         // 客户只能催单待接单的订单，其他状态的订单不能催单
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
         if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
@@ -481,5 +485,13 @@ public class OrdersServiceImpl implements OrdersService {
         map.put("content", "订单号 " + orders.getNumber());
         String jsonStr = JSON.toJSONString(map);
         webSocketServer.sendToAllClient(jsonStr);
+    }
+
+    private Orders getCurrentUserOrder(Long id) {
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null || !BaseContext.getCurrentId().equals(orders.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        return orders;
     }
 }
