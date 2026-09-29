@@ -39,3 +39,4 @@ application-local.yml
 
 # ---------- 本地存储 ----------
 uploads
+sky-take-out/sky-server/src/main/resources/menu-images/

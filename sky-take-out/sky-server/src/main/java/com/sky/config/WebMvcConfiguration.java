@@ -107,6 +107,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
 
+        // 随项目提供的演示菜品与套餐图片
+        registry.addResourceHandler("/menu-images/**").addResourceLocations("classpath:/menu-images/");
+
         // 本地存储
         // 访问/images/** 映射到本地文件系统的 uploadPath 目录
         Path directory = Paths.get(uploadPath).toAbsolutePath().normalize();

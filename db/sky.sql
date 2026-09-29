@@ -1,5 +1,9 @@
-CREATE DATABASE  IF NOT EXISTS `sky_take_out` ;
+-- 苍穹外卖演示数据。此文件会重建 sky_take_out 全部 11 张表，导入前请备份自己的数据。
+-- 菜品与套餐图片保存在 sky-server/src/main/resources/menu-images，来源见 db/IMAGE_SOURCES.md。
+-- 演示用户的 openid 为占位值，仅用于后台列表和报表；微信登录会创建真实用户。
+CREATE DATABASE IF NOT EXISTS `sky_take_out` DEFAULT CHARACTER SET utf8mb4;
 USE `sky_take_out`;
+SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS `address_book`;
 CREATE TABLE `address_book` (
@@ -18,7 +22,15 @@ CREATE TABLE `address_book` (
   `label` varchar(100) CHARACTER SET utf8mb4  DEFAULT NULL COMMENT '标签',
   `is_default` tinyint(1) NOT NULL DEFAULT '0' COMMENT '默认 0 否 1是',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='地址簿';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='地址簿';
+
+INSERT INTO `address_book` (`id`, `user_id`, `consignee`, `sex`, `phone`, `province_code`, `province_name`, `city_code`, `city_name`, `district_code`, `district_name`, `detail`, `label`, `is_default`) VALUES
+  (1, 1, '张同学', '1', '13900000001', '110000', '北京市', '110100', '北京市', '110108', '海淀区', '中关村演示路1号', '学校', 1),
+  (2, 1, '张同学', '1', '13900000001', '110000', '北京市', '110100', '北京市', '110108', '海淀区', '学院演示楼2号', '宿舍', 0),
+  (3, 2, '李同学', '0', '13900000002', '110000', '北京市', '110100', '北京市', '110105', '朝阳区', '科技演示园3号', '公司', 1),
+  (4, 3, '王同学', '1', '13900000003', '310000', '上海市', '310100', '上海市', '310104', '徐汇区', '漕河泾演示路4号', '公司', 1),
+  (5, 4, '赵同学', '0', '13900000004', '310000', '上海市', '310100', '上海市', '310110', '杨浦区', '大学演示路5号', '学校', 1),
+  (6, 5, '陈同学', '1', '13900000005', '440000', '广东省', '440100', '广州市', '440106', '天河区', '软件演示园6号', '公司', 1);
 
 DROP TABLE IF EXISTS `category`;
 CREATE TABLE `category` (
@@ -33,18 +45,18 @@ CREATE TABLE `category` (
   `update_user` bigint DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_category_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品及套餐分类';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品及套餐分类';
 
-INSERT INTO `category` VALUES (11,1,'酒水饮料',10,1,'2022-06-09 22:09:18','2022-06-09 22:09:18',1,1);
-INSERT INTO `category` VALUES (12,1,'传统主食',9,1,'2022-06-09 22:09:32','2022-06-09 22:18:53',1,1);
-INSERT INTO `category` VALUES (13,2,'人气套餐',12,1,'2022-06-09 22:11:38','2022-06-10 11:04:40',1,1);
-INSERT INTO `category` VALUES (15,2,'商务套餐',13,1,'2022-06-09 22:14:10','2022-06-10 11:04:48',1,1);
-INSERT INTO `category` VALUES (16,1,'蜀味烤鱼',4,1,'2022-06-09 22:15:37','2022-08-31 14:27:25',1,1);
-INSERT INTO `category` VALUES (17,1,'蜀味牛蛙',5,1,'2022-06-09 22:16:14','2022-08-31 14:39:44',1,1);
-INSERT INTO `category` VALUES (18,1,'特色蒸菜',6,1,'2022-06-09 22:17:42','2022-06-09 22:17:42',1,1);
-INSERT INTO `category` VALUES (19,1,'新鲜时蔬',7,1,'2022-06-09 22:18:12','2022-06-09 22:18:28',1,1);
-INSERT INTO `category` VALUES (20,1,'水煮鱼',8,1,'2022-06-09 22:22:29','2022-06-09 22:23:45',1,1);
-INSERT INTO `category` VALUES (21,1,'汤类',11,1,'2022-06-10 10:51:47','2022-06-10 10:51:47',1,1);
+INSERT INTO `category` (`id`, `type`, `name`, `sort`, `status`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES
+  (1, 1, '川味招牌', 1, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (2, 1, '家常热菜', 2, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (3, 1, '清爽时蔬', 3, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (4, 1, '主食小吃', 4, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (5, 1, '汤羹', 5, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (6, 1, '酒水饮品', 6, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (7, 2, '单人套餐', 7, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (8, 2, '双人套餐', 8, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (9, 2, '家庭套餐', 9, 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
 
 DROP TABLE IF EXISTS `dish`;
 CREATE TABLE `dish` (
@@ -61,32 +73,39 @@ CREATE TABLE `dish` (
   `update_user` bigint DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_dish_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品';
 
-INSERT INTO `dish` VALUES (46,'王老吉',11,6.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/41bfcacf-7ad4-4927-8b26-df366553a94c.png','',1,'2022-06-09 22:40:47','2022-06-09 22:40:47',1,1);
-INSERT INTO `dish` VALUES (47,'北冰洋',11,4.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/4451d4be-89a2-4939-9c69-3a87151cb979.png','还是小时候的味道',1,'2022-06-10 09:18:49','2022-06-10 09:18:49',1,1);
-INSERT INTO `dish` VALUES (48,'雪花啤酒',11,4.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/bf8cbfc1-04d2-40e8-9826-061ee41ab87c.png','',1,'2022-06-10 09:22:54','2022-06-10 09:22:54',1,1);
-INSERT INTO `dish` VALUES (49,'米饭',12,2.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/76752350-2121-44d2-b477-10791c23a8ec.png','精选五常大米',1,'2022-06-10 09:30:17','2022-06-10 09:30:17',1,1);
-INSERT INTO `dish` VALUES (50,'馒头',12,1.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/475cc599-8661-4899-8f9e-121dd8ef7d02.png','优质面粉',1,'2022-06-10 09:34:28','2022-06-10 09:34:28',1,1);
-INSERT INTO `dish` VALUES (51,'老坛酸菜鱼',20,56.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/4a9cefba-6a74-467e-9fde-6e687ea725d7.png','原料：汤，草鱼，酸菜',1,'2022-06-10 09:40:51','2022-06-10 09:40:51',1,1);
-INSERT INTO `dish` VALUES (52,'经典酸菜鮰鱼',20,66.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/5260ff39-986c-4a97-8850-2ec8c7583efc.png','原料：酸菜，江团，鮰鱼',1,'2022-06-10 09:46:02','2022-06-10 09:46:02',1,1);
-INSERT INTO `dish` VALUES (53,'蜀味水煮草鱼',20,38.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/a6953d5a-4c18-4b30-9319-4926ee77261f.png','原料：草鱼，汤',1,'2022-06-10 09:48:37','2022-06-10 09:48:37',1,1);
-INSERT INTO `dish` VALUES (54,'清炒小油菜',19,18.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/3613d38e-5614-41c2-90ed-ff175bf50716.png','原料：小油菜',1,'2022-06-10 09:51:46','2022-06-10 09:51:46',1,1);
-INSERT INTO `dish` VALUES (55,'蒜蓉娃娃菜',19,18.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/4879ed66-3860-4b28-ba14-306ac025fdec.png','原料：蒜，娃娃菜',1,'2022-06-10 09:53:37','2022-06-10 09:53:37',1,1);
-INSERT INTO `dish` VALUES (56,'清炒西兰花',19,18.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/e9ec4ba4-4b22-4fc8-9be0-4946e6aeb937.png','原料：西兰花',1,'2022-06-10 09:55:44','2022-06-10 09:55:44',1,1);
-INSERT INTO `dish` VALUES (57,'炝炒圆白菜',19,18.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/22f59feb-0d44-430e-a6cd-6a49f27453ca.png','原料：圆白菜',1,'2022-06-10 09:58:35','2022-06-10 09:58:35',1,1);
-INSERT INTO `dish` VALUES (58,'清蒸鲈鱼',18,98.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/c18b5c67-3b71-466c-a75a-e63c6449f21c.png','原料：鲈鱼',1,'2022-06-10 10:12:28','2022-06-10 10:12:28',1,1);
-INSERT INTO `dish` VALUES (59,'东坡肘子',18,138.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/a80a4b8c-c93e-4f43-ac8a-856b0d5cc451.png','原料：猪肘棒',1,'2022-06-10 10:24:03','2022-06-10 10:24:03',1,1);
-INSERT INTO `dish` VALUES (60,'梅菜扣肉',18,58.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/6080b118-e30a-4577-aab4-45042e3f88be.png','原料：猪肉，梅菜',1,'2022-06-10 10:26:03','2022-06-10 10:26:03',1,1);
-INSERT INTO `dish` VALUES (61,'剁椒鱼头',18,66.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/13da832f-ef2c-484d-8370-5934a1045a06.png','原料：鲢鱼，剁椒',1,'2022-06-10 10:28:54','2022-06-10 10:28:54',1,1);
-INSERT INTO `dish` VALUES (62,'金汤酸菜牛蛙',17,88.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/7694a5d8-7938-4e9d-8b9e-2075983a2e38.png','原料：鲜活牛蛙，酸菜',1,'2022-06-10 10:33:05','2022-06-10 10:33:05',1,1);
-INSERT INTO `dish` VALUES (63,'香锅牛蛙',17,88.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/f5ac8455-4793-450c-97ba-173795c34626.png','配料：鲜活牛蛙，莲藕，青笋',1,'2022-06-10 10:35:40','2022-06-10 10:35:40',1,1);
-INSERT INTO `dish` VALUES (64,'馋嘴牛蛙',17,88.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/7a55b845-1f2b-41fa-9486-76d187ee9ee1.png','配料：鲜活牛蛙，丝瓜，黄豆芽',1,'2022-06-10 10:37:52','2022-06-10 10:37:52',1,1);
-INSERT INTO `dish` VALUES (65,'草鱼2斤',16,68.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/b544d3ba-a1ae-4d20-a860-81cb5dec9e03.png','原料：草鱼，黄豆芽，莲藕',1,'2022-06-10 10:41:08','2022-06-10 10:41:08',1,1);
-INSERT INTO `dish` VALUES (66,'江团鱼2斤',16,119.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/a101a1e9-8f8b-47b2-afa4-1abd47ea0a87.png','配料：江团鱼，黄豆芽，莲藕',1,'2022-06-10 10:42:42','2022-06-10 10:42:42',1,1);
-INSERT INTO `dish` VALUES (67,'鮰鱼2斤',16,72.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/8cfcc576-4b66-4a09-ac68-ad5b273c2590.png','原料：鮰鱼，黄豆芽，莲藕',1,'2022-06-10 10:43:56','2022-06-10 10:43:56',1,1);
-INSERT INTO `dish` VALUES (68,'鸡蛋汤',21,4.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/c09a0ee8-9d19-428d-81b9-746221824113.png','配料：鸡蛋，紫菜',1,'2022-06-10 10:54:25','2022-06-10 10:54:25',1,1);
-INSERT INTO `dish` VALUES (69,'平菇豆腐汤',21,6.00,'https://sky-itcast.oss-cn-beijing.aliyuncs.com/16d0a3d6-2253-4cfc-9b49-bf7bd9eb2ad2.png','配料：豆腐，平菇',1,'2022-06-10 10:55:02','2022-06-10 10:55:02',1,1);
+INSERT INTO `dish` (`id`, `name`, `category_id`, `price`, `image`, `description`, `status`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES
+  (1, '麻婆豆腐', 1, 26.00, 'http://localhost:8080/menu-images/mapo-tofu.jpg', '豆腐配肉末与花椒，麻辣下饭', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (2, '宫保鸡丁', 1, 32.00, 'http://localhost:8080/menu-images/kung-pao-chicken.jpg', '鸡丁、花生和干辣椒炒制', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (3, '辣子鸡', 1, 38.00, 'http://localhost:8080/menu-images/spicy-chicken.jpg', '酥香鸡块配干辣椒', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (4, '酸菜鱼', 1, 58.00, 'http://localhost:8080/menu-images/pickled-fish.jpg', '鱼片搭配酸菜，酸辣开胃', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (5, '剁椒鱼头', 1, 68.00, 'http://localhost:8080/menu-images/chili-fish-head.jpg', '鲜鱼头铺剁椒蒸制', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (6, '鱼香茄子', 1, 25.00, 'http://localhost:8080/menu-images/eggplant.jpg', '茄子配鱼香汁，酸甜微辣', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (7, '糖醋里脊', 2, 36.00, 'http://localhost:8080/menu-images/sweet-sour-pork.jpg', '外酥里嫩的糖醋猪肉', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (8, '红烧肉', 2, 42.00, 'http://localhost:8080/menu-images/red-braised-pork.jpg', '五花肉慢炖，酱香浓郁', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (9, '番茄炒蛋', 2, 22.00, 'http://localhost:8080/menu-images/tomato-eggs.jpg', '番茄与鸡蛋家常炒制', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (10, '青椒回锅肉', 2, 35.00, 'http://localhost:8080/menu-images/pepper-pork.jpg', '猪肉与青椒回锅炒香', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (11, '手撕包菜炒鸡杂', 3, 18.00, 'http://localhost:8080/menu-images/fried-cabbage.jpg', '包菜和鸡杂大火快炒', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (12, '蒜蓉西兰花', 3, 20.00, 'http://localhost:8080/menu-images/broccoli.jpg', '西兰花搭配蒜蓉清炒', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (13, '干煸四季豆', 3, 24.00, 'http://localhost:8080/menu-images/green-beans.jpg', '四季豆煸香，微辣', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (14, '凉拌黄瓜', 3, 16.00, 'http://localhost:8080/menu-images/cucumber-salad.jpg', '拍黄瓜拌蒜汁', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (15, '炒菌菇', 3, 22.00, 'http://localhost:8080/menu-images/fried-mushrooms.jpg', '菌菇炒香，清淡鲜美', 0, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (16, '蛋炒饭', 4, 18.00, 'http://localhost:8080/menu-images/egg-fried-rice.jpg', '鸡蛋与米饭炒制', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (17, '白米饭', 4, 3.00, 'http://localhost:8080/menu-images/white-rice.jpg', '现蒸白米饭', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (18, '牛肉面', 4, 32.00, 'http://localhost:8080/menu-images/beef-noodles.jpg', '牛肉搭配热汤面', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (19, '鲜肉水饺', 4, 28.00, 'http://localhost:8080/menu-images/dumplings.jpg', '手工水饺，鲜肉馅', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (20, '小笼包', 4, 25.00, 'http://localhost:8080/menu-images/xiaolongbao.jpg', '蒸制小笼包，皮薄馅足', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (21, '鲜肉馄饨', 5, 22.00, 'http://localhost:8080/menu-images/wonton-soup.jpg', '鲜肉馄饨配清汤', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (22, '蛋花汤', 5, 12.00, 'http://localhost:8080/menu-images/egg-drop-soup.jpg', '家常鸡蛋汤', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (23, '酸辣汤', 5, 16.00, 'http://localhost:8080/menu-images/hot-sour-soup.jpg', '酸辣开胃热汤', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (24, '可乐', 6, 8.00, 'http://localhost:8080/menu-images/cola.jpg', '冰镇可乐', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (25, '柠檬茶', 6, 10.00, 'http://localhost:8080/menu-images/lemon-tea.jpg', '柠檬风味茶饮', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (26, '鲜榨橙汁', 6, 15.00, 'http://localhost:8080/menu-images/orange-juice.jpg', '鲜榨橙汁', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (27, '鱼香肉丝', 2, 35.00, 'http://localhost:8080/menu-images/fish-flavored-pork.jpg', '肉丝搭配鱼香酱汁，酸甜微辣', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (28, '红烧排骨', 2, 45.00, 'http://localhost:8080/menu-images/braised-ribs.jpg', '排骨酱烧入味', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (29, '炸酱面', 4, 29.00, 'http://localhost:8080/menu-images/zhajiang-noodles.jpg', '面条搭配肉酱与蔬菜', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (30, '水蒸蛋', 2, 18.00, 'http://localhost:8080/menu-images/steamed-egg.jpg', '鸡蛋慢蒸，口感细嫩', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
 
 DROP TABLE IF EXISTS `dish_flavor`;
 CREATE TABLE `dish_flavor` (
@@ -95,32 +114,37 @@ CREATE TABLE `dish_flavor` (
   `name` varchar(32) COLLATE utf8_bin DEFAULT NULL COMMENT '口味名称',
   `value` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '口味数据list',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品口味关系表';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='菜品口味关系表';
 
-INSERT INTO `dish_flavor` VALUES (40,10,'甜味','[\"无糖\",\"少糖\",\"半糖\",\"多糖\",\"全糖\"]');
-INSERT INTO `dish_flavor` VALUES (41,7,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (42,7,'温度','[\"热饮\",\"常温\",\"去冰\",\"少冰\",\"多冰\"]');
-INSERT INTO `dish_flavor` VALUES (45,6,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (46,6,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (47,5,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (48,5,'甜味','[\"无糖\",\"少糖\",\"半糖\",\"多糖\",\"全糖\"]');
-INSERT INTO `dish_flavor` VALUES (49,2,'甜味','[\"无糖\",\"少糖\",\"半糖\",\"多糖\",\"全糖\"]');
-INSERT INTO `dish_flavor` VALUES (50,4,'甜味','[\"无糖\",\"少糖\",\"半糖\",\"多糖\",\"全糖\"]');
-INSERT INTO `dish_flavor` VALUES (51,3,'甜味','[\"无糖\",\"少糖\",\"半糖\",\"多糖\",\"全糖\"]');
-INSERT INTO `dish_flavor` VALUES (52,3,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (86,52,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (87,52,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (88,51,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (89,51,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (92,53,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (93,53,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (94,54,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\"]');
-INSERT INTO `dish_flavor` VALUES (95,56,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (96,57,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (97,60,'忌口','[\"不要葱\",\"不要蒜\",\"不要香菜\",\"不要辣\"]');
-INSERT INTO `dish_flavor` VALUES (101,66,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (102,67,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
-INSERT INTO `dish_flavor` VALUES (103,65,'辣度','[\"不辣\",\"微辣\",\"中辣\",\"重辣\"]');
+INSERT INTO `dish_flavor` (`id`, `dish_id`, `name`, `value`) VALUES
+  (1, 1, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (2, 2, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (3, 3, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (4, 4, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (5, 5, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (6, 6, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (7, 10, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (8, 13, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (9, 27, '辣度', '["不辣","微辣","中辣","重辣"]'),
+  (10, 1, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (11, 2, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (12, 3, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (13, 4, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (14, 6, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (15, 7, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (16, 8, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (17, 9, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (18, 10, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (19, 11, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (20, 12, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (21, 13, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (22, 14, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (23, 27, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (24, 28, '忌口', '["不要葱","不要蒜","不要香菜"]'),
+  (25, 25, '温度', '["常温","去冰","少冰","多冰"]'),
+  (26, 26, '温度', '["常温","去冰","少冰","多冰"]'),
+  (27, 25, '甜度', '["无糖","半糖","正常糖"]'),
+  (28, 26, '甜度', '["无糖","半糖","正常糖"]');
 
 DROP TABLE IF EXISTS `employee`;
 CREATE TABLE `employee` (
@@ -138,9 +162,11 @@ CREATE TABLE `employee` (
   `update_user` bigint DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='员工信息';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='员工信息';
 
-INSERT INTO `employee` VALUES (1,'管理员','admin','123456','13812312312','1','110101199001010047',1,'2022-02-15 15:51:20','2022-02-17 09:16:20',10,1);
+INSERT INTO `employee` (`id`, `name`, `username`, `password`, `phone`, `sex`, `id_number`, `status`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES
+  (1, '管理员', 'admin', 'e10adc3949ba59abbe56e057f20f883e', '13900000101', '1', '000000000000000001', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (2, '演示店员', 'staff', 'e10adc3949ba59abbe56e057f20f883e', '13900000102', '0', '000000000000000002', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
 
 DROP TABLE IF EXISTS `order_detail`;
 CREATE TABLE `order_detail` (
@@ -154,7 +180,53 @@ CREATE TABLE `order_detail` (
   `number` int NOT NULL DEFAULT '1' COMMENT '数量',
   `amount` decimal(10,2) NOT NULL COMMENT '金额',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='订单明细表';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='订单明细表';
+
+INSERT INTO `order_detail` (`id`, `name`, `image`, `order_id`, `dish_id`, `setmeal_id`, `dish_flavor`, `number`, `amount`) VALUES
+  (1, '宫保鸡丁单人餐', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', 1, NULL, 1, NULL, 1, 39.00),
+  (2, '酸菜鱼', 'http://localhost:8080/menu-images/pickled-fish.jpg', 2, 4, NULL, NULL, 1, 58.00),
+  (3, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 2, 17, NULL, NULL, 2, 3.00),
+  (4, '糖醋里脊单人餐', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', 3, NULL, 3, NULL, 2, 43.00),
+  (5, '牛肉面', 'http://localhost:8080/menu-images/beef-noodles.jpg', 4, 18, NULL, NULL, 1, 32.00),
+  (6, '酸菜鱼双人餐', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', 5, NULL, 5, NULL, 1, 88.00),
+  (7, '麻婆豆腐', 'http://localhost:8080/menu-images/mapo-tofu.jpg', 6, 1, NULL, NULL, 1, 26.00),
+  (8, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 6, 17, NULL, NULL, 1, 3.00),
+  (9, '柠檬茶', 'http://localhost:8080/menu-images/lemon-tea.jpg', 6, 25, NULL, NULL, 1, 10.00),
+  (10, '川味双人餐', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', 7, NULL, 6, NULL, 1, 85.00),
+  (11, '剁椒鱼头', 'http://localhost:8080/menu-images/chili-fish-head.jpg', 8, 5, NULL, NULL, 1, 68.00),
+  (12, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 8, 17, NULL, NULL, 2, 3.00),
+  (13, '糖醋里脊', 'http://localhost:8080/menu-images/sweet-sour-pork.jpg', 9, 7, NULL, NULL, 2, 36.00),
+  (14, '可乐', 'http://localhost:8080/menu-images/cola.jpg', 9, 24, NULL, NULL, 2, 8.00),
+  (15, '四人分享餐', 'http://localhost:8080/menu-images/setmeal-family-dinner.jpg', 10, NULL, 8, NULL, 1, 158.00),
+  (16, '鲜肉水饺', 'http://localhost:8080/menu-images/dumplings.jpg', 11, 19, NULL, NULL, 1, 28.00),
+  (17, '蛋花汤', 'http://localhost:8080/menu-images/egg-drop-soup.jpg', 11, 22, NULL, NULL, 1, 12.00),
+  (18, '麻婆豆腐单人餐', 'http://localhost:8080/menu-images/setmeal-braised-pork.jpg', 12, NULL, 2, NULL, 1, 33.00),
+  (19, '宫保鸡丁', 'http://localhost:8080/menu-images/kung-pao-chicken.jpg', 13, 2, NULL, NULL, 1, 32.00),
+  (20, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 13, 17, NULL, NULL, 1, 3.00),
+  (21, '鲜榨橙汁', 'http://localhost:8080/menu-images/orange-juice.jpg', 13, 26, NULL, NULL, 1, 15.00),
+  (22, '家常双人餐', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', 14, NULL, 7, NULL, 1, 95.00),
+  (23, '小笼包', 'http://localhost:8080/menu-images/xiaolongbao.jpg', 15, 20, NULL, NULL, 1, 25.00),
+  (24, '酸辣汤', 'http://localhost:8080/menu-images/hot-sour-soup.jpg', 15, 23, NULL, NULL, 1, 16.00),
+  (25, '辣子鸡', 'http://localhost:8080/menu-images/spicy-chicken.jpg', 16, 3, NULL, NULL, 1, 38.00),
+  (26, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 16, 17, NULL, NULL, 1, 3.00),
+  (27, '酸菜鱼双人餐', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', 17, NULL, 5, NULL, 1, 88.00),
+  (28, '红烧肉', 'http://localhost:8080/menu-images/red-braised-pork.jpg', 18, 8, NULL, NULL, 1, 42.00),
+  (29, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 18, 17, NULL, NULL, 1, 3.00),
+  (30, '宫保鸡丁单人餐', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', 19, NULL, 1, NULL, 1, 39.00),
+  (31, '番茄炒蛋', 'http://localhost:8080/menu-images/tomato-eggs.jpg', 20, 9, NULL, NULL, 1, 22.00),
+  (32, '蛋炒饭', 'http://localhost:8080/menu-images/egg-fried-rice.jpg', 20, 16, NULL, NULL, 1, 18.00),
+  (33, '鱼香茄子', 'http://localhost:8080/menu-images/eggplant.jpg', 21, 6, NULL, NULL, 1, 25.00),
+  (34, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 21, 17, NULL, NULL, 1, 3.00),
+  (35, '鱼香肉丝', 'http://localhost:8080/menu-images/fish-flavored-pork.jpg', 22, 27, NULL, NULL, 1, 35.00),
+  (36, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 22, 17, NULL, NULL, 1, 3.00),
+  (37, '红烧排骨', 'http://localhost:8080/menu-images/braised-ribs.jpg', 23, 28, NULL, NULL, 1, 45.00),
+  (38, '水蒸蛋', 'http://localhost:8080/menu-images/steamed-egg.jpg', 23, 30, NULL, NULL, 1, 18.00),
+  (39, '糖醋里脊单人餐', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', 24, NULL, 3, NULL, 1, 43.00),
+  (40, '青椒回锅肉', 'http://localhost:8080/menu-images/pepper-pork.jpg', 25, 10, NULL, NULL, 1, 35.00),
+  (41, '白米饭', 'http://localhost:8080/menu-images/white-rice.jpg', 25, 17, NULL, NULL, 1, 3.00),
+  (42, '川味双人餐', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', 26, NULL, 6, NULL, 1, 85.00),
+  (43, '蛋炒饭', 'http://localhost:8080/menu-images/egg-fried-rice.jpg', 27, 16, NULL, NULL, 1, 18.00),
+  (44, '柠檬茶', 'http://localhost:8080/menu-images/lemon-tea.jpg', 27, 25, NULL, NULL, 1, 10.00);
 
 DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
@@ -184,7 +256,36 @@ CREATE TABLE `orders` (
   `tableware_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '餐具数量状态  1按餐量提供  0选择具体数量',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_orders_number` (`number`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='订单表';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='订单表';
+
+INSERT INTO `orders` (`id`, `number`, `status`, `user_id`, `address_book_id`, `order_time`, `checkout_time`, `pay_method`, `pay_status`, `amount`, `remark`, `phone`, `address`, `user_name`, `consignee`, `cancel_reason`, `rejection_reason`, `cancel_time`, `estimated_delivery_time`, `delivery_status`, `delivery_time`, `pack_amount`, `tableware_number`, `tableware_status`) VALUES
+  (1, '9a7a7757cbeb51de9bb0656d8c8ef411', 5, 1, 1, DATE_SUB(NOW(), INTERVAL 152 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 152 HOUR), INTERVAL 3 MINUTE), 1, 1, 46.00, NULL, '13900000001', '北京市北京市海淀区中关村演示路1号', '演示用户01', '张同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 152 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 152 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (2, '20d32b9879b458e5a91084ed2f9575ca', 5, 2, 3, DATE_SUB(NOW(), INTERVAL 140 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 140 HOUR), INTERVAL 3 MINUTE), 1, 1, 73.00, NULL, '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 140 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 140 HOUR), INTERVAL 45 MINUTE), 3, NULL, 1),
+  (3, '0715087ff2a45f329252d1924a6b28bf', 5, 3, 4, DATE_SUB(NOW(), INTERVAL 126 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 126 HOUR), INTERVAL 3 MINUTE), 1, 1, 94.00, NULL, '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 126 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 126 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (4, 'a6960badc589583c91a64234ce061a23', 6, 4, 5, DATE_SUB(NOW(), INTERVAL 110 HOUR), NULL, 1, 0, 39.00, NULL, '13900000004', '上海市上海市杨浦区大学演示路5号', '演示用户04', '赵同学', '用户取消', NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 110 HOUR), INTERVAL 12 MINUTE), DATE_ADD(DATE_SUB(NOW(), INTERVAL 110 HOUR), INTERVAL 50 MINUTE), 1, NULL, 1, NULL, 1),
+  (5, '9afc599efcfd5938aab118cc71366a52', 5, 5, 6, DATE_SUB(NOW(), INTERVAL 102 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 102 HOUR), INTERVAL 3 MINUTE), 1, 1, 95.00, NULL, '13900000005', '广东省广州市天河区软件演示园6号', '演示用户05', '陈同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 102 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 102 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (6, '52a48a4fdd355113a5df53c0aaa1f135', 5, 1, 1, DATE_SUB(NOW(), INTERVAL 95 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 95 HOUR), INTERVAL 3 MINUTE), 1, 1, 48.00, '少放辣', '13900000001', '北京市北京市海淀区中关村演示路1号', '演示用户01', '张同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 95 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 95 HOUR), INTERVAL 45 MINUTE), 3, NULL, 1),
+  (7, 'dd51114f81075fc2ad7d43972f04d1f0', 5, 2, 3, DATE_SUB(NOW(), INTERVAL 84 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 84 HOUR), INTERVAL 3 MINUTE), 1, 1, 92.00, NULL, '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 84 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 84 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (8, '5b39f53586215db289efc921da104f16', 7, 3, 4, DATE_SUB(NOW(), INTERVAL 79 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 79 HOUR), INTERVAL 3 MINUTE), 1, 2, 83.00, NULL, '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', '商家退款', NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 79 HOUR), INTERVAL 12 MINUTE), DATE_ADD(DATE_SUB(NOW(), INTERVAL 79 HOUR), INTERVAL 50 MINUTE), 1, NULL, 3, NULL, 1),
+  (9, '65d867bd219f53fbb314a22f16463918', 5, 4, 5, DATE_SUB(NOW(), INTERVAL 72 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 72 HOUR), INTERVAL 3 MINUTE), 1, 1, 98.00, NULL, '13900000004', '上海市上海市杨浦区大学演示路5号', '演示用户04', '赵同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 72 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 72 HOUR), INTERVAL 45 MINUTE), 4, NULL, 1),
+  (10, 'b0d00f512351591b921ef27108c13da6', 5, 5, 6, DATE_SUB(NOW(), INTERVAL 63 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 63 HOUR), INTERVAL 3 MINUTE), 1, 1, 165.00, NULL, '13900000005', '广东省广州市天河区软件演示园6号', '演示用户05', '陈同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 63 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 63 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (11, 'e31963b78e4050fda7e0fc2cf32c6ed7', 6, 1, 1, DATE_SUB(NOW(), INTERVAL 56 HOUR), NULL, 1, 0, 48.00, NULL, '13900000001', '北京市北京市海淀区中关村演示路1号', '演示用户01', '张同学', '用户取消', NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 56 HOUR), INTERVAL 12 MINUTE), DATE_ADD(DATE_SUB(NOW(), INTERVAL 56 HOUR), INTERVAL 50 MINUTE), 1, NULL, 2, NULL, 1),
+  (12, '977931e1bcca5aa3aac8447ae634fade', 5, 2, 3, DATE_SUB(NOW(), INTERVAL 51 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 51 HOUR), INTERVAL 3 MINUTE), 1, 1, 40.00, '少放辣', '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 51 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 51 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (13, 'da5cfba2686053b2854c774f4dc3cdf5', 5, 3, 4, DATE_SUB(NOW(), INTERVAL 43 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 43 HOUR), INTERVAL 3 MINUTE), 1, 1, 59.00, NULL, '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 43 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 43 HOUR), INTERVAL 45 MINUTE), 3, NULL, 1),
+  (14, '796196b90b365193aa907aabb6593006', 5, 4, 5, DATE_SUB(NOW(), INTERVAL 38 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 38 HOUR), INTERVAL 3 MINUTE), 1, 1, 102.00, NULL, '13900000004', '上海市上海市杨浦区大学演示路5号', '演示用户04', '赵同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 38 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 38 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (15, 'bc3b136d5c4758caaaadea1ef2e39286', 5, 5, 6, DATE_SUB(NOW(), INTERVAL 33 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 33 HOUR), INTERVAL 3 MINUTE), 1, 1, 49.00, NULL, '13900000005', '广东省广州市天河区软件演示园6号', '演示用户05', '陈同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 33 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 33 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (16, 'be4274b616125fcbb4e6042fc355b4f8', 6, 1, 1, DATE_SUB(NOW(), INTERVAL 28 HOUR), NULL, 1, 0, 49.00, NULL, '13900000001', '北京市北京市海淀区中关村演示路1号', '演示用户01', '张同学', '用户取消', NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 28 HOUR), INTERVAL 12 MINUTE), DATE_ADD(DATE_SUB(NOW(), INTERVAL 28 HOUR), INTERVAL 50 MINUTE), 1, NULL, 2, NULL, 1),
+  (17, '5adf22adfe4d52c8921d497f49616bb9', 5, 2, 3, DATE_SUB(NOW(), INTERVAL 25 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 25 HOUR), INTERVAL 3 MINUTE), 1, 1, 95.00, NULL, '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 25 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 25 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (18, 'de9eff5301f95775b5d266ba8b8f6c3e', 5, 3, 4, DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 22 HOUR), INTERVAL 3 MINUTE), 1, 1, 53.00, '少放辣', '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 22 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 22 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (19, '9ecebab959695f6aaa9a40b1c69012ac', 5, 4, 5, DATE_SUB(NOW(), INTERVAL 19 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 19 HOUR), INTERVAL 3 MINUTE), 1, 1, 46.00, NULL, '13900000004', '上海市上海市杨浦区大学演示路5号', '演示用户04', '赵同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 19 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 19 HOUR), INTERVAL 45 MINUTE), 1, NULL, 1),
+  (20, '626388de007f517eb1b8134f275fb1e8', 5, 5, 6, DATE_SUB(NOW(), INTERVAL 15 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 15 HOUR), INTERVAL 3 MINUTE), 1, 1, 48.00, NULL, '13900000005', '广东省广州市天河区软件演示园6号', '演示用户05', '陈同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 15 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 15 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (21, 'a7507375195155c99f4e06ed765a712e', 5, 1, 1, DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 12 HOUR), INTERVAL 3 MINUTE), 1, 1, 36.00, NULL, '13900000001', '北京市北京市海淀区中关村演示路1号', '演示用户01', '张同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 12 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 12 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (22, '62410308728a56c7acb4ad14fe9d9535', 5, 2, 3, DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 8 HOUR), INTERVAL 3 MINUTE), 1, 1, 46.00, NULL, '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 8 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 8 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (23, '18380d80054654fa861c751f72d8a562', 5, 3, 4, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 5 HOUR), INTERVAL 3 MINUTE), 1, 1, 71.00, NULL, '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 5 HOUR), INTERVAL 50 MINUTE), 1, DATE_ADD(DATE_SUB(NOW(), INTERVAL 5 HOUR), INTERVAL 45 MINUTE), 2, NULL, 1),
+  (24, '5e4620e3cc5c5931b9382f8356256879', 2, 2, 3, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 2 HOUR), INTERVAL 3 MINUTE), 1, 1, 50.00, '少放辣', '13900000002', '北京市北京市朝阳区科技演示园3号', '演示用户02', '李同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 2 HOUR), INTERVAL 50 MINUTE), 1, NULL, 1, NULL, 1),
+  (25, '02fcf7b73cb15f3988c40aaa11fb45ad', 3, 3, 4, DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 HOUR), INTERVAL 3 MINUTE), 1, 1, 46.00, NULL, '13900000003', '上海市上海市徐汇区漕河泾演示路4号', '演示用户03', '王同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 HOUR), INTERVAL 50 MINUTE), 1, NULL, 2, NULL, 1),
+  (26, '2383b61827845eee98c0082ea9cbc354', 4, 4, 5, DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 HOUR), INTERVAL 3 MINUTE), 1, 1, 92.00, NULL, '13900000004', '上海市上海市杨浦区大学演示路5号', '演示用户04', '赵同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 HOUR), INTERVAL 50 MINUTE), 1, NULL, 1, NULL, 1),
+  (27, '31ca6a72fc7e544bb3dce15f5eb746ba', 1, 5, 6, DATE_SUB(NOW(), INTERVAL 5 MINUTE), NULL, 1, 0, 36.00, NULL, '13900000005', '广东省广州市天河区软件演示园6号', '演示用户05', '陈同学', NULL, NULL, NULL, DATE_ADD(DATE_SUB(NOW(), INTERVAL 5 MINUTE), INTERVAL 50 MINUTE), 1, NULL, 2, NULL, 1);
 
 DROP TABLE IF EXISTS `setmeal`;
 CREATE TABLE `setmeal` (
@@ -201,7 +302,17 @@ CREATE TABLE `setmeal` (
   `update_user` bigint DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_setmeal_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='套餐';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='套餐';
+
+INSERT INTO `setmeal` (`id`, `category_id`, `name`, `price`, `status`, `description`, `image`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES
+  (1, 7, '宫保鸡丁单人餐', 39.00, 1, '宫保鸡丁、米饭、蛋花汤；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (2, 7, '麻婆豆腐单人餐', 33.00, 1, '麻婆豆腐、米饭、柠檬茶；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-braised-pork.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (3, 7, '糖醋里脊单人餐', 43.00, 1, '糖醋里脊、米饭、蛋花汤；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (4, 7, '红烧肉单人餐', 52.00, 0, '红烧肉、米饭、酸辣汤；停售示例', 'http://localhost:8080/menu-images/setmeal-braised-pork.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (5, 8, '酸菜鱼双人餐', 88.00, 1, '酸菜鱼、凉拌黄瓜、米饭两份、柠檬茶两杯；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (6, 8, '川味双人餐', 85.00, 1, '宫保鸡丁、辣子鸡、米饭两份、柠檬茶两杯；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-chinese.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (7, 8, '家常双人餐', 95.00, 1, '糖醋里脊、番茄炒蛋、米饭两份、鲜肉馄饨两份；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-sweet-pork.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (8, 9, '四人分享餐', 158.00, 1, '酸菜鱼、糖醋里脊、包菜、西兰花、米饭四份、可乐四杯；图片为套餐示意图', 'http://localhost:8080/menu-images/setmeal-family-dinner.jpg', '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
 
 DROP TABLE IF EXISTS `setmeal_dish`;
 CREATE TABLE `setmeal_dish` (
@@ -212,7 +323,39 @@ CREATE TABLE `setmeal_dish` (
   `price` decimal(10,2) DEFAULT NULL COMMENT '菜品单价（冗余字段）',
   `copies` int DEFAULT NULL COMMENT '菜品份数',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='套餐菜品关系';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='套餐菜品关系';
+
+INSERT INTO `setmeal_dish` (`id`, `setmeal_id`, `dish_id`, `name`, `price`, `copies`) VALUES
+  (1, 1, 2, '宫保鸡丁', 32.00, 1),
+  (2, 1, 17, '白米饭', 3.00, 1),
+  (3, 1, 22, '蛋花汤', 12.00, 1),
+  (4, 2, 1, '麻婆豆腐', 26.00, 1),
+  (5, 2, 17, '白米饭', 3.00, 1),
+  (6, 2, 25, '柠檬茶', 10.00, 1),
+  (7, 3, 7, '糖醋里脊', 36.00, 1),
+  (8, 3, 17, '白米饭', 3.00, 1),
+  (9, 3, 22, '蛋花汤', 12.00, 1),
+  (10, 4, 8, '红烧肉', 42.00, 1),
+  (11, 4, 17, '白米饭', 3.00, 1),
+  (12, 4, 23, '酸辣汤', 16.00, 1),
+  (13, 5, 4, '酸菜鱼', 58.00, 1),
+  (14, 5, 14, '凉拌黄瓜', 16.00, 1),
+  (15, 5, 17, '白米饭', 3.00, 2),
+  (16, 5, 25, '柠檬茶', 10.00, 2),
+  (17, 6, 2, '宫保鸡丁', 32.00, 1),
+  (18, 6, 3, '辣子鸡', 38.00, 1),
+  (19, 6, 17, '白米饭', 3.00, 2),
+  (20, 6, 25, '柠檬茶', 10.00, 2),
+  (21, 7, 7, '糖醋里脊', 36.00, 1),
+  (22, 7, 9, '番茄炒蛋', 22.00, 1),
+  (23, 7, 17, '白米饭', 3.00, 2),
+  (24, 7, 21, '鲜肉馄饨', 22.00, 2),
+  (25, 8, 4, '酸菜鱼', 58.00, 1),
+  (26, 8, 7, '糖醋里脊', 36.00, 1),
+  (27, 8, 11, '手撕包菜炒鸡杂', 18.00, 1),
+  (28, 8, 12, '蒜蓉西兰花', 20.00, 1),
+  (29, 8, 17, '白米饭', 3.00, 4),
+  (30, 8, 24, '可乐', 8.00, 4);
 
 DROP TABLE IF EXISTS `shopping_cart`;
 CREATE TABLE `shopping_cart` (
@@ -227,7 +370,11 @@ CREATE TABLE `shopping_cart` (
   `amount` decimal(10,2) NOT NULL COMMENT '金额',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='购物车';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='购物车';
+
+INSERT INTO `shopping_cart` (`id`, `name`, `image`, `user_id`, `dish_id`, `setmeal_id`, `dish_flavor`, `number`, `amount`, `create_time`) VALUES
+  (1, '凉拌黄瓜', 'http://localhost:8080/menu-images/cucumber-salad.jpg', 1, 14, NULL, '不要蒜', 1, 16.00, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+  (2, '四人分享餐', 'http://localhost:8080/menu-images/setmeal-family-dinner.jpg', 2, NULL, 8, NULL, 1, 158.00, DATE_SUB(NOW(), INTERVAL 1 HOUR));
 
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
@@ -240,4 +387,11 @@ CREATE TABLE `user` (
   `avatar` varchar(500) COLLATE utf8_bin DEFAULT NULL COMMENT '头像',
   `create_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='用户信息';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='用户信息';
+
+INSERT INTO `user` (`id`, `openid`, `name`, `phone`, `sex`, `id_number`, `avatar`, `create_time`) VALUES
+  (1, 'demo_openid_01', '演示用户01', '13900000001', '1', NULL, NULL, '2026-09-28 12:00:00'),
+  (2, 'demo_openid_02', '演示用户02', '13900000002', '0', NULL, NULL, '2026-09-28 12:00:00'),
+  (3, 'demo_openid_03', '演示用户03', '13900000003', '1', NULL, NULL, '2026-09-28 12:00:00'),
+  (4, 'demo_openid_04', '演示用户04', '13900000004', '0', NULL, NULL, '2026-09-28 12:00:00'),
+  (5, 'demo_openid_05', '演示用户05', '13900000005', '1', NULL, NULL, '2026-09-28 12:00:00');
