@@ -58,14 +58,18 @@ mysql -u用户名 -p < db/sky.sql
 
 ### 3. 启动后端
 
-先改 `sky-take-out/sky-server/src/main/resources/application-dev.yml`：
+先把 `sky-take-out/sky-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`，只在本机保存，不要提交。
+
+在 `application-local.yml` 中填写：
 
 | 配置项 | 说明 |
 | --- | --- |
-| `sky.datasource.host / port / username / password` | 改成你自己的 MySQL |
-| `sky.redis.host / port` | 改成你自己的 Redis |
-| `sky.upload-path` | 改成你本机用于保存上传图片的目录，并确保该目录可写 |
-| `sky.wechat.*` | 微信支付需要真实商户号与证书文件，学习阶段可整段跳过 |
+| `sky.datasource.host / port / database / username / password` | 本机 MySQL 地址、端口、库名（默认 `sky_take_out`）、用户名和密码 |
+| `sky.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
+| `sky.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
+| `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
+
+这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
 
 然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。
 
@@ -89,7 +93,15 @@ VUE_APP_SOCKET_URL = 'ws://localhost:8080/ws/'     # 来单提醒 WebSocket
 
 ### 5. 启动微信小程序（可选）
 
-用微信开发者工具打开 `mp-weixin/` 目录。
+用微信开发者工具打开 `mp-weixin/` 目录。项目内的 `project.config.json` 将 AppID 留空；在本地创建 `mp-weixin/project.private.config.json`，填写自己的 `appid`，例如：
+
+```json
+{
+  "appid": "你的小程序 AppID"
+}
+```
+
+`project.private.config.json` 已加入 `.gitignore`。微信开发者工具也可能自动生成它；确认其中的 AppID 与后端 `application-local.yml` 一致。若需要使用微信用户登录，还要填写后端的 `sky.wechat.secret`。
 
 ## 默认账号
 

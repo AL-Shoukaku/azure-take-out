@@ -36,6 +36,7 @@ tools/
 # ---------- 本地私有配置 ----------
 application-local.yml
 .env.local
+mp-weixin/project.private.config.json
 
 # ---------- 本地存储 ----------
 uploads

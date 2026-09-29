@@ -1,0 +1,21 @@
+sky:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: localhost
+    port: 3306
+    database: sky_take_out
+    username: root
+    password: ""
+
+  # 相对路径以启动后端时的工作目录为准
+  upload-path: ./uploads
+
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+
+  # 使用微信小程序登录时填写；仅使用管理端时可以留空
+  wechat:
+    appid: ""
+    secret: ""
