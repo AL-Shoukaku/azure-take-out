@@ -1,9 +1,11 @@
 package com.sky.service.impl;
 
 import com.sky.context.BaseContext;
+import com.sky.constant.MessageConstant;
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.entity.AddressBook;
+import com.sky.entity.OrderDetail;
 import com.sky.entity.Orders;
 import com.sky.entity.ShoppingCart;
 import com.sky.entity.User;
@@ -15,6 +17,7 @@ import com.sky.mapper.UserMapper;
 import com.sky.service.AddressBookService;
 import com.sky.service.ShoppingCartService;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderVO;
 import com.sky.websocket.WebSocketServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,12 +30,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -83,28 +90,93 @@ class OrdersServiceImplTest {
     }
 
     @Test
-    void userOperationsRejectAnotherUsersOrder() {
+    void employeeCanQueryOrderDetailWhenEmployeeIdDiffersFromUserId() {
+        BaseContext.setCurrentId(100L);
         when(ordersMapper.getById(9L)).thenReturn(Orders.builder().id(9L).userId(2L).build());
+        List<OrderDetail> details = Collections.singletonList(
+                OrderDetail.builder().orderId(9L).name("测试菜品").number(2).build());
+        when(orderDetailMapper.getByOrderId(9L)).thenReturn(details);
 
-        assertThrows(OrderBusinessException.class, () -> ordersService.queryOrderDetail(9L));
-        assertThrows(OrderBusinessException.class, () -> ordersService.userCancelOrder(9L));
-        assertThrows(OrderBusinessException.class, () -> ordersService.repetition(9L));
-        assertThrows(OrderBusinessException.class, () -> ordersService.remindOrder(9L));
+        OrderVO result = ordersService.queryOrderDetail(9L);
+
+        assertEquals(9L, result.getId());
+        assertEquals(2L, result.getUserId());
+        assertEquals(details, result.getOrderDetailList());
+    }
+
+    @Test
+    void orderOperationsStillRejectMissingOrders() {
+        assertEquals(MessageConstant.ORDER_NOT_FOUND,
+                assertThrows(OrderBusinessException.class, () -> ordersService.queryOrderDetail(9L)).getMessage());
+        assertEquals(MessageConstant.ORDER_NOT_FOUND,
+                assertThrows(OrderBusinessException.class, () -> ordersService.userCancelOrder(9L)).getMessage());
+        assertEquals(MessageConstant.ORDER_NOT_FOUND,
+                assertThrows(OrderBusinessException.class, () -> ordersService.remindOrder(9L)).getMessage());
 
         verifyNoInteractions(orderDetailMapper, shoppingCartMapper, webSocketServer);
         verify(ordersMapper, never()).update(any(Orders.class), anyInt());
     }
 
     @Test
-    void userCannotPayAnotherUsersOrder() {
+    void userCanCancelOrderWithoutCheckingUserId() {
+        when(ordersMapper.getById(9L)).thenReturn(Orders.builder()
+                .id(9L).userId(2L).status(Orders.PENDING_PAYMENT).build());
+        when(ordersMapper.update(any(Orders.class), eq(Orders.PENDING_PAYMENT))).thenReturn(1);
+
+        ordersService.userCancelOrder(9L);
+
+        ArgumentCaptor<Orders> order = ArgumentCaptor.forClass(Orders.class);
+        verify(ordersMapper).update(order.capture(), eq(Orders.PENDING_PAYMENT));
+        assertEquals(9L, order.getValue().getId());
+        assertEquals(Orders.CANCELLED, order.getValue().getStatus());
+    }
+
+    @Test
+    void repetitionAddsOrderDetailsToCurrentUsersCartWithoutOwnershipCheck() {
+        when(orderDetailMapper.getByOrderId(9L)).thenReturn(Collections.singletonList(
+                OrderDetail.builder().orderId(9L).dishId(5L).number(2).amount(new BigDecimal("12.50")).build()));
+
+        ordersService.repetition(9L);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ShoppingCart>> cart = ArgumentCaptor.forClass(List.class);
+        verify(shoppingCartMapper).batchInsert(cart.capture());
+        assertEquals(1, cart.getValue().size());
+        assertEquals(1L, cart.getValue().get(0).getUserId());
+        assertEquals(5L, cart.getValue().get(0).getDishId());
+        assertEquals(2, cart.getValue().get(0).getNumber());
+        verifyNoInteractions(ordersMapper);
+    }
+
+    @Test
+    void userCanRemindOrderWithoutCheckingUserId() {
+        when(ordersMapper.getById(9L)).thenReturn(Orders.builder()
+                .id(9L).userId(2L).number("order-9").status(Orders.TO_BE_CONFIRMED).build());
+
+        ordersService.remindOrder(9L);
+
+        ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
+        verify(webSocketServer).sendToAllClient(message.capture());
+        assertTrue(message.getValue().contains("order-9"));
+    }
+
+    @Test
+    void userCanPayOrderWithoutCheckingUserId() throws Exception {
         OrdersPaymentDTO request = new OrdersPaymentDTO();
         request.setOrderNumber("order-9");
         when(ordersMapper.getByNumber("order-9"))
-                .thenReturn(Orders.builder().id(9L).userId(2L).build());
+                .thenReturn(Orders.builder().id(9L).userId(2L)
+                        .status(Orders.PENDING_PAYMENT).payStatus(Orders.UN_PAID).build());
+        when(userMapper.getById(1L)).thenReturn(User.builder().id(1L).build());
+        when(ordersMapper.update(any(Orders.class), eq(Orders.PENDING_PAYMENT))).thenReturn(1);
 
-        assertThrows(OrderBusinessException.class, () -> ordersService.payment(request));
+        ordersService.payment(request);
 
-        verifyNoInteractions(userMapper);
-        verify(ordersMapper, never()).update(any(Orders.class), anyInt());
+        ArgumentCaptor<Orders> order = ArgumentCaptor.forClass(Orders.class);
+        verify(ordersMapper).update(order.capture(), eq(Orders.PENDING_PAYMENT));
+        assertEquals(9L, order.getValue().getId());
+        assertEquals(Orders.TO_BE_CONFIRMED, order.getValue().getStatus());
+        assertEquals(Orders.PAID, order.getValue().getPayStatus());
+        verify(webSocketServer).sendToAllClient(anyString());
     }
 }

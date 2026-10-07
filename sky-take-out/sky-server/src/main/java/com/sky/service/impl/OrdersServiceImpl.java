@@ -132,7 +132,7 @@ public class OrdersServiceImpl implements OrdersService {
         // 当前登录用户id
         Long userId = BaseContext.getCurrentId();
         Orders paymentOrder = ordersMapper.getByNumber(ordersPaymentDTO.getOrderNumber());
-        if (paymentOrder == null || !userId.equals(paymentOrder.getUserId())) {
+        if (paymentOrder == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
         if (!Orders.PENDING_PAYMENT.equals(paymentOrder.getStatus())
@@ -248,7 +248,10 @@ public class OrdersServiceImpl implements OrdersService {
     public OrderVO queryOrderDetail(Long id) {
         // 获取订单order，然后根据orderId查询订单明细，最后封装成orderVO返回
         OrderVO orderVO = new OrderVO();
-        Orders orders = getCurrentUserOrder(id);
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
         BeanUtils.copyProperties(orders, orderVO);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
         orderVO.setOrderDetailList(orderDetailList);
@@ -259,7 +262,10 @@ public class OrdersServiceImpl implements OrdersService {
      * 用户取消订单
      */
     public void userCancelOrder(Long id) {
-        Orders orders = getCurrentUserOrder(id);
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
 
         // 对于已经接单的订单，用户不能取消
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
@@ -293,7 +299,6 @@ public class OrdersServiceImpl implements OrdersService {
      */
     public void repetition(Long id) {
         // 获取所有订单明细，然后将它们插入到购物车中
-        getCurrentUserOrder(id);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
         Long UserId = BaseContext.getCurrentId();
         List<ShoppingCart> shoppingCartList = new ArrayList<>();
@@ -496,7 +501,10 @@ public class OrdersServiceImpl implements OrdersService {
      * 客户催单
      */
     public void remindOrder(Long id) {
-        Orders orders = getCurrentUserOrder(id);
+        Orders orders = ordersMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
         // 客户只能催单待接单的订单，其他状态的订单不能催单
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
         if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
@@ -511,14 +519,6 @@ public class OrdersServiceImpl implements OrdersService {
         map.put("content", "订单号 " + orders.getNumber());
         String jsonStr = JSON.toJSONString(map);
         webSocketServer.sendToAllClient(jsonStr);
-    }
-
-    private Orders getCurrentUserOrder(Long id) {
-        Orders orders = ordersMapper.getById(id);
-        if (orders == null || !BaseContext.getCurrentId().equals(orders.getUserId())) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
-        return orders;
     }
 
     private void updateOrderIfStatus(Orders order, Integer expectedStatus) {
