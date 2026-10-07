@@ -91,6 +91,10 @@ VUE_APP_URL      = 'http://localhost:8080/admin'   # /api 请求代理到这里
 VUE_APP_SOCKET_URL = 'ws://localhost:8080/ws/'     # 来单提醒 WebSocket
 ```
 
+若使用 Windows Nginx 访问 WSL 中的后端，`/api/`、`/user/` 和 `/ws/` 必须转发到同一个 WSL 后端地址。建议统一使用 `upstream webservers`；只把 `/api/` 改成 WSL IP、却让 `/ws/` 继续连接 Windows 的 `127.0.0.1:8080`，会出现登录正常但来单提醒、催单和语音都不可用的问题。`/ws/` 还需配置 HTTP/1.1 和 `Upgrade`、`Connection` 请求头。
+
+Nginx 当前提供的页面位于 `tools/nginx-1.20.2/html/sky/`，与管理端源码目录不同。修改前端源码后，需重新打包并更新 Nginx 的静态文件；生产环境的 WebSocket 使用同源 `/ws/` 地址。修改 Nginx 配置后，先运行 `nginx.exe -t`，检查通过后再运行 `nginx.exe -s reload`。
+
 ### 5. 启动微信小程序（可选）
 
 用微信开发者工具打开 `mp-weixin/` 目录。项目内的 `project.config.json` 将 AppID 留空；在本地创建 `mp-weixin/project.private.config.json`，填写自己的 `appid`，例如：

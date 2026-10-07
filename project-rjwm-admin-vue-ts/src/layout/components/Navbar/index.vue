@@ -118,7 +118,7 @@ import Password from '../components/password.vue'
 export default class extends Vue {
   private storeId = this.getStoreId
   private restKey: number = 0
-  private websocket = null
+  private websocket: WebSocket | null = null
   private newOrder = ''
   private message = ''
   private audioIsPlaying = false
@@ -179,14 +179,22 @@ export default class extends Vue {
   onload() {
   }
   destroyed() {
-    this.websocket.close() //离开路由之后断开websocket连接
+    if (this.websocket) {
+      this.websocket.close() //离开路由之后断开websocket连接
+    }
+    document.removeEventListener('click', this.handleClose)
   }
 
   // 添加新订单提示弹窗
   webSocket() {
     const that = this as any
     let clientId = Math.random().toString(36).substr(2)
-    let socketUrl = process.env.VUE_APP_SOCKET_URL + clientId
+    const socketBase = new URL(process.env.VUE_APP_SOCKET_URL || '/ws/', window.location.href)
+    if (socketBase.protocol === 'http:' || socketBase.protocol === 'https:') {
+      socketBase.protocol = socketBase.protocol === 'https:' ? 'wss:' : 'ws:'
+    }
+    socketBase.pathname = socketBase.pathname.replace(/\/?$/, '/') + clientId
+    const socketUrl = socketBase.toString()
     console.log(socketUrl, 'socketUrl')
     if (typeof WebSocket == 'undefined') {
       that.$notify({
@@ -204,16 +212,21 @@ export default class extends Vue {
       // 监听socket消息接收
       this.websocket.onmessage = function (msg) {
         // 转换为json对象
-        that.$refs.audioVo.currentTime = 0
-        that.$refs.audioVo2.currentTime = 0
-
-        console.log(msg, JSON.parse(msg.data), 'msg')
-        // const h = this.$createElement
-        const jsonMsg = JSON.parse(msg.data)
-        if (jsonMsg.type === 1) {
-          that.$refs.audioVo.play()
-        } else if (jsonMsg.type === 2) {
-          that.$refs.audioVo2.play()
+        let jsonMsg
+        try {
+          jsonMsg = JSON.parse(msg.data)
+        } catch (error) {
+          return
+        }
+        if (!jsonMsg || (jsonMsg.type !== 1 && jsonMsg.type !== 2)) {
+          return
+        }
+        const audio = that.$refs[jsonMsg.type === 1 ? 'audioVo' : 'audioVo2'] as HTMLAudioElement
+        if (audio) {
+          audio.currentTime = 0
+          audio.play().catch((error) => {
+            console.warn('提醒音播放失败', error)
+          })
         }
         that.$notify({
           title: jsonMsg.type === 1 ? '待接单' : '催单',
