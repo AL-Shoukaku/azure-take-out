@@ -9,10 +9,13 @@ import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.dto.EmployeePageQueryDTO;
+import com.sky.dto.PasswordEditDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
 import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
+import com.sky.exception.PasswordEditFailedException;
+import com.sky.exception.UserNotLoginException;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.result.PageResult;
 import com.sky.service.EmployeeService;
@@ -20,6 +23,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -116,10 +120,46 @@ public class EmployeeServiceImpl implements EmployeeService {
      * @param id
      * @return
      */
-    public Employee getById(Integer id) {
+    public Employee getById(Long id) {
         Employee employee = employeeMapper.getById(id);
         employee.setPassword("****");   // 不让看密码
         return employee;
+    }
+
+    @Override
+    public void editPassword(PasswordEditDTO passwordEditDTO) {
+        Long empId = BaseContext.getCurrentId();
+        if (empId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        // 前端只传新旧密码；兼容文档中的 empId，但不能修改其他员工的密码。
+        if (passwordEditDTO == null
+                || (passwordEditDTO.getEmpId() != null && !empId.equals(passwordEditDTO.getEmpId()))
+                || !StringUtils.hasText(passwordEditDTO.getOldPassword())
+                || !StringUtils.hasText(passwordEditDTO.getNewPassword())) {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+        }
+        if (!passwordEditDTO.getNewPassword().matches("[0-9A-Za-z]{6,20}")) {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_FORMAT_ERROR);
+        }
+
+        // 读取数据库中的摘要，不能使用会掩码密码的员工详情服务。
+        Employee current = employeeMapper.getById(empId);
+        if (current == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        if (!StatusConstant.ENABLE.equals(current.getStatus())) {
+            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+        String oldPassword = DigestUtils.md5DigestAsHex(passwordEditDTO.getOldPassword().getBytes());
+        if (!oldPassword.equals(current.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+        Employee update = Employee.builder().id(empId)
+                .password(DigestUtils.md5DigestAsHex(passwordEditDTO.getNewPassword().getBytes())).build();
+        if (employeeMapper.updatePassword(update, oldPassword) == 0) {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+        }
     }
 
     /**

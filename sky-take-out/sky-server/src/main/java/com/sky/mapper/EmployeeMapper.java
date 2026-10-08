@@ -7,6 +7,7 @@ import com.sky.entity.Employee;
 import com.sky.enumeration.OperationType;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 @Mapper
@@ -50,5 +51,11 @@ public interface EmployeeMapper {
      * @return
      */
     @Select("select * from employee where id = #{id}")
-    Employee getById(Integer id);
+    Employee getById(Long id);
+
+    /**
+     * 旧密码仍匹配且账号启用时修改密码，防止并发覆盖
+     */
+    @AutoFill(OperationType.UPDATE)
+    int updatePassword(@Param("employee") Employee employee, @Param("oldPassword") String oldPassword);
 }

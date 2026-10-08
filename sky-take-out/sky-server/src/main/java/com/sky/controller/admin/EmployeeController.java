@@ -4,6 +4,8 @@ import com.sky.constant.JwtClaimsConstant;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.dto.EmployeePageQueryDTO;
+import com.sky.dto.PasswordEditDTO;
+import com.sky.context.BaseContext;
 import com.sky.entity.Employee;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.properties.JwtProperties;
@@ -75,6 +77,14 @@ public class EmployeeController {
         return Result.success();
     }
 
+    @PutMapping("/editPassword")
+    @ApiOperation("修改当前登录员工密码")
+    public Result<String> editPassword(@RequestBody PasswordEditDTO passwordEditDTO) {
+        log.info("修改员工密码，员工id：{}", BaseContext.getCurrentId());
+        employeeService.editPassword(passwordEditDTO);
+        return Result.success();
+    }
+
     @PostMapping
     @ApiOperation("新增员工")
     public Result save(@RequestBody EmployeeDTO employeeDTO) {
@@ -111,7 +121,7 @@ public class EmployeeController {
      */
     @GetMapping("/{id}")
     @ApiOperation("查询员工信息")
-    public Result<Employee> get(@PathVariable Integer id) {
+    public Result<Employee> get(@PathVariable Long id) {
         log.info("查询员工{}", id);
         Employee employee = employeeService.getById(id);
         return Result.success(employee);
