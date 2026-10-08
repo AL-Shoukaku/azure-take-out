@@ -77,8 +77,10 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 批量删除菜品
+     * 涉及多表操作，需要加 Transactional
      */
     @Override
+    @Transactional
     public void batchDelete(List<Long> ids) {
         // 判断是否有起售中的菜品，有则无法删除
         for (Long id : ids) {
@@ -118,6 +120,7 @@ public class DishServiceImpl implements DishService {
     }
 
     @Override
+    @Transactional
     public void updateWithFlavor(DishDTO dishDTO) {
         Dish dish = new Dish();
         BeanUtils.copyProperties(dishDTO,dish);

@@ -2,6 +2,7 @@ package com.sky.service.impl;
 
 import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.Orders;
+import com.sky.exception.BaseException;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.UserMapper;
@@ -43,6 +44,10 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public TurnoverReportVO getTurnoverStatistic(LocalDate begin, LocalDate end) {
+        // 检验 begin 和 end 是否为 null 以及 begin 是否在 end 之前
+        if (begin == null || end == null || begin.isAfter(end)) {
+            throw new BaseException("日期不能为空，且开始日期不能晚于结束日期");
+        }
         // 参数准备，包括日期列表和营业额列表
         String dateList = "";
         String turnoverList = "";
@@ -85,6 +90,9 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public UserReportVO getUserStatistic(LocalDate begin, LocalDate end) {
+        if (begin == null || end == null || begin.isAfter(end)) {
+            throw new BaseException("日期不能为空，且开始日期不能晚于结束日期");
+        }
         // 参数准备，包括日期列表，总用户和新增用户列表
         String dateList = "";
         String newUserList = "";
@@ -137,6 +145,9 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public OrderReportVO getOrderStatistic(LocalDate begin, LocalDate end) {
+        if (begin == null || end == null || begin.isAfter(end)) {
+            throw new BaseException("日期不能为空，且开始日期不能晚于结束日期");
+        }
         // 参数准备，包括日期列表，总用户和新增用户列表
         String dateList = "";
         String orderCountList = "";
@@ -200,6 +211,9 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end) {
+        if (begin == null || end == null || begin.isAfter(end)) {
+            throw new BaseException("日期不能为空，且开始日期不能晚于结束日期");
+        }
         // top10商品的名称列表和销量列表
         String nameList = "";
         String numberList = "";

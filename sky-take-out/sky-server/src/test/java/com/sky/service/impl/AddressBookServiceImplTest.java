@@ -1,48 +1,54 @@
 package com.sky.service.impl;
 
-import com.sky.context.BaseContext;
 import com.sky.entity.AddressBook;
 import com.sky.mapper.AddressBookMapper;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import com.sky.support.ServiceTestSupport;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.assertSame;
+import org.mockito.*;
+import java.util.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class AddressBookServiceImplTest {
+class AddressBookServiceImplTest extends ServiceTestSupport {
+    @InjectMocks private AddressBookServiceImpl service;
+    @Mock private AddressBookMapper mapper;
 
-    @InjectMocks
-    private AddressBookServiceImpl addressBookService;
-    @Mock private AddressBookMapper addressBookMapper;
-
-    @BeforeEach
-    void setCurrentUser() {
-        BaseContext.setCurrentId(1L);
+    @Test void newAddressUsesAuthenticatedUserAndIsNotDefault() {
+        AddressBook address = AddressBook.builder().userId(999L).isDefault(1).phone("13800000000").build();
+        service.save(address);
+        verify(mapper).insert(address);
+        assertThat(address.getUserId()).isEqualTo(USER_ID);
+        assertThat(address.getIsDefault()).isZero();
+        assertThat(address.getPhone()).isEqualTo("13800000000");
     }
-
-    @AfterEach
-    void clearCurrentUser() {
-        BaseContext.removeCurrentId();
+    @Test void listReturnsMatchingAddresses() {
+        AddressBook filter = AddressBook.builder().userId(USER_ID).isDefault(1).build();
+        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
+        when(mapper.list(filter)).thenReturn(Collections.singletonList(address));
+        assertThat(service.list(filter)).containsExactly(address);
     }
-
-    @Test
-    void addressOperationsDoNotCheckCurrentUserId() {
-        AddressBook address = AddressBook.builder().id(5L).userId(2L).build();
-        when(addressBookMapper.getById(5L)).thenReturn(address);
-
-        assertSame(address, addressBookService.getById(5L));
-        addressBookService.update(address);
-        addressBookService.setDefault(address);
-        addressBookService.deleteById(5L);
-
-        verify(addressBookMapper, times(2)).update(address);
-        verify(addressBookMapper).deleteById(5L);
-        verify(addressBookMapper).updateIsDefaultByUserId(address);
+    @Test void detailReturnsOwnAddress() {
+        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
+        when(mapper.getById(7L)).thenReturn(address);
+        assertThat(service.getById(7L)).isSameAs(address);
     }
+    @Test void missingAddressReturnsNull() { assertThat(service.getById(7L)).isNull(); }
+    @Test void updatePassesAddressFieldsToMapper() {
+        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).detail("新地址").build();
+        service.update(address); verify(mapper).update(address);
+    }
+    @Test void setDefaultClearsCurrentUsersDefaultsBeforeSettingTarget() {
+        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
+        List<Integer> valuesAtInvocation = new ArrayList<>();
+        doAnswer(i -> { valuesAtInvocation.add(((AddressBook)i.getArgument(0)).getIsDefault()); return null; })
+                .when(mapper).updateIsDefaultByUserId(any());
+        doAnswer(i -> { valuesAtInvocation.add(((AddressBook)i.getArgument(0)).getIsDefault()); return null; })
+                .when(mapper).update(any());
+        service.setDefault(address);
+        InOrder sequence = inOrder(mapper);
+        sequence.verify(mapper).updateIsDefaultByUserId(address); sequence.verify(mapper).update(address);
+        assertThat(valuesAtInvocation).containsExactly(0,1);
+        assertThat(address.getUserId()).isEqualTo(USER_ID);
+    }
+    @Test void deleteOwnAddress() { service.deleteById(7L); verify(mapper).deleteById(7L); }
 }
