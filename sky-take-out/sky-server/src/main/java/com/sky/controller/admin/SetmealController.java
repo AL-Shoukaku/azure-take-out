@@ -10,6 +10,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -66,7 +67,10 @@ public class SetmealController {
      */
     @PutMapping
     @ApiOperation("修改套餐信息")
-    @CacheEvict(value = "setmealCache", allEntries = true) // 修改套餐时清除所有缓存
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "setmealCache", allEntries = true),
+            @CacheEvict(cacheNames = "setmealDishCache", key = "#setmealDTO.id")
+    })
     public Result update(@RequestBody SetmealDTO setmealDTO) {
         log.info("修改套餐信息，参数为{}", setmealDTO);
         setmealService.updateWithDishes(setmealDTO);
