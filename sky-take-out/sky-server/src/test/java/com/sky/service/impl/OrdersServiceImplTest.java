@@ -207,8 +207,12 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @ParameterizedTest @MethodSource("transitions")
     void validTransitionUsesExpectedSourceState(String action,int source,int target) {
         stubTransition(action,source,1);
+        LocalDateTime before = LocalDateTime.now();
         transition(action); captureTransition(action,source);
         assertThat(order.getValue().getId()).isEqualTo(9L); assertThat(order.getValue().getStatus()).isEqualTo(target);
+        if (target == Orders.CANCELLED) {
+            assertThat(order.getValue().getCancelTime()).isBetween(before,LocalDateTime.now());
+        }
         if (action.equals("reject")) { assertThat(order.getValue().getRejectionReason()).isEqualTo("售罄"); assertThat(order.getValue().getPayStatus()).isEqualTo(Orders.REFUND); }
         if (action.equals("adminCancel")) assertThat(order.getValue().getCancelReason()).isEqualTo("停业");
         if (action.endsWith("Cancel")) {

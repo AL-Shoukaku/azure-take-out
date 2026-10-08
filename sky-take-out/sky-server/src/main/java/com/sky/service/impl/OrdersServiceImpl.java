@@ -296,6 +296,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.CANCELLED);
+        newOrders.setCancelTime(LocalDateTime.now());
 
         // 如果订单已经支付，则需要调用微信支付的退款接口
         if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
@@ -355,6 +356,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(ordersCancelDTO.getId());
         newOrders.setStatus(Orders.CANCELLED);
+        newOrders.setCancelTime(LocalDateTime.now());
         newOrders.setCancelReason(ordersCancelDTO.getCancelReason());
 
         // 如果订单已经支付，则需要调用微信支付的退款接口
@@ -494,6 +496,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.CANCELLED);
+        newOrders.setCancelTime(LocalDateTime.now());
         newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason());
         newOrders.setPayStatus(Orders.REFUND);
         updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
