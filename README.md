@@ -1,5 +1,7 @@
 # sky-delivery-plus
 
+![Version](https://img.shields.io/badge/version-v0.1.0-blue)
+
 ## 📖 项目简介
 
 本项目源自于黑马程序员的《苍穹外卖》教学项目。
@@ -15,7 +17,32 @@
 
 开发中，待填写
 
-## 🚀 功能模块
+## 🚀 功能介绍
+
+项目包含管理端后台和微信小程序用户端，覆盖店铺运营、在线点餐和订单处理。
+
+### 管理端
+
+- **登录与退出**：使用员工账号登录管理后台，支持退出登录。
+- **员工管理**：新增、编辑和查询员工信息，启用或禁用员工账号。
+- **分类管理**：管理菜品与套餐分类，支持新增、修改、删除、查询及启用、禁用。
+- **菜品管理**：维护菜品名称、价格、图片和口味，支持新增、修改、查询、批量删除及起售、停售。
+- **套餐管理**：组合菜品创建套餐，维护套餐信息，支持新增、修改、查询、删除及起售、停售。
+- **店铺管理**：查看并设置店铺的营业、打烊状态。
+- **订单管理**：按条件和状态查询订单、查看订单详情，执行接单、拒单、取消、派送和完成操作；系统自动取消超时未支付订单，并定时处理派送中的订单。
+- **工作台**：查看今日营业额、有效订单数、订单完成率、平均客单价和新增用户，以及订单、菜品和套餐的状态概览。
+- **数据统计与报表**：按日期范围统计营业额、用户数量、订单数量与完成率，查看销量前十的菜品，并导出运营数据 Excel 报表。
+- **实时提醒**：接收新订单和客户催单消息，通过弹窗及语音提醒商家处理。
+
+### 用户端
+
+- **微信登录**：通过微信小程序登录，首次登录时自动创建用户记录。
+- **浏览商品**：查看店铺营业状态，按分类浏览菜品和套餐，查看价格、菜品口味及套餐包含的菜品。
+- **购物车**：将菜品或套餐加入购物车，选择口味、调整数量，查看或清空购物车。
+- **地址管理**：新增、修改、删除和查询收货地址，设置默认地址。
+- **下单与支付**：选择收货地址、配送时间和餐具数量，填写订单备注，提交订单并完成支付（当前使用模拟支付）。
+- **订单查询**：查看历史订单，按订单状态筛选，查看订单明细和处理状态。
+- **订单操作**：取消尚未接单的订单、向商家催单，或通过“再来一单”将原订单商品加入购物车。
 
 ## 🛠 技术栈
 
@@ -34,15 +61,11 @@
 
 | 环境/工具 | 版本或说明 |
 | --- | --- |
-| 操作系统 | 待填写 |
-| JDK | 待填写 |
-| Maven | 待填写 |
-| Node.js | 待填写 |
-| npm | 待填写 |
-| MySQL | 待填写 |
-| Redis | 待填写 |
-| IntelliJ IDEA | 待填写 |
-| 微信开发者工具（运行小程序时需要） | 待填写 |
+| 操作系统 | Windows + WSL2(Ubuntu26.04) |
+| JDK | 8 |
+| Maven | 3.9.12 |
+| MySQL | 8.4.11 |
+| Redis | 8.0.5 |
 
 ### 1. 初始化数据库
 
@@ -53,6 +76,10 @@ mysql -u用户名 -p < db/sky.sql
 建 11 张表，并写入初始数据。
 
 ### 2. 启动 Redis
+
+```bash
+sudo systemctl start redis
+```
 
 后端连接的 `database` 是 **0**，确认本地 Redis 已启动且该库可用。
 
@@ -73,7 +100,7 @@ mysql -u用户名 -p < db/sky.sql
 
 然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。
 
-### 4. 启动管理端前端（开发模式，推荐）
+### 4. 启动管理端前端
 
 ```bash
 cd project-rjwm-admin-vue-ts
@@ -113,16 +140,14 @@ Nginx 当前提供的页面位于 `tools/nginx-1.20.2/html/sky/`，与管理端�
 | --- | --- | --- |
 | 管理端 | `admin` | `123456` |
 
-## 🏗 系统架构
-
 ## 📂 项目结构
 
-```
+```text
 sky-delivery-plus/
 ├── sky-take-out/                  # 后端（Maven 多模块）
 │   ├── sky-common/                # 常量、工具类、自定义异常、统一返回结果
 │   ├── sky-pojo/                  # 项目所需要用到的对象类,entity / DTO / VO
-│   └── sky-server/                # 启动类、config、interceptor、员工登录；其余业务待编写
+│   └── sky-server/                # 启动类、config、interceptor、
 ├── project-rjwm-admin-vue-ts/     # 管理端前端（Vue 2 + TypeScript）
 ├── mp-weixin/                     # 微信小程序（用户端）
 └── db/
@@ -130,16 +155,69 @@ sky-delivery-plus/
     └── 数据库设计文档.md
 ```
 
+### sky-common
+
+```text
+sky-common/
+├── pom.xml                          # 公共模块依赖配置
+└── src/main/java/com/sky/
+    ├── constant/                    # 常量定义
+    ├── context/                     # 当前登录身份的线程上下文
+    ├── enumeration/                 # 枚举类型
+    ├── exception/                   # 自定义业务异常
+    ├── json/                        # JSON 序列化与反序列化配置
+    ├── properties/                  # 配置属性类
+    ├── result/                      # 统一响应结果与分页结果
+    └── utils/                       # JWT、HTTP、支付等通用工具
+```
+
+### sky-pojo
+
+```text
+sky-pojo/
+├── pom.xml                          # 数据对象模块依赖配置
+└── src/main/java/com/sky/
+    ├── dto/                         # 接收请求参数的数据传输对象
+    ├── entity/                      # 与数据库表对应的实体类
+    └── vo/                          # 返回给前端的响应对象
+```
+
+### sky-server
+
+```text
+sky-server/
+├── pom.xml                          # 服务模块依赖与构建配置
+└── src/
+    ├── main/
+    │   ├── java/com/sky/
+    │   │   ├── SkyApplication.java  # Spring Boot 启动类
+    │   │   ├── annotation/          # 自定义注解
+    │   │   ├── aspect/              # 公共字段自动填充等 AOP 切面
+    │   │   ├── config/              # MVC、Redis、WebSocket 配置
+    │   │   ├── controller/          # 接口控制器
+    │   │   │   ├── admin/           # 管理端接口
+    │   │   │   ├── notify/          # 支付回调接口
+    │   │   │   └── user/            # 用户端接口
+    │   │   ├── handler/             # 全局异常处理
+    │   │   ├── interceptor/         # 管理端与用户端 JWT 拦截器
+    │   │   ├── mapper/              # MyBatis 数据访问接口
+    │   │   ├── service/             # 业务服务接口
+    │   │   │   └── impl/            # 业务服务实现
+    │   │   ├── task/                # 订单定时任务
+    │   │   └── websocket/           # 来单提醒与催单消息推送
+    │   └── resources/
+    │       ├── application.yml      # 主配置
+    │       ├── application-local.example.yml  # 本地配置示例
+    │       ├── application-local.yml          # 本机配置（不提交 Git）
+    │       ├── mapper/              # MyBatis SQL 映射文件
+    │       ├── menu-images/         # 演示菜品与套餐图片
+    │       └── template/            # 运营数据报表模板
+    └── test/java/com/sky/service/impl/  # 业务服务单元测试
+```
+
 ## 🗄 数据库设计
 
 见 `db/数据库设计文档.md`。
-
-## ⚙️ 配置说明
-
-## 📚 接口文档
-
-
-## 📝 重构与开发记录
 
 ## 🗺 后续计划
 
@@ -149,3 +227,5 @@ sky-delivery-plus/
 
 
 ## 🖼 项目截图
+
+开发中，暂无
