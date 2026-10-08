@@ -5,6 +5,7 @@ import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.*;
 import com.sky.entity.*;
@@ -12,6 +13,8 @@ import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.exception.UserNotLoginException;
+import com.sky.mapper.DishMapper;
+import com.sky.mapper.SetmealMapper;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.ShoppingCartMapper;
@@ -61,6 +64,12 @@ public class OrdersServiceImpl implements OrdersService {
     private UserMapper userMapper;
 
     @Autowired
+    private DishMapper dishMapper;
+
+    @Autowired
+    private SetmealMapper setmealMapper;
+
+    @Autowired
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
@@ -79,6 +88,7 @@ public class OrdersServiceImpl implements OrdersService {
         if (shoppingCartList == null || shoppingCartList.isEmpty()) {
             throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
+        checkShoppingCartProductStatus(shoppingCartList);
         // 向订单表 orders 中插入一条数据
         Orders orders = new Orders();
         // 直接复制 DTO 中的数据，手动计算 amount 和 packAmount，防止来自非前端的恶意数据
@@ -122,6 +132,23 @@ public class OrdersServiceImpl implements OrdersService {
                 .orderAmount(orders.getAmount())
                 .orderTime(orders.getOrderTime())
                 .build();
+    }
+
+    private void checkShoppingCartProductStatus(List<ShoppingCart> shoppingCartList) {
+        for (ShoppingCart item : shoppingCartList) {
+            Integer status = null;
+            if (item.getDishId() != null && item.getSetmealId() == null) {
+                Dish dish = dishMapper.getById(item.getDishId());
+                status = dish == null ? null : dish.getStatus();
+            } else if (item.getSetmealId() != null && item.getDishId() == null) {
+                // 套餐只检查自身售卖状态，允许包含停售菜品。
+                Setmeal setmeal = setmealMapper.getById(item.getSetmealId());
+                status = setmeal == null ? null : setmeal.getStatus();
+            }
+            if (!StatusConstant.ENABLE.equals(status)) {
+                throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
+            }
+        }
     }
 
     /**

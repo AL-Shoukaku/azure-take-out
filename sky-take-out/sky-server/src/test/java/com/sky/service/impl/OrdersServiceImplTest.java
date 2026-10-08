@@ -31,6 +31,8 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @Mock private ShoppingCartService shoppingCartService;
     @Mock private AddressBookService addressBookService;
     @Mock private UserMapper userMapper;
+    @Mock private DishMapper dishMapper;
+    @Mock private SetmealMapper setmealMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
     @Mock private WeChatPayUtil weChatPayUtil;
     @Mock private WebSocketServer webSocketServer;
@@ -59,6 +61,8 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         when(shoppingCartService.showShoppingCart()).thenReturn(Arrays.asList(
                 ShoppingCart.builder().id(100L).dishId(7L).name("鸡丁").image("dish.png").dishFlavor("微辣").amount(new BigDecimal("12.50")).number(2).build(),
                 ShoppingCart.builder().id(101L).setmealId(8L).name("套餐").amount(new BigDecimal("8.00")).number(1).build()));
+        when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(1).build());
+        when(setmealMapper.getById(8L)).thenReturn(Setmeal.builder().id(8L).status(1).build());
         when(userMapper.getById(USER_ID)).thenReturn(User.builder().name("测试用户").build());
         doAnswer(i -> { ((Orders)i.getArgument(0)).setId(99L); return null; }).when(ordersMapper).submitOrder(any());
         LocalDateTime before = LocalDateTime.now(); OrderSubmitVO result = service.submitOrder(submitRequest());
@@ -97,10 +101,44 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     @Test void detailWriteFailureDoesNotClearCart() {
         when(addressBookService.getById(5L)).thenReturn(address());
-        when(shoppingCartService.showShoppingCart()).thenReturn(Collections.singletonList(ShoppingCart.builder().amount(BigDecimal.TEN).number(1).build()));
+        when(shoppingCartService.showShoppingCart()).thenReturn(Collections.singletonList(ShoppingCart.builder().dishId(7L).amount(BigDecimal.TEN).number(1).build()));
+        when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(1).build());
         when(userMapper.getById(USER_ID)).thenReturn(User.builder().name("用户").build());
         doThrow(new IllegalStateException("detail insert failed")).when(orderDetailMapper).batchInsert(any());
         assertThatThrownBy(() -> service.submitOrder(submitRequest())).hasMessage("detail insert failed");
+        verify(shoppingCartService,never()).cleanShoppingCart();
+    }
+    private static Stream<Arguments> unavailableProducts() {
+        return Stream.of("dish","setmeal").flatMap(kind -> Stream.of("stopped","missing","null-status")
+                .map(state -> Arguments.of(kind,state)));
+    }
+    @ParameterizedTest @MethodSource("unavailableProducts")
+    void unavailableCartProductRejectsBeforeAnyOrderWriteOrCartCleanup(String kind,String state) {
+        when(addressBookService.getById(5L)).thenReturn(address());
+        ShoppingCart item=ShoppingCart.builder().amount(BigDecimal.TEN).number(1).build();
+        Integer status=state.equals("null-status") ? null : 0;
+        if (kind.equals("dish")) {
+            item.setDishId(7L);
+            when(dishMapper.getById(7L)).thenReturn(state.equals("missing") ? null : Dish.builder().id(7L).status(status).build());
+        } else {
+            item.setSetmealId(8L);
+            when(setmealMapper.getById(8L)).thenReturn(state.equals("missing") ? null : Setmeal.builder().id(8L).status(status).build());
+        }
+        when(shoppingCartService.showShoppingCart()).thenReturn(Collections.singletonList(item));
+        assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(ShoppingCartBusinessException.class)
+                .hasMessage(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
+        verifyNoInteractions(ordersMapper,orderDetailMapper,userMapper);
+        verify(shoppingCartService,never()).cleanShoppingCart();
+    }
+    @ParameterizedTest @ValueSource(strings={"neither","both"})
+    void invalidCartProductIdentityCannotBypassCheckoutValidation(String kind) {
+        when(addressBookService.getById(5L)).thenReturn(address());
+        ShoppingCart item=ShoppingCart.builder().amount(BigDecimal.TEN).number(1).build();
+        if (kind.equals("both")) { item.setDishId(7L); item.setSetmealId(8L); }
+        when(shoppingCartService.showShoppingCart()).thenReturn(Collections.singletonList(item));
+        assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(ShoppingCartBusinessException.class)
+                .hasMessage(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
+        verifyNoInteractions(dishMapper,setmealMapper,ordersMapper,orderDetailMapper,userMapper);
         verify(shoppingCartService,never()).cleanShoppingCart();
     }
     @Test void simulatedPaymentReturnsCompatibleFieldsAndDoesNotCallWechat() throws Exception {
