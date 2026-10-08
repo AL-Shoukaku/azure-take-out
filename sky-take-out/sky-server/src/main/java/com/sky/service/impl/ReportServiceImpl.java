@@ -42,6 +42,9 @@ public class ReportServiceImpl implements ReportService {
     @Autowired
     private WorkspaceService workspaceService;
 
+    /**
+     * 统计指定时间段内的营业额数据
+     */
     @Override
     public TurnoverReportVO getTurnoverStatistic(LocalDate begin, LocalDate end) {
         // 检验 begin 和 end 是否为 null 以及 begin 是否在 end 之前
@@ -190,7 +193,7 @@ public class ReportServiceImpl implements ReportService {
         dateList = dateList.substring(0, dateList.length() - 1);
         orderCountList = orderCountList.substring(0, orderCountList.length() - 1);
         validOrderCountList = validOrderCountList.substring(0, validOrderCountList.length() - 1);
-        orderCompletionRate = (double) validOrderCount / totalOrderCount;
+        orderCompletionRate = (totalOrderCount == 0) ? 1.0 : (double) validOrderCount / totalOrderCount;
 
 
         return OrderReportVO.builder()

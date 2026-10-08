@@ -39,6 +39,8 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
      * @throws Exception
      */
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // 鉴权失败时不会调用当前拦截器的 afterCompletion，先清理可能残留的身份。
+        BaseContext.removeCurrentId();
         //判断当前拦截到的是Controller的方法还是其他资源
         if (!(handler instanceof HandlerMethod)) {
             //当前拦截到的不是动态方法，直接放行
@@ -63,5 +65,12 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             response.setStatus(401);
             return false;
         }
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) {
+        // 请求结束后清理身份，避免线程复用时带入下一次请求。
+        BaseContext.removeCurrentId();
     }
 }
