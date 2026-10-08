@@ -11,6 +11,7 @@ import com.sky.entity.*;
 import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
+import com.sky.exception.UserNotLoginException;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrdersMapper;
 import com.sky.mapper.ShoppingCartMapper;
@@ -68,10 +69,11 @@ public class OrdersServiceImpl implements OrdersService {
 
     @Transactional
     public OrderSubmitVO submitOrder(OrdersSubmitDTO ordersSubmitDTO) {
+        Long userId = getCurrentUserId();
         // 检查传入的数据是否合理，地址簿，购物车是否为空
         AddressBook addressBook = addressBookService.getById(ordersSubmitDTO.getAddressBookId());
-        if (addressBook == null) {
-            throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
+        if (addressBook == null || !userId.equals(addressBook.getUserId())) {
+            throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_NOT_FOUND);
         }
         List<ShoppingCart> shoppingCartList = shoppingCartService.showShoppingCart();
         if (shoppingCartList == null || shoppingCartList.isEmpty()) {
@@ -87,7 +89,7 @@ public class OrdersServiceImpl implements OrdersService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         orders.setPackAmount(packAmount);
         orders.setAmount(dishesAmount.add(DELIVERY_FEE).add(BigDecimal.valueOf(packAmount)));
-        orders.setUserId(BaseContext.getCurrentId());
+        orders.setUserId(userId);
         orders.setOrderTime(LocalDateTime.now());
         orders.setPayStatus(Orders.UN_PAID);
         orders.setStatus(Orders.PENDING_PAYMENT);
@@ -95,7 +97,7 @@ public class OrdersServiceImpl implements OrdersService {
         orders.setPhone(addressBook.getPhone());
         orders.setConsignee(addressBook.getConsignee());
         orders.setAddress(addressBook.getDetail());
-        orders.setUserName(userMapper.getById(BaseContext.getCurrentId()).getName());
+        orders.setUserName(userMapper.getById(userId).getName());
 
         ordersMapper.submitOrder(orders);
         List<OrderDetail> orderDetailList = new ArrayList<>();
@@ -130,11 +132,9 @@ public class OrdersServiceImpl implements OrdersService {
      */
     public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
         // 当前登录用户id
-        Long userId = BaseContext.getCurrentId();
-        Orders paymentOrder = ordersMapper.getByNumber(ordersPaymentDTO.getOrderNumber());
-        if (paymentOrder == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Long userId = getCurrentUserId();
+        Orders paymentOrder = checkOrderOwnership(
+                ordersMapper.getByNumberAndUserId(ordersPaymentDTO.getOrderNumber(), userId), userId);
         if (!Orders.PENDING_PAYMENT.equals(paymentOrder.getStatus())
                 || !Orders.UN_PAID.equals(paymentOrder.getPayStatus())) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
@@ -160,9 +160,8 @@ public class OrdersServiceImpl implements OrdersService {
         return vo;
         */
 
-        //===== 本地开发：没有微信支付商户号，跳过真实支付，直接调用 paySuccess 把订单置为已支付 =====
-        // 说明：paySuccess 就是微信支付回调 PayNotifyController 里用的那个方法，逻辑与真实支付成功完全一致
-        paySuccess(ordersPaymentDTO.getOrderNumber());
+        // 本地模拟支付：复用支付成功逻辑，并在状态更新时限定当前用户。
+        processPaymentSuccess(paymentOrder, userId);
 
         // 返回一组假参数（小程序端不会再调用 wx.requestPayment，仅为了保持接口结构不变）
         return OrderPaymentVO.builder()
@@ -186,6 +185,11 @@ public class OrdersServiceImpl implements OrdersService {
         if (ordersDB == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        // 支付回调没有用户登录上下文，按订单号处理；用户支付入口已经校验归属。
+        processPaymentSuccess(ordersDB, null);
+    }
+
+    private void processPaymentSuccess(Orders ordersDB, Long userId) {
         // 已处理的支付通知可能重试，直接返回，避免重复更新和重复推送。
         if (Orders.PAID.equals(ordersDB.getPayStatus()) || Orders.REFUND.equals(ordersDB.getPayStatus())) {
             return;
@@ -203,9 +207,14 @@ public class OrdersServiceImpl implements OrdersService {
                 .checkoutTime(LocalDateTime.now())
                 .build();
 
-        if (ordersMapper.update(orders, Orders.PENDING_PAYMENT) == 0) {
+        int updated = userId == null
+                ? ordersMapper.update(orders, Orders.PENDING_PAYMENT)
+                : ordersMapper.updateForUser(orders, Orders.PENDING_PAYMENT, userId);
+        if (updated == 0) {
             // 与取消订单并发时，重新确认最终状态；仅已支付/已退款视为重复通知。
-            Orders latest = ordersMapper.getByNumber(outTradeNo);
+            Orders latest = userId == null
+                    ? ordersMapper.getByNumber(ordersDB.getNumber())
+                    : ordersMapper.getByNumberAndUserId(ordersDB.getNumber(), userId);
             if (latest != null && (Orders.PAID.equals(latest.getPayStatus())
                     || Orders.REFUND.equals(latest.getPayStatus()))) {
                 return;
@@ -218,7 +227,7 @@ public class OrdersServiceImpl implements OrdersService {
         Map map = new HashMap<>();
         map.put("type", 1);
         map.put("orderId", ordersDB.getId());   // 1.表示来单提醒，2.表示客户催单
-        map.put("content", "订单号 " + outTradeNo);
+        map.put("content", "订单号 " + ordersDB.getNumber());
         String jsonStr = JSON.toJSONString(map);
         webSocketServer.sendToAllClient(jsonStr);
     }
@@ -227,9 +236,10 @@ public class OrdersServiceImpl implements OrdersService {
      * 用户查询历史订单，可支持根据订单状态查询
      */
     public PageResult historyOrdersPageQuery(Integer pageNum, Integer pageSize, Integer status) {
+        Long userId = getCurrentUserId();
         PageHelper.startPage(pageNum, pageSize);
 
-        Page<Orders> page = ordersMapper.pageQuery(BaseContext.getCurrentId().intValue(), status);
+        Page<Orders> page = ordersMapper.pageQuery(userId, status);
         List<Orders> ordersList = page.getResult();
         List<OrderVO> orderVOList = new ArrayList<>();
         for (Orders orders : ordersList) {
@@ -243,15 +253,26 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     /**
-     * 用户查询订单详情
+     * 用户查询本人订单详情
+     */
+    public OrderVO queryUserOrderDetail(Long id) {
+        return getOrderDetail(getCurrentUserOrder(id));
+    }
+
+    /**
+     * 管理端查询订单详情，不比较雇员 ID 与订单用户 ID
      */
     public OrderVO queryOrderDetail(Long id) {
         // 获取订单order，然后根据orderId查询订单明细，最后封装成orderVO返回
-        OrderVO orderVO = new OrderVO();
         Orders orders = ordersMapper.getById(id);
         if (orders == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        return getOrderDetail(orders);
+    }
+
+    private OrderVO getOrderDetail(Orders orders) {
+        OrderVO orderVO = new OrderVO();
         BeanUtils.copyProperties(orders, orderVO);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
         orderVO.setOrderDetailList(orderDetailList);
@@ -262,10 +283,7 @@ public class OrdersServiceImpl implements OrdersService {
      * 用户取消订单
      */
     public void userCancelOrder(Long id) {
-        Orders orders = ordersMapper.getById(id);
-        if (orders == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Orders orders = getCurrentUserOrder(id);
 
         // 对于已经接单的订单，用户不能取消
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
@@ -291,21 +309,24 @@ public class OrdersServiceImpl implements OrdersService {
             newOrders.setPayStatus(Orders.REFUND);
         }
 
-        updateOrderIfStatus(newOrders, orders.getStatus());
+        if (ordersMapper.updateForUser(newOrders, orders.getStatus(), getCurrentUserId()) == 0) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
     }
 
     /**
      * 用户再来一单
      */
     public void repetition(Long id) {
+        Orders orders = getCurrentUserOrder(id);
         // 获取所有订单明细，然后将它们插入到购物车中
-        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(id);
-        Long UserId = BaseContext.getCurrentId();
+        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
+        Long userId = getCurrentUserId();
         List<ShoppingCart> shoppingCartList = new ArrayList<>();
         for (OrderDetail orderDetail : orderDetailList) {
             ShoppingCart shoppingCart = new ShoppingCart();
             BeanUtils.copyProperties(orderDetail, shoppingCart);
-            shoppingCart.setUserId(UserId);
+            shoppingCart.setUserId(userId);
             shoppingCart.setCreateTime(LocalDateTime.now());
             shoppingCartList.add(shoppingCart);
         }
@@ -501,10 +522,7 @@ public class OrdersServiceImpl implements OrdersService {
      * 客户催单
      */
     public void remindOrder(Long id) {
-        Orders orders = ordersMapper.getById(id);
-        if (orders == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
+        Orders orders = getCurrentUserOrder(id);
         // 客户只能催单待接单的订单，其他状态的订单不能催单
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
         if (orders.getStatus() != Orders.TO_BE_CONFIRMED) {
@@ -525,5 +543,25 @@ public class OrdersServiceImpl implements OrdersService {
         if (ordersMapper.update(order, expectedStatus) == 0) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
+    }
+
+    private Long getCurrentUserId() {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        return userId;
+    }
+
+    private Orders getCurrentUserOrder(Long id) {
+        Long userId = getCurrentUserId();
+        return checkOrderOwnership(ordersMapper.getByIdAndUserId(id, userId), userId);
+    }
+
+    private Orders checkOrderOwnership(Orders order, Long userId) {
+        if (order == null || !userId.equals(order.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        return order;
     }
 }

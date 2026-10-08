@@ -33,7 +33,12 @@ public interface OrdersService {
     PageResult historyOrdersPageQuery(Integer page, Integer pageSize, Integer status);
 
     /**
-     * 用户查询订单详情
+     * 用户查询本人订单详情
+     */
+    OrderVO queryUserOrderDetail(Long id);
+
+    /**
+     * 管理端查询订单详情，不按当前雇员身份限制用户订单
      */
     OrderVO queryOrderDetail(Long id);
 

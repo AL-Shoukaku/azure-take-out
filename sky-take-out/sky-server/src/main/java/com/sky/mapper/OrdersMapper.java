@@ -31,15 +31,24 @@ public interface OrdersMapper {
     @Select("select * from orders where id = #{id}")
     Orders getById(Long id);
 
+    @Select("select * from orders where id = #{id} and user_id = #{userId}")
+    Orders getByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Select("select * from orders where number = #{orderNumber} and user_id = #{userId}")
+    Orders getByNumberAndUserId(@Param("orderNumber") String orderNumber, @Param("userId") Long userId);
+
     /**
      * 修改订单信息
      */
     int update(@Param("order") Orders order, @Param("expectedStatus") Integer expectedStatus);
 
+    int updateForUser(@Param("order") Orders order, @Param("expectedStatus") Integer expectedStatus,
+                      @Param("userId") Long userId);
+
     /**
      * 分页查询用户的历史订单，支持按状态查询
      */
-    Page<Orders> pageQuery(Integer userId, Integer status);
+    Page<Orders> pageQuery(@Param("userId") Long userId, @Param("status") Integer status);
 
     /**
      * 分页查询商家的订单，支持条件查询

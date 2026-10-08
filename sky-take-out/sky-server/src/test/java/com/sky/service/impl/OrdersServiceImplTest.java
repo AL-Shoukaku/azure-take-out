@@ -85,7 +85,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     @Test void missingAddressRejectsBeforeReadingCartOrWriting() {
         assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(AddressBookBusinessException.class)
-                .hasMessage(MessageConstant.ADDRESS_BOOK_IS_NULL);
+                .hasMessage(MessageConstant.ADDRESS_BOOK_NOT_FOUND);
         verifyNoInteractions(shoppingCartService,ordersMapper,orderDetailMapper);
     }
     @ParameterizedTest @NullAndEmptySource
@@ -104,8 +104,8 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         verify(shoppingCartService,never()).cleanShoppingCart();
     }
     @Test void simulatedPaymentReturnsCompatibleFieldsAndDoesNotCallWechat() throws Exception {
-        when(ordersMapper.getByNumber("order-9")).thenReturn(existing(Orders.PENDING_PAYMENT));
-        when(ordersMapper.update(any(),eq(Orders.PENDING_PAYMENT))).thenReturn(1);
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT));
+        when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(1);
         OrderPaymentVO result = service.payment(paymentRequest());
         assertThat(result.getNonceStr()).isEqualTo("fake_nonce_str"); assertThat(result.getPaySign()).isEqualTo("fake_pay_sign");
         assertThat(result.getSignType()).isEqualTo("RSA"); assertThat(result.getPackageStr()).isEqualTo("prepay_id=fake_prepay_id");
@@ -118,7 +118,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     @ParameterizedTest @CsvSource({"2,1","3,1","4,1","5,1","6,0","1,1","1,2"})
     void paymentRejectsInvalidOrderOrPaymentState(int status,int payStatus) {
-        Orders row = existing(status); row.setPayStatus(payStatus); when(ordersMapper.getByNumber("order-9")).thenReturn(row);
+        Orders row = existing(status); row.setPayStatus(payStatus); when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(row);
         assertThatThrownBy(() -> service.payment(paymentRequest())).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
         verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer,weChatPayUtil);
     }
@@ -184,14 +184,30 @@ class OrdersServiceImplTest extends ServiceTestSupport {
             case "userCancel": service.userCancelOrder(9L); break;
             case "adminCancel": OrdersCancelDTO cancel = new OrdersCancelDTO(); cancel.setId(9L); cancel.setCancelReason("停业"); service.cancelOrder(cancel); break;
             case "remind": service.remindOrder(9L); break;
-            case "detail": service.queryOrderDetail(9L); break;
+            case "detail": service.queryUserOrderDetail(9L); break;
             default: throw new IllegalArgumentException(action);
         }
     }
+    private boolean userOperation(String action) {
+        return action.equals("userCancel") || action.equals("remind") || action.equals("detail");
+    }
+    private void stubOrder(String action,int source) {
+        if (userOperation(action)) when(ordersMapper.getByIdAndUserId(9L,USER_ID)).thenReturn(existing(source));
+        else when(ordersMapper.getById(9L)).thenReturn(existing(source));
+    }
+    private void stubTransition(String action,int source,int affected) {
+        stubOrder(action,source);
+        if (action.equals("userCancel")) when(ordersMapper.updateForUser(any(),eq(source),eq(USER_ID))).thenReturn(affected);
+        else when(ordersMapper.update(any(),eq(source))).thenReturn(affected);
+    }
+    private void captureTransition(String action,int source) {
+        if (action.equals("userCancel")) verify(ordersMapper).updateForUser(order.capture(),eq(source),eq(USER_ID));
+        else verify(ordersMapper).update(order.capture(),eq(source));
+    }
     @ParameterizedTest @MethodSource("transitions")
     void validTransitionUsesExpectedSourceState(String action,int source,int target) {
-        when(ordersMapper.getById(9L)).thenReturn(existing(source)); when(ordersMapper.update(any(),eq(source))).thenReturn(1);
-        transition(action); verify(ordersMapper).update(order.capture(),eq(source));
+        stubTransition(action,source,1);
+        transition(action); captureTransition(action,source);
         assertThat(order.getValue().getId()).isEqualTo(9L); assertThat(order.getValue().getStatus()).isEqualTo(target);
         if (action.equals("reject")) { assertThat(order.getValue().getRejectionReason()).isEqualTo("售罄"); assertThat(order.getValue().getPayStatus()).isEqualTo(Orders.REFUND); }
         if (action.equals("adminCancel")) assertThat(order.getValue().getCancelReason()).isEqualTo("停业");
@@ -203,7 +219,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     @ParameterizedTest @MethodSource("transitions")
     void lostConcurrentUpdateRejectsTransition(String action,int source,int target) {
-        when(ordersMapper.getById(9L)).thenReturn(existing(source)); when(ordersMapper.update(any(),eq(source))).thenReturn(0);
+        stubTransition(action,source,0);
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
     }
     private static Stream<Arguments> invalidTransitions() {
@@ -216,7 +232,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     @ParameterizedTest @MethodSource("invalidTransitions")
     void invalidSourceStatusDoesNotWriteOrNotify(String action,int source) {
-        when(ordersMapper.getById(9L)).thenReturn(existing(source));
+        stubOrder(action,source);
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
         verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer,weChatPayUtil);
     }
@@ -226,7 +242,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(orderDetailMapper,webSocketServer);
     }
     @Test void reminderNotificationHasTypeTwo() {
-        when(ordersMapper.getById(9L)).thenReturn(existing(2)); service.remindOrder(9L);
+        when(ordersMapper.getByIdAndUserId(9L,USER_ID)).thenReturn(existing(2)); service.remindOrder(9L);
         verify(webSocketServer).sendToAllClient(notification.capture()); JSONObject payload = JSON.parseObject(notification.getValue());
         assertThat(payload.getInteger("type")).isEqualTo(2); assertThat(payload.getLong("orderId")).isEqualTo(9L);
         assertThat(payload.getString("content")).isEqualTo("订单号 order-9"); verify(ordersMapper,never()).update(any(),anyInt());
@@ -247,7 +263,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThat(controller.queryOrderDetail(9L).getData().getUserId()).isEqualTo(USER_ID);
     }
     @Test void historyIsScopedToCurrentUserAndIncludesDetails() {
-        Orders row = existing(2); when(ordersMapper.pageQuery((int)USER_ID,2)).thenReturn(page(18,row));
+        Orders row = existing(2); when(ordersMapper.pageQuery(USER_ID,2)).thenReturn(page(18,row));
         OrderDetail item = OrderDetail.builder().orderId(9L).name("鸡丁").number(2).build();
         when(orderDetailMapper.getByOrderId(9L)).thenReturn(Collections.singletonList(item));
         PageResult result = service.historyOrdersPageQuery(2,5,2);
@@ -255,7 +271,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThat(((OrderVO)result.getRecords().get(0)).getOrderDetailList()).containsExactly(item);
     }
     @Test void emptyHistorySupportsNoStatusFilter() {
-        when(ordersMapper.pageQuery((int)USER_ID,null)).thenReturn(page(0));
+        when(ordersMapper.pageQuery(USER_ID,null)).thenReturn(page(0));
         PageResult result = service.historyOrdersPageQuery(1,10,null); assertThat(result.getTotal()).isZero(); assertThat(result.getRecords()).isEmpty();
         verifyNoInteractions(orderDetailMapper);
     }
@@ -272,6 +288,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         verifyNoInteractions(orderDetailMapper);
     }
     @Test void repetitionCopiesDishAndSetmealToCurrentUsersCart() {
+        when(ordersMapper.getByIdAndUserId(9L,USER_ID)).thenReturn(existing(Orders.COMPLETED));
         when(orderDetailMapper.getByOrderId(9L)).thenReturn(Arrays.asList(
                 OrderDetail.builder().dishId(7L).name("鸡丁").dishFlavor("微辣").amount(new BigDecimal("12.50")).number(2).build(),
                 OrderDetail.builder().setmealId(8L).name("套餐").amount(new BigDecimal("29.90")).number(1).build()));

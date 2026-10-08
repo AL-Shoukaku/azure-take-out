@@ -1,9 +1,15 @@
 package com.sky.service.impl;
 
+import com.sky.constant.MessageConstant;
+import com.sky.context.BaseContext;
 import com.sky.entity.AddressBook;
+import com.sky.exception.AddressBookBusinessException;
+import com.sky.exception.UserNotLoginException;
 import com.sky.mapper.AddressBookMapper;
 import com.sky.support.ServiceTestSupport;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
@@ -13,6 +19,20 @@ class AddressBookServiceImplTest extends ServiceTestSupport {
     @InjectMocks private AddressBookServiceImpl service;
     @Mock private AddressBookMapper mapper;
 
+    private AddressBook ownAddress() {
+        return AddressBook.builder().id(7L).userId(USER_ID).detail("原地址").build();
+    }
+    private void invoke(String action, AddressBook address) {
+        switch(action) {
+            case "list": service.list(address); break;
+            case "save": service.save(address); break;
+            case "detail": service.getById(address.getId()); break;
+            case "update": service.update(address); break;
+            case "default": service.setDefault(address); break;
+            case "delete": service.deleteById(address.getId()); break;
+            default: throw new IllegalArgumentException(action);
+        }
+    }
     @Test void newAddressUsesAuthenticatedUserAndIsNotDefault() {
         AddressBook address = AddressBook.builder().userId(999L).isDefault(1).phone("13800000000").build();
         service.save(address);
@@ -21,34 +41,56 @@ class AddressBookServiceImplTest extends ServiceTestSupport {
         assertThat(address.getIsDefault()).isZero();
         assertThat(address.getPhone()).isEqualTo("13800000000");
     }
-    @Test void listReturnsMatchingAddresses() {
-        AddressBook filter = AddressBook.builder().userId(USER_ID).isDefault(1).build();
-        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
-        when(mapper.list(filter)).thenReturn(Collections.singletonList(address));
-        assertThat(service.list(filter)).containsExactly(address);
+    @Test void listOverwritesForgedUserIdWhilePreservingOtherFilters() {
+        AddressBook filter = AddressBook.builder().userId(999L).isDefault(1).phone("13800000000").build();
+        when(mapper.list(any())).thenReturn(Collections.singletonList(ownAddress()));
+        assertThat(service.list(filter)).containsExactly(ownAddress());
+        verify(mapper).list(argThat(a -> a.getUserId().equals(USER_ID) && a.getIsDefault()==1 && a.getPhone().equals("13800000000")));
+    }
+    @Test void absentListFilterStillRestrictsToAuthenticatedUser() {
+        when(mapper.list(any())).thenReturn(Collections.emptyList());
+        assertThat(service.list(null)).isEmpty();
+        verify(mapper).list(argThat(a -> a.getUserId().equals(USER_ID)));
     }
     @Test void detailReturnsOwnAddress() {
-        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
-        when(mapper.getById(7L)).thenReturn(address);
+        AddressBook address = ownAddress(); when(mapper.getByIdAndUserId(7L,USER_ID)).thenReturn(address);
         assertThat(service.getById(7L)).isSameAs(address);
+        verify(mapper,never()).getById(anyLong());
     }
-    @Test void missingAddressReturnsNull() { assertThat(service.getById(7L)).isNull(); }
-    @Test void updatePassesAddressFieldsToMapper() {
-        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).detail("新地址").build();
-        service.update(address); verify(mapper).update(address);
+    @ParameterizedTest @ValueSource(strings={"detail","update","default","delete"})
+    void missingAddressRejectsWithoutAnyWrite(String action) {
+        assertThatThrownBy(() -> invoke(action,ownAddress())).isInstanceOf(AddressBookBusinessException.class)
+                .hasMessage(MessageConstant.ADDRESS_BOOK_NOT_FOUND);
+        verify(mapper,never()).update(any()); verify(mapper,never()).updateIsDefaultByUserId(any());
+        verify(mapper,never()).deleteById(anyLong(),anyLong());
     }
-    @Test void setDefaultClearsCurrentUsersDefaultsBeforeSettingTarget() {
-        AddressBook address = AddressBook.builder().id(7L).userId(USER_ID).build();
-        List<Integer> valuesAtInvocation = new ArrayList<>();
-        doAnswer(i -> { valuesAtInvocation.add(((AddressBook)i.getArgument(0)).getIsDefault()); return null; })
-                .when(mapper).updateIsDefaultByUserId(any());
-        doAnswer(i -> { valuesAtInvocation.add(((AddressBook)i.getArgument(0)).getIsDefault()); return null; })
-                .when(mapper).update(any());
-        service.setDefault(address);
+    @ParameterizedTest @ValueSource(strings={"list","save","detail","update","default","delete"})
+    void absentLoginRejectsBeforeDatabaseAccess(String action) {
+        BaseContext.removeCurrentId();
+        assertThatThrownBy(() -> invoke(action,ownAddress())).isInstanceOf(UserNotLoginException.class);
+        verifyNoInteractions(mapper);
+    }
+    @Test void updateOverwritesForgedUserIdAndKeepsAddressFields() {
+        when(mapper.getByIdAndUserId(7L,USER_ID)).thenReturn(ownAddress()); when(mapper.update(any())).thenReturn(1);
+        AddressBook request = AddressBook.builder().id(7L).userId(999L).detail("新地址").build();
+        service.update(request);
+        verify(mapper).update(argThat(a -> a.getUserId().equals(USER_ID) && a.getId()==7L && a.getDetail().equals("新地址")));
+    }
+    @Test void setDefaultChecksOwnershipBeforeResetAndUpdatesOnlyDefaultFlag() {
+        when(mapper.getByIdAndUserId(7L,USER_ID)).thenReturn(ownAddress()); when(mapper.update(any())).thenReturn(1);
+        service.setDefault(AddressBook.builder().id(7L).userId(999L).detail("不应写入").build());
         InOrder sequence = inOrder(mapper);
-        sequence.verify(mapper).updateIsDefaultByUserId(address); sequence.verify(mapper).update(address);
-        assertThat(valuesAtInvocation).containsExactly(0,1);
-        assertThat(address.getUserId()).isEqualTo(USER_ID);
+        sequence.verify(mapper).getByIdAndUserId(7L,USER_ID);
+        sequence.verify(mapper).updateIsDefaultByUserId(argThat(a -> a.getUserId().equals(USER_ID) && a.getIsDefault()==0));
+        sequence.verify(mapper).update(argThat(a -> a.getId()==7L && a.getUserId().equals(USER_ID) && a.getIsDefault()==1 && a.getDetail()==null));
     }
-    @Test void deleteOwnAddress() { service.deleteById(7L); verify(mapper).deleteById(7L); }
+    @Test void deleteOwnAddressUsesAuthenticatedOwnerInSql() {
+        when(mapper.getByIdAndUserId(7L,USER_ID)).thenReturn(ownAddress()); when(mapper.deleteById(7L,USER_ID)).thenReturn(1);
+        service.deleteById(7L); verify(mapper).deleteById(7L,USER_ID);
+    }
+    @ParameterizedTest @ValueSource(strings={"update","default","delete"})
+    void addressRemovedAfterOwnershipCheckDoesNotReportSuccess(String action) {
+        when(mapper.getByIdAndUserId(7L,USER_ID)).thenReturn(ownAddress());
+        assertThatThrownBy(() -> invoke(action,ownAddress())).isInstanceOf(AddressBookBusinessException.class);
+    }
 }

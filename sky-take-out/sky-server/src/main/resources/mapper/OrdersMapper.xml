@@ -12,8 +12,7 @@
                 #{deliveryStatus}, #{packAmount}, #{tablewareNumber}, #{tablewareStatus})
     </insert>
 
-    <update id="update">
-        update orders
+    <sql id="orderUpdateFields">
         <set>
             <if test="order.cancelReason != null and order.cancelReason!='' ">
                 cancel_reason=#{order.cancelReason},
@@ -40,19 +39,27 @@
                 delivery_time = #{order.deliveryTime}
             </if>
         </set>
+    </sql>
+
+    <update id="update">
+        update orders
+        <include refid="orderUpdateFields"/>
         where id = #{order.id} and status = #{expectedStatus}
+    </update>
+
+    <update id="updateForUser">
+        update orders
+        <include refid="orderUpdateFields"/>
+        where id = #{order.id} and user_id = #{userId} and status = #{expectedStatus}
     </update>
 
     <select id="pageQuery" resultType="com.sky.entity.Orders">
         select * from orders
-        <where>
-            <if test="status != null">
-                and status = #{status}
-            </if>
-            <if test="userId != null">
-                and user_id = #{userId}
-            </if>
-        </where> order by order_time desc
+        where user_id = #{userId}
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by order_time desc
     </select>
 
     <select id="adminPageSearch" resultType="com.sky.entity.Orders" parameterType="com.sky.dto.OrdersPageQueryDTO">

@@ -4,17 +4,13 @@
 
     <select id="list" parameterType="AddressBook" resultType="AddressBook">
         select * from address_book
-        <where>
-            <if test="userId != null">
-                and user_id = #{userId}
-            </if>
+        where user_id = #{userId}
             <if test="phone != null">
                 and phone = #{phone}
             </if>
             <if test="isDefault != null">
                 and is_default = #{isDefault}
             </if>
-        </where>
     </select>
 
     <update id="update" parameterType="addressBook">
@@ -39,7 +35,7 @@
                 is_default = #{isDefault},
             </if>
         </set>
-        where id = #{id}
+        where id = #{id} and user_id = #{userId}
     </update>
 
 </mapper>
