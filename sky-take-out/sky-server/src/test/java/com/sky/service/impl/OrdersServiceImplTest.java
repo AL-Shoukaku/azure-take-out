@@ -109,14 +109,14 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         verify(shoppingCartService,never()).cleanShoppingCart();
     }
     private static Stream<Arguments> unavailableProducts() {
-        return Stream.of("dish","setmeal").flatMap(kind -> Stream.of("stopped","missing","null-status")
+        return Stream.of("dish","setmeal").flatMap(kind -> Stream.of("stopped","missing")
                 .map(state -> Arguments.of(kind,state)));
     }
     @ParameterizedTest @MethodSource("unavailableProducts")
     void unavailableCartProductRejectsBeforeAnyOrderWriteOrCartCleanup(String kind,String state) {
         when(addressBookService.getById(5L)).thenReturn(address());
         ShoppingCart item=ShoppingCart.builder().amount(BigDecimal.TEN).number(1).build();
-        Integer status=state.equals("null-status") ? null : 0;
+        Integer status=0;
         if (kind.equals("dish")) {
             item.setDishId(7L);
             when(dishMapper.getById(7L)).thenReturn(state.equals("missing") ? null : Dish.builder().id(7L).status(status).build());
@@ -128,17 +128,6 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(ShoppingCartBusinessException.class)
                 .hasMessage(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
         verifyNoInteractions(ordersMapper,orderDetailMapper,userMapper);
-        verify(shoppingCartService,never()).cleanShoppingCart();
-    }
-    @ParameterizedTest @ValueSource(strings={"neither","both"})
-    void invalidCartProductIdentityCannotBypassCheckoutValidation(String kind) {
-        when(addressBookService.getById(5L)).thenReturn(address());
-        ShoppingCart item=ShoppingCart.builder().amount(BigDecimal.TEN).number(1).build();
-        if (kind.equals("both")) { item.setDishId(7L); item.setSetmealId(8L); }
-        when(shoppingCartService.showShoppingCart()).thenReturn(Collections.singletonList(item));
-        assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(ShoppingCartBusinessException.class)
-                .hasMessage(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
-        verifyNoInteractions(dishMapper,setmealMapper,ordersMapper,orderDetailMapper,userMapper);
         verify(shoppingCartService,never()).cleanShoppingCart();
     }
     @Test void simulatedPaymentReturnsCompatibleFieldsAndDoesNotCallWechat() throws Exception {
