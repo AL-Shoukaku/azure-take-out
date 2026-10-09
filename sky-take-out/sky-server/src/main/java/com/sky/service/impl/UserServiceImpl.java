@@ -1,6 +1,8 @@
 package com.sky.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
 import com.sky.constant.MessageConstant;
 import com.sky.dto.UserLoginDTO;
 import com.sky.entity.User;
@@ -12,6 +14,7 @@ import com.sky.utils.HttpClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -40,7 +43,7 @@ public class UserServiceImpl implements UserService {
         String openid = getOpenid(userLoginDTO.getCode());
 
         // 检查 openid
-        if (openid == null) {
+        if (!StringUtils.hasText(openid)) {
             throw new LoginFailedException(MessageConstant.LOGIN_FAILED);
         }
 
@@ -69,6 +72,15 @@ public class UserServiceImpl implements UserService {
         params.put("js_code", code);
         params.put("grant_type", "authorization_code");
         String json = HttpClientUtil.doGet(WX_LOGIN_URL, params);
-        return JSON.parseObject(json).getString("openid");
+        if (!StringUtils.hasText(json)) {
+            return null;
+        }
+        try {
+            JSONObject response = JSON.parseObject(json);
+            return response == null ? null : response.getString("openid");
+        } catch (JSONException e) {
+            log.warn("微信登录响应无法解析");
+            return null;
+        }
     }
 }

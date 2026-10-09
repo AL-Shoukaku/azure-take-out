@@ -34,13 +34,8 @@ public class HttpClientUtil {
      * @return
      */
     public static String doGet(String url,Map<String,String> paramMap){
-        // 创建Httpclient对象
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-
         String result = "";
-        CloseableHttpResponse response = null;
-
-        try{
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             URIBuilder builder = new URIBuilder(url);
             if(paramMap != null){
                 for (String key : paramMap.keySet()) {
@@ -51,23 +46,16 @@ public class HttpClientUtil {
 
             //创建GET请求
             HttpGet httpGet = new HttpGet(uri);
+            httpGet.setConfig(builderRequestConfig());
 
-            //发送请求
-            response = httpClient.execute(httpGet);
-
-            //判断响应状态
-            if(response.getStatusLine().getStatusCode() == 200){
-                result = EntityUtils.toString(response.getEntity(),"UTF-8");
+            // 请求失败时仍关闭客户端；响应读取或关闭失败时也会释放客户端。
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                if (response.getStatusLine().getStatusCode() == 200) {
+                    result = EntityUtils.toString(response.getEntity(), "UTF-8");
+                }
             }
         }catch (Exception e){
             e.printStackTrace();
-        }finally {
-            try {
-                response.close();
-                httpClient.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         return result;

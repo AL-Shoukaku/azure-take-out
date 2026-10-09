@@ -485,6 +485,7 @@ public class OrdersServiceImpl implements OrdersService {
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.COMPLETED);
+        newOrders.setDeliveryTime(LocalDateTime.now());
         updateOrderIfStatus(newOrders, Orders.DELIVERY_IN_PROGRESS);
     }
 
