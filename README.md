@@ -1,6 +1,6 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.1.0-blue)
+![Version](https://img.shields.io/badge/version-v0.1.1-blue)
 
 ## 📖 项目简介
 
@@ -48,7 +48,7 @@
 
 | 模块 | 技术 | 端口 |
 | --- | --- | --- |
-| 后端 | Spring Boot 2.7.3、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
+| 后端 | Spring Boot 2.7.18、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
 | 管理端前端 | Vue 2 + TypeScript + Element UI | 8081（dev server） |
 | 微信小程序 | uni-app | — |
 | 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
@@ -62,7 +62,7 @@
 | 环境/工具 | 版本或说明 |
 | --- | --- |
 | 操作系统 | Windows + WSL2(Ubuntu26.04) |
-| JDK | 8 |
+| JDK | 21 |
 | Maven | 3.9.12 |
 | MySQL | 8.4.11 |
 | Redis | 8.0.5 |
@@ -227,7 +227,7 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. JDK 升级到 21,SpringBoot 升级到 3.5.x,其它框架配套升级
+1. 将 SpringBoot 版本升级为 2.7.18 -> 3.5.16 -> 4.0.8 ,其它框架配套升级
 2. 管理端前端升级到 Vue3
 3. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
 4. to be continued...
