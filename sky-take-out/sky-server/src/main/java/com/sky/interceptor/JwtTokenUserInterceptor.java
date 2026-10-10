@@ -24,8 +24,6 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
 
     @Autowired
     private JwtProperties jwtProperties;
-    @Autowired
-    private SwaggerOperationModelsProvider swaggerOperationModelsProvider;
 
     /**
      * 校验jwt
