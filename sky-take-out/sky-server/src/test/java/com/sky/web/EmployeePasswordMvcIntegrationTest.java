@@ -1,0 +1,134 @@
+package com.sky.web;
+
+import com.sky.SkyApplication;
+import com.sky.context.BaseContext;
+import com.sky.entity.Employee;
+import com.sky.mapper.EmployeeMapper;
+import com.sky.properties.JwtProperties;
+import com.sky.task.OrderTask;
+import com.sky.utils.JwtUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.DigestUtils;
+import org.springframework.web.socket.server.standard.ServerEndpointExporter;
+import java.util.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest(classes=SkyApplication.class,properties={
+        "spring.datasource.druid.url=jdbc:h2:mem:sky_employee_password;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER,VALUE"})
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+class EmployeePasswordMvcIntegrationTest {
+    private static final String OLD_HASH="e10adc3949ba59abbe56e057f20f883e";
+    private static final String PATH="/admin/employee/editPassword";
+    @Autowired private MockMvc mvc;
+    @Autowired private JwtProperties jwt;
+    @Autowired private EmployeeMapper employees;
+    @Autowired private JdbcTemplate jdbc;
+    @MockBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
+    @MockBean private OrderTask orderTask;
+    @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
+
+    private MockHttpServletRequestBuilder request(String body,long employeeId) {
+        String token=JwtUtil.createJWT(jwt.getAdminSecretKey(),60000,new HashMap<>(Collections.singletonMap("empId",employeeId)));
+        return put(PATH).header(jwt.getAdminTokenName(),token).contentType("application/json").content(body);
+    }
+    private void unchangedPasswords() {
+        assertThat(employees.getById(1L).getPassword()).isEqualTo(OLD_HASH);
+        assertThat(employees.getById(2L).getPassword()).isEqualTo(OLD_HASH);
+    }
+    private void failed(String body,long employeeId,String message) throws Exception {
+        mvc.perform(request(body,employeeId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0)).andExpect(jsonPath("$.msg").value(message));
+        unchangedPasswords(); assertThat(BaseContext.getCurrentId()).isNull();
+    }
+    @Test void frontendRequestChangesPasswordAndOnlyNewPasswordCanLogIn() throws Exception {
+        Employee original=employees.getById(1L);
+        mvc.perform(request("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\",\"username\":\"hacked\",\"status\":0}",1L))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.password").doesNotExist());
+        assertThat(BaseContext.getCurrentId()).isNull();
+        Employee saved=employees.getById(1L);
+        assertThat(saved.getPassword()).isEqualTo(DigestUtils.md5DigestAsHex("New123".getBytes()));
+        assertThat(saved.getPassword()).isNotEqualTo("New123");
+        assertThat(saved.getUpdateUser()).isEqualTo(1L); assertThat(saved.getUpdateTime()).isNotNull();
+        assertThat(saved).extracting(Employee::getUsername,Employee::getName,Employee::getStatus,Employee::getPhone,Employee::getIdNumber)
+                .containsExactly(original.getUsername(),original.getName(),original.getStatus(),original.getPhone(),original.getIdNumber());
+        assertThat(employees.getById(2L).getPassword()).isEqualTo(OLD_HASH);
+        mvc.perform(post("/admin/employee/login").contentType("application/json")
+                .content("{\"username\":\"admin\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0)).andExpect(jsonPath("$.msg").value("密码错误"));
+        mvc.perform(post("/admin/employee/login").contentType("application/json")
+                .content("{\"username\":\"admin\",\"password\":\"New123\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.token").isNotEmpty()).andExpect(jsonPath("$.data.password").doesNotExist());
+    }
+    @Test void matchingOptionalEmployeeIdSupportsTheReferenceDocumentBody() throws Exception {
+        mvc.perform(request("{\"empId\":1,\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",1L))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1));
+        assertThat(employees.getById(1L).getPassword()).isNotEqualTo(OLD_HASH);
+    }
+    @Test void knowingAnotherEmployeesOldPasswordDoesNotPermitChangingIt() throws Exception {
+        failed("{\"empId\":2,\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",1L,"密码修改失败");
+    }
+    @Test void wrongOldPasswordDoesNotChangeEitherAccount() throws Exception {
+        failed("{\"oldPassword\":\"654321\",\"newPassword\":\"New123\"}",1L,"密码错误");
+    }
+    @ParameterizedTest @ValueSource(strings={"abc12","A123456789012345678901","abc 123","abc$123"})
+    void invalidNewPasswordReturnsBusinessErrorWithoutUpdating(String password) throws Exception {
+        failed("{\"oldPassword\":\"123456\",\"newPassword\":\""+password+"\"}",1L,"新密码应为6-20位数字或字母");
+    }
+    @ParameterizedTest @ValueSource(strings={"{}","{\"oldPassword\":\"123456\"}","{\"newPassword\":\"New123\"}",
+            "{\"oldPassword\":\" \",\"newPassword\":\"New123\"}","{\"oldPassword\":\"123456\",\"newPassword\":\"\"}"})
+    void missingPasswordFieldsReturnBusinessError(String body) throws Exception {
+        failed(body,1L,"密码修改失败");
+    }
+    @Test void disabledAccountCannotChangePasswordUsingAnExistingToken() throws Exception {
+        failed("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",2L,"账号被锁定");
+    }
+    @Test void nonexistentEmployeeCannotChangePasswordUsingAnExistingToken() throws Exception {
+        failed("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",999L,"账号不存在");
+    }
+    @ParameterizedTest @ValueSource(strings={"missing","malformed","expired","user"})
+    void unauthorizedRequestsCannotChangePasswords(String kind) throws Exception {
+        MockHttpServletRequestBuilder request=put(PATH).contentType("application/json")
+                .content("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}");
+        if (kind.equals("malformed")) request.header(jwt.getAdminTokenName(),"invalid");
+        if (kind.equals("expired")) request.header(jwt.getAdminTokenName(),JwtUtil.createJWT(jwt.getAdminSecretKey(),-60000,
+                new HashMap<>(Collections.singletonMap("empId",1L))));
+        if (kind.equals("user")) request.header(jwt.getAdminTokenName(),JwtUtil.createJWT(jwt.getUserSecretKey(),60000,
+                new HashMap<>(Collections.singletonMap("userId",1L))));
+        mvc.perform(request).andExpect(status().isUnauthorized()); unchangedPasswords();
+        assertThat(BaseContext.getCurrentId()).isNull();
+    }
+    @Test void malformedJsonIsRejectedBeforeChangingPasswords() throws Exception {
+        mvc.perform(request("{",1L)).andExpect(status().isBadRequest()); unchangedPasswords();
+        assertThat(BaseContext.getCurrentId()).isNull();
+    }
+    @Test void passwordChangeUsesFullLongEmployeeIdAndDoesNotModifyItsTruncatedId() throws Exception {
+        long largeId=(1L << 32)+1L;
+        jdbc.update("insert into employee (id,name,username,password,phone,sex,id_number,status) values (?,?,?,?,?,?,?,?)",
+                largeId,"大 ID 员工","large-employee",OLD_HASH,"13800000003","1","123456789012345680",1);
+        mvc.perform(request("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",largeId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1));
+        assertThat(employees.getById(largeId).getPassword()).isEqualTo(DigestUtils.md5DigestAsHex("New123".getBytes()));
+        assertThat(employees.getById(largeId).getUpdateUser()).isEqualTo(largeId);
+        unchangedPasswords();
+    }
+}

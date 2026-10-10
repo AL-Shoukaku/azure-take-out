@@ -134,11 +134,17 @@ Nginx 当前提供的页面位于 `tools/nginx-1.20.2/html/sky/`，与管理端�
 
 `project.private.config.json` 已加入 `.gitignore`。微信开发者工具也可能自动生成它；确认其中的 AppID 与后端 `application-local.yml` 一致。若需要使用微信用户登录，还要填写后端的 `sky.wechat.secret`。
 
-## 默认账号
+### 默认账号
 
 | 端 | 账号 | 密码 |
 | --- | --- | --- |
 | 管理端 | `admin` | `123456` |
+
+### 运行测试
+
+```bash
+mvn -f sky-take-out/pom.xml clean test
+```
 
 ## 📂 项目结构
 
