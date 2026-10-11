@@ -12,12 +12,14 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.*;
 import org.springframework.data.redis.core.*;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.swagger.readers.operation.SwaggerOperationModelsProvider;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import static org.mockito.Mockito.*;
 
 /** Load real MVC registration, interceptors, JSON conversion, advice and cache proxies only. */
 @org.springframework.boot.test.context.TestConfiguration
 @EnableCaching
+// 测试用：为未加载完整 Boot 自动配置的独立 MVC 测试提供基础设施。
+@EnableWebMvc
 @ComponentScan(basePackages="com.sky.controller",useDefaultFilters=false,
         includeFilters=@ComponentScan.Filter(type=FilterType.ANNOTATION,classes=RestController.class))
 @Import({WebMvcConfiguration.class,JwtTokenAdminInterceptor.class,JwtTokenUserInterceptor.class,GlobalExceptionHandler.class})
@@ -32,7 +34,6 @@ public class WebTestConfiguration {
     @Bean public WeChatProperties weChatProperties() {
         WeChatProperties p = new WeChatProperties(); p.setApiV3Key("0123456789abcdef0123456789abcdef"); return p;
     }
-    @Bean public SwaggerOperationModelsProvider swaggerOperationModelsProvider() { return mock(SwaggerOperationModelsProvider.class); }
     @Bean public EmployeeService employeeService() { return mock(EmployeeService.class); }
     @Bean public EmployeeMapper employeeMapper() { return mock(EmployeeMapper.class); }
     @Bean public CategoryService categoryService() { return mock(CategoryService.class); }

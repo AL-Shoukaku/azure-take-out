@@ -24,7 +24,7 @@ class ReportWorkspaceMvcTest extends WebTestSupport {
         verify(reportService).getOrderStatistic(BEGIN,END); verify(reportService).getSalesTop10(BEGIN,END);
     }
     @Test void exportWritesServiceBytesDirectlyToResponse() throws Exception {
-        doAnswer(i -> { javax.servlet.http.HttpServletResponse response=i.getArgument(0); response.getOutputStream().write(new byte[]{80,75,3,4}); return null; }).when(reportService).exportBusinessData(any());
+        doAnswer(i -> { jakarta.servlet.http.HttpServletResponse response=i.getArgument(0); response.getOutputStream().write(new byte[]{80,75,3,4}); return null; }).when(reportService).exportBusinessData(any());
         mvc.perform(admin(get("/admin/report/export"))).andExpect(status().isOk()).andExpect(content().bytes(new byte[]{80,75,3,4}));
         verify(reportService).exportBusinessData(any());
     }

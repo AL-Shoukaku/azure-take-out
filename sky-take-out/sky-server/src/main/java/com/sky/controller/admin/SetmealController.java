@@ -6,7 +6,7 @@ import com.sky.result.PageResult;
 import com.sky.result.Result;
 import com.sky.service.SetmealService;
 import com.sky.vo.SetmealVO;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,7 +27,7 @@ public class SetmealController {
      * 新增套餐,新增时默认停售，不用更新缓存
      */
     @PostMapping
-    @ApiOperation("新增套餐")
+    @Operation(summary = "新增套餐")
     public Result save(@RequestBody SetmealDTO setmealDTO) {
         log.info("新增套餐：{}", setmealDTO);
         setmealService.saveWithDish(setmealDTO);
@@ -40,7 +40,7 @@ public class SetmealController {
      * @return
      */
     @GetMapping("/page")
-    @ApiOperation("套餐分页查询")
+    @Operation(summary = "套餐分页查询")
     public Result<PageResult> page(SetmealPageQueryDTO setmealPageQueryDTO) {
         log.info("套餐分页查询，参数为{}",setmealPageQueryDTO);
         PageResult pageResult = setmealService.pageQuery(setmealPageQueryDTO);
@@ -53,7 +53,7 @@ public class SetmealController {
      * @return
      */
     @GetMapping("/{id}")
-    @ApiOperation("根据id查询套餐信息")
+    @Operation(summary = "根据id查询套餐信息")
     public Result<SetmealVO> get(@PathVariable Long id) {
         log.info("根据id查询套餐信息，id为{}", id);
         SetmealVO setmealVO = setmealService.getByIdWithDish(id);
@@ -66,7 +66,7 @@ public class SetmealController {
      * @return
      */
     @PutMapping
-    @ApiOperation("修改套餐信息")
+    @Operation(summary = "修改套餐信息")
     @Caching(evict = {
             @CacheEvict(cacheNames = "setmealCache", allEntries = true),
             @CacheEvict(cacheNames = "setmealDishCache", key = "#setmealDTO.id")
@@ -84,7 +84,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping("/status/{status}")
-    @ApiOperation("启用或禁用套餐")
+    @Operation(summary = "启用或禁用套餐")
     @CacheEvict(value = "setmealCache", allEntries = true)
     public Result startOrStop(@PathVariable Integer status, @RequestParam Long id) {
         log.info("启用或禁用套餐，参数为status={}, id={}", status, id);
@@ -93,7 +93,7 @@ public class SetmealController {
     }
 
     @DeleteMapping
-    @ApiOperation("删除套餐以及套餐和菜品的关联关系")
+    @Operation(summary = "删除套餐以及套餐和菜品的关联关系")
     @CacheEvict(value = "setmealCache", allEntries = true)
     public Result delete(@RequestParam List<Long> ids) {
         log.info("删除套餐，id={}", ids);

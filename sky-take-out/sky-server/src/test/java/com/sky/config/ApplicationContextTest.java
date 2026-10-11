@@ -10,13 +10,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest(classes=SkyApplication.class)
+@SpringBootTest(classes=SkyApplication.class, properties={
+        // 测试用：采用非默认端口和库号，防止配置迁移失效却被默认值掩盖。
+        "sky.redis.port=16379", "sky.redis.database=6"})
 @ActiveProfiles("test")
 class ApplicationContextTest {
     @Autowired private ApplicationContext context;
@@ -33,6 +36,14 @@ class ApplicationContextTest {
         assertThat(context.getEnvironment().getActiveProfiles()).containsExactly("test");
         assertThat(context.getEnvironment().getProperty("spring.datasource.druid.url")).startsWith("jdbc:h2:mem:");
         assertThat(ordersMapper.countByStatus(null)).isEqualTo(4);
+    }
+
+    @Test
+    void migratedRedisPropertiesBindHostPortAndDatabaseWithoutConnecting() {
+        RedisProperties redis = context.getBean(RedisProperties.class);
+        assertThat(redis.getHost()).isEqualTo("unused.invalid");
+        assertThat(redis.getPort()).isEqualTo(16379);
+        assertThat(redis.getDatabase()).isEqualTo(6);
     }
 
     @Test

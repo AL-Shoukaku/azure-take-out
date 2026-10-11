@@ -3,7 +3,6 @@ package com.sky.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
-import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
@@ -401,6 +400,11 @@ public class OrdersServiceImpl implements OrdersService {
         updateOrderIfStatus(newOrders, orders.getStatus());
     }
 
+    /**
+     * 商家分页查询订单
+     * @param ordersPageQueryDTO
+     * @return
+     */
     public PageResult adminPageQuery(OrdersPageQueryDTO ordersPageQueryDTO) {
         PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
         Page<Orders> page = ordersMapper.adminPageSearch(ordersPageQueryDTO);
@@ -409,12 +413,18 @@ public class OrdersServiceImpl implements OrdersService {
         return new PageResult(page.getTotal(), orderVOList);
     }
 
+    /**
+     * 将订单列表转换为OrderVO列表，包含订单菜品信息
+     *
+     * @param page 分页查询结果
+     * @return OrderVO列表
+     */
     private List<OrderVO> getOrderVOList(Page<Orders> page) {
         // 需要返回订单菜品信息，自定义OrderVO响应结果
         List<OrderVO> orderVOList = new ArrayList<>();
 
         List<Orders> ordersList = page.getResult();
-        if (!CollectionUtils.isEmpty(ordersList)) {
+        if (ordersList != null && !ordersList.isEmpty()) {
             for (Orders orders : ordersList) {
                 // 将共同字段复制到OrderVO
                 OrderVO orderVO = new OrderVO();

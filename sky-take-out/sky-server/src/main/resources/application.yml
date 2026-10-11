@@ -12,10 +12,11 @@ spring:
       url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${sky.datasource.username}
       password: ${sky.datasource.password}
-  redis:
-    host: ${sky.redis.host}
-    port: ${sky.redis.port}
-    database: ${sky.redis.database}
+  data:
+    redis:
+      host: ${sky.redis.host}
+      port: ${sky.redis.port}
+      database: ${sky.redis.database}
     # password:无密码
 
 mybatis:
@@ -53,3 +54,8 @@ sky:
   wechat:
     appid: ${sky.wechat.appid}
     secret: ${sky.wechat.secret}
+
+# Knife4j 4.5 的增强插件与 Springdoc 2.8 的方法签名不兼容，暂时关闭增强功能。
+# /doc.html 页面及 OpenAPI 分组仍由 Starter 和 Springdoc 提供。
+knife4j:
+  enable: false
