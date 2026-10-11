@@ -1,8 +1,8 @@
 package com.sky.controller.admin;
 
 import com.sky.result.Result;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController("adminShopController")  // 防止与用户端的 ShopController 冲突，指定 bean 名称
 @RequestMapping("/admin/shop")
-@Api("管理端商铺管理")
+@Tag(name = "管理端商铺管理")
 @Slf4j
 public class ShopController {
 
@@ -19,7 +19,7 @@ public class ShopController {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    @ApiOperation("设置店铺的营业状态")
+    @Operation(summary = "设置店铺的营业状态")
     @PutMapping("/{status}")
     public Result openOrClose(@PathVariable Integer status) {
         log.info("设置店铺的营业状态, shopId: {}", (status == 1 ? "营业中" : "打烊中"));
@@ -28,7 +28,7 @@ public class ShopController {
     }
 
     @GetMapping("/status")
-    @ApiOperation("获取店铺的营业状态")
+    @Operation(summary = "获取店铺的营业状态")
     public Result<Integer> getShopStatus() {
         Integer status = (Integer) redisTemplate.opsForValue().get(SHOP_STATUS_KEY);
         if (status == null) {
