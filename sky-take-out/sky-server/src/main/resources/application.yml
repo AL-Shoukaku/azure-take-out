@@ -55,6 +55,7 @@ sky:
     appid: ${sky.wechat.appid}
     secret: ${sky.wechat.secret}
 
-# 开启 Knife4j 接口文档增强功能
+# Knife4j 4.5 的增强插件与 Springdoc 2.8 的方法签名不兼容，暂时关闭增强功能。
+# /doc.html 页面及 OpenAPI 分组仍由 Starter 和 Springdoc 提供。
 knife4j:
-  enable: true
+  enable: false
