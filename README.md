@@ -1,21 +1,23 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.1.1-blue)
+![Version](https://img.shields.io/badge/version-v0.2.0-blue)
 
 ## 📖 项目简介
 
 本项目源自于黑马程序员的《苍穹外卖》教学项目。
 
-原项目是是一个业务闭环的外卖平台，能够实现**用户登录->加入购物车->下单->支付->商家接单->骑手配送->订单完成**的完整业务流程。
+原项目是一个业务闭环的外卖平台，能够实现**用户登录->加入购物车->下单->支付->商家接单->骑手配送->订单完成**的完整业务流程。
 
 - [原始代码](https://github.com/smith-gala/2026-source-code)
 - [b站课程视频](https://www.bilibili.com/video/BV1TP411v7v6/?spm_id_from=333.337.search-card.all.click)
 
-本项目在园项目的基础上进行了整理，升级与二次开发，目前仍在开发中
+本项目在原项目的基础上进行了整理，升级与二次开发，目前仍在开发中
 
 ## ✨ 项目亮点
 
-开发中，待填写
+- 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21，MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j 等框架也进行了适配升级。
+
+开发中，待补充
 
 ## 🚀 功能介绍
 
@@ -48,7 +50,7 @@
 
 | 模块 | 技术 | 端口 |
 | --- | --- | --- |
-| 后端 | Spring Boot 2.7.18、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
+| 后端 | Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
 | 管理端前端 | Vue 2 + TypeScript + Element UI | 8081（dev server） |
 | 微信小程序 | uni-app | — |
 | 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
@@ -99,6 +101,8 @@ sudo systemctl start redis
 这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
 
 然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。
+
+可以从 http://localhost:8080/doc.html 查看后端接口文档
 
 ### 4. 启动管理端前端
 
@@ -227,7 +231,7 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. 将 SpringBoot 版本升级为 2.7.18 -> 3.5.16 -> 4.0.8 ,其它框架配套升级
+1. 将 SpringBoot 版本升级为 3.5.16 -> 4.1.1 ,其它框架配套升级
 2. 管理端前端升级到 Vue3
 3. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
 4. to be continued...
