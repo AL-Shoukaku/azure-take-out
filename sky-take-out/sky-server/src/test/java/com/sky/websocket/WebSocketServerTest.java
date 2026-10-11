@@ -1,7 +1,7 @@
 package com.sky.websocket;
 
 import org.junit.jupiter.api.*;
-import javax.websocket.*;
+import jakarta.websocket.*;
 import java.io.IOException;
 import java.util.*;
 import static org.mockito.Mockito.*;
