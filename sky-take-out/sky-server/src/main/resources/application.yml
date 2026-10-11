@@ -53,3 +53,7 @@ sky:
   wechat:
     appid: ${sky.wechat.appid}
     secret: ${sky.wechat.secret}
+
+# 开启 Knife4j 接口文档增强功能
+knife4j:
+  enable: true
