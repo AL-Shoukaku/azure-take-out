@@ -22,7 +22,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -52,10 +52,11 @@ class OwnershipMvcIntegrationTest {
     @Autowired private AddressBookMapper addresses;
     @Autowired private AddressBookService addressService;
     @Autowired private JdbcTemplate jdbc;
-    @MockBean private LettuceConnectionFactory redisConnectionFactory;
-    @MockBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
-    @MockBean private OrderTask orderTask;
-    @MockBean private WebSocketServer webSocketServer;
+    // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
+    @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
+    @MockitoBean private OrderTask orderTask;
+    @MockitoBean private WebSocketServer webSocketServer;
     @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
 
     private MockHttpServletRequestBuilder user(MockHttpServletRequestBuilder request) {

@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -40,9 +40,10 @@ class EmployeePasswordMvcIntegrationTest {
     @Autowired private JwtProperties jwt;
     @Autowired private EmployeeMapper employees;
     @Autowired private JdbcTemplate jdbc;
-    @MockBean private LettuceConnectionFactory redisConnectionFactory;
-    @MockBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
-    @MockBean private OrderTask orderTask;
+    // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
+    @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
+    @MockitoBean private OrderTask orderTask;
     @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
 
     private MockHttpServletRequestBuilder request(String body,long employeeId) {

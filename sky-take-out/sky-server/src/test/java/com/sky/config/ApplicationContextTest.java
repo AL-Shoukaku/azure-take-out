@@ -9,7 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -24,9 +24,10 @@ import static org.assertj.core.api.Assertions.*;
 class ApplicationContextTest {
     @Autowired private ApplicationContext context;
     @Autowired private OrdersMapper ordersMapper;
-    @MockBean private LettuceConnectionFactory redisConnectionFactory;
-    @MockBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
-    @MockBean private OrderTask orderTask;
+    // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
+    @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
+    @MockitoBean private OrderTask orderTask;
     @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
     @Test void productionApplicationWiresAllServicesAndUsesIsolatedDatabase() {
         for (Class<?> type : new Class<?>[]{EmployeeService.class,CategoryService.class,DishService.class,SetmealService.class,
