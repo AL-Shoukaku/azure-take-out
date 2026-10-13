@@ -22,7 +22,6 @@ import com.sky.result.PageResult;
 import com.sky.service.AddressBookService;
 import com.sky.service.OrdersService;
 import com.sky.service.ShoppingCartService;
-import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
@@ -68,8 +67,6 @@ public class OrdersServiceImpl implements OrdersService {
     @Autowired
     private SetmealMapper setmealMapper;
 
-    @Autowired
-    private WeChatPayUtil weChatPayUtil;
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
     @Autowired
@@ -165,26 +162,6 @@ public class OrdersServiceImpl implements OrdersService {
                 || !Orders.UN_PAID.equals(paymentOrder.getPayStatus())) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
-        User user = userMapper.getById(userId);
-
-        /*
-        //调用微信支付接口，生成预支付交易单
-        JSONObject jsonObject = weChatPayUtil.pay(
-                ordersPaymentDTO.getOrderNumber(), //商户订单号
-                new BigDecimal(0.01), //支付金额，单位 元
-                "苍穹外卖订单", //商品描述
-                user.getOpenid() //微信用户的openid
-        );
-
-        if (jsonObject.getString("code") != null && jsonObject.getString("code").equals("ORDERPAID")) {
-            throw new OrderBusinessException("该订单已支付");
-        }
-
-        OrderPaymentVO vo = jsonObject.toJavaObject(OrderPaymentVO.class);
-        vo.setPackageStr(jsonObject.getString("package"));
-
-        return vo;
-        */
 
         // 本地模拟支付：复用支付成功逻辑，并在状态更新时限定当前用户。
         processPaymentSuccess(paymentOrder, userId);
@@ -199,32 +176,7 @@ public class OrdersServiceImpl implements OrdersService {
                 .build();
     }
 
-    /**
-     * 支付成功，修改订单状态
-     *
-     * @param outTradeNo
-     */
-    public void paySuccess(String outTradeNo) {
-
-        // 根据订单号查询订单
-        Orders ordersDB = ordersMapper.getByNumber(outTradeNo);
-        if (ordersDB == null) {
-            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
-        }
-        // 支付回调没有用户登录上下文，按订单号处理；用户支付入口已经校验归属。
-        processPaymentSuccess(ordersDB, null);
-    }
-
     private void processPaymentSuccess(Orders ordersDB, Long userId) {
-        // 已处理的支付通知可能重试，直接返回，避免重复更新和重复推送。
-        if (Orders.PAID.equals(ordersDB.getPayStatus()) || Orders.REFUND.equals(ordersDB.getPayStatus())) {
-            return;
-        }
-        if (!Orders.PENDING_PAYMENT.equals(ordersDB.getStatus())
-                || !Orders.UN_PAID.equals(ordersDB.getPayStatus())) {
-            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
-        }
-
         // 根据订单id更新订单的状态、支付方式、支付状态、结账时间
         Orders orders = Orders.builder()
                 .id(ordersDB.getId())
@@ -233,14 +185,10 @@ public class OrdersServiceImpl implements OrdersService {
                 .checkoutTime(LocalDateTime.now())
                 .build();
 
-        int updated = userId == null
-                ? ordersMapper.update(orders, Orders.PENDING_PAYMENT)
-                : ordersMapper.updateForUser(orders, Orders.PENDING_PAYMENT, userId);
+        int updated = ordersMapper.updateForUser(orders, Orders.PENDING_PAYMENT, userId);
         if (updated == 0) {
             // 与取消订单并发时，重新确认最终状态；仅已支付/已退款视为重复通知。
-            Orders latest = userId == null
-                    ? ordersMapper.getByNumber(ordersDB.getNumber())
-                    : ordersMapper.getByNumberAndUserId(ordersDB.getNumber(), userId);
+            Orders latest = ordersMapper.getByNumberAndUserId(ordersDB.getNumber(), userId);
             if (latest != null && (Orders.PAID.equals(latest.getPayStatus())
                     || Orders.REFUND.equals(latest.getPayStatus()))) {
                 return;
@@ -324,14 +272,8 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setStatus(Orders.CANCELLED);
         newOrders.setCancelTime(LocalDateTime.now());
 
-        // 如果订单已经支付，则需要调用微信支付的退款接口
+        // 已支付订单在本地模拟退款。
         if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
-            //调用微信支付退款接口
-            //weChatPayUtil.refund(
-            //        ordersDB.getNumber(), //商户订单号
-            //        ordersDB.getNumber(), //商户退款单号
-            //        new BigDecimal(0.01),//退款金额，单位 元
-            //        new BigDecimal(0.01));//原订单金额
             //支付状态修改为 退款
             newOrders.setPayStatus(Orders.REFUND);
         }
@@ -385,14 +327,8 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setCancelTime(LocalDateTime.now());
         newOrders.setCancelReason(ordersCancelDTO.getCancelReason());
 
-        // 如果订单已经支付，则需要调用微信支付的退款接口
+        // 已支付订单在本地模拟退款。
         if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
-            //调用微信支付退款接口
-            //weChatPayUtil.refund(
-            //        ordersDB.getNumber(), //商户订单号
-            //        ordersDB.getNumber(), //商户退款单号
-            //        new BigDecimal(0.01),//退款金额，单位 元
-            //        new BigDecimal(0.01));//原订单金额
             //支付状态修改为 退款
             newOrders.setPayStatus(Orders.REFUND);
         }

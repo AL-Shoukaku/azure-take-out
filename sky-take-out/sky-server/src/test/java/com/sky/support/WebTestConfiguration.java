@@ -31,9 +31,6 @@ public class WebTestConfiguration {
         JwtProperties p = new JwtProperties(); p.setAdminSecretKey(ADMIN_SECRET); p.setAdminTtl(60000); p.setAdminTokenName("token");
         p.setUserSecretKey(USER_SECRET); p.setUserTtl(60000); p.setUserTokenName("authentication"); return p;
     }
-    @Bean public WeChatProperties weChatProperties() {
-        WeChatProperties p = new WeChatProperties(); p.setApiV3Key("0123456789abcdef0123456789abcdef"); return p;
-    }
     @Bean public EmployeeService employeeService() { return mock(EmployeeService.class); }
     @Bean public EmployeeMapper employeeMapper() { return mock(EmployeeMapper.class); }
     @Bean public CategoryService categoryService() { return mock(CategoryService.class); }

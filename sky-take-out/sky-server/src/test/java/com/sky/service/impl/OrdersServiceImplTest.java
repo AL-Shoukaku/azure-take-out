@@ -10,7 +10,6 @@ import com.sky.mapper.*;
 import com.sky.result.PageResult;
 import com.sky.service.*;
 import com.sky.support.ServiceTestSupport;
-import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.*;
 import com.sky.websocket.WebSocketServer;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,6 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @Mock private DishMapper dishMapper;
     @Mock private SetmealMapper setmealMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
-    @Mock private WeChatPayUtil weChatPayUtil;
     @Mock private WebSocketServer webSocketServer;
     @Captor private ArgumentCaptor<Orders> order;
     @Captor private ArgumentCaptor<List<OrderDetail>> details;
@@ -85,7 +83,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         InOrder sequence = inOrder(ordersMapper,orderDetailMapper,shoppingCartService);
         sequence.verify(shoppingCartService).showShoppingCart(); sequence.verify(ordersMapper).submitOrder(any());
         sequence.verify(orderDetailMapper).batchInsert(any()); sequence.verify(shoppingCartService).cleanShoppingCart();
-        verifyNoInteractions(weChatPayUtil,webSocketServer);
+        verifyNoInteractions(webSocketServer);
     }
     @Test void missingAddressRejectsBeforeReadingCartOrWriting() {
         assertThatThrownBy(() -> service.submitOrder(submitRequest())).isInstanceOf(AddressBookBusinessException.class)
@@ -130,30 +128,30 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         verifyNoInteractions(ordersMapper,orderDetailMapper,userMapper);
         verify(shoppingCartService,never()).cleanShoppingCart();
     }
-    @Test void simulatedPaymentReturnsCompatibleFieldsAndDoesNotCallWechat() throws Exception {
+    @Test void simulatedPaymentReturnsCompatibleFieldsWithoutLoadingUser() throws Exception {
         when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT));
         when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(1);
         OrderPaymentVO result = service.payment(paymentRequest());
         assertThat(result.getNonceStr()).isEqualTo("fake_nonce_str"); assertThat(result.getPaySign()).isEqualTo("fake_pay_sign");
         assertThat(result.getSignType()).isEqualTo("RSA"); assertThat(result.getPackageStr()).isEqualTo("prepay_id=fake_prepay_id");
-        assertThat(result.getTimeStamp()).matches("\\d+"); verifyNoInteractions(weChatPayUtil);
+        assertThat(result.getTimeStamp()).matches("\\d+"); verifyNoInteractions(userMapper);
         verify(webSocketServer).sendToAllClient(anyString());
     }
     @Test void paymentRejectsMissingOrder() {
         assertThatThrownBy(() -> service.payment(paymentRequest())).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_NOT_FOUND);
-        verifyNoInteractions(userMapper,webSocketServer,weChatPayUtil);
+        verifyNoInteractions(userMapper,webSocketServer);
     }
     @ParameterizedTest @CsvSource({"2,1","3,1","4,1","5,1","6,0","1,1","1,2"})
     void paymentRejectsInvalidOrderOrPaymentState(int status,int payStatus) {
         Orders row = existing(status); row.setPayStatus(payStatus); when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(row);
         assertThatThrownBy(() -> service.payment(paymentRequest())).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
-        verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer,weChatPayUtil);
+        verify(ordersMapper,never()).updateForUser(any(),anyInt(),anyLong()); verifyNoInteractions(webSocketServer);
     }
-    @Test void successfulPaymentTransitionsOnceAndSendsStructuredNotification() {
-        when(ordersMapper.getByNumber("order-9")).thenReturn(existing(Orders.PENDING_PAYMENT));
-        when(ordersMapper.update(any(),eq(Orders.PENDING_PAYMENT))).thenReturn(1);
-        LocalDateTime before = LocalDateTime.now(); service.paySuccess("order-9");
-        verify(ordersMapper).update(order.capture(),eq(Orders.PENDING_PAYMENT));
+    @Test void successfulPaymentTransitionsOnceAndSendsStructuredNotification() throws Exception {
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT));
+        when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(1);
+        LocalDateTime before = LocalDateTime.now(); service.payment(paymentRequest());
+        verify(ordersMapper).updateForUser(order.capture(),eq(Orders.PENDING_PAYMENT),eq(USER_ID));
         assertThat(order.getValue()).extracting(Orders::getId,Orders::getStatus,Orders::getPayStatus)
                 .containsExactly(9L,Orders.TO_BE_CONFIRMED,Orders.PAID);
         assertThat(order.getValue().getCheckoutTime()).isBetween(before,LocalDateTime.now());
@@ -161,39 +159,31 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThat(payload.getInteger("type")).isEqualTo(1); assertThat(payload.getLong("orderId")).isEqualTo(9L);
         assertThat(payload.getString("content")).isEqualTo("订单号 order-9");
     }
-    @ParameterizedTest @ValueSource(ints = {1,2})
-    void duplicatePaidOrRefundedCallbackDoesNotWriteOrNotify(int payStatus) {
-        Orders row = existing(Orders.TO_BE_CONFIRMED); row.setPayStatus(payStatus);
-        when(ordersMapper.getByNumber("order-9")).thenReturn(row); service.paySuccess("order-9");
-        verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer);
-    }
-    @Test void paymentCallbackRejectsMissingOrder() {
-        assertThatThrownBy(() -> service.paySuccess("missing")).hasMessage(MessageConstant.ORDER_NOT_FOUND);
-        verifyNoInteractions(webSocketServer);
-    }
     @ParameterizedTest @ValueSource(ints = {2,3,4,5,6})
-    void unpaidCallbackForNonPendingOrderIsRejected(int status) {
-        Orders row = existing(status); row.setPayStatus(Orders.UN_PAID); when(ordersMapper.getByNumber("order-9")).thenReturn(row);
-        assertThatThrownBy(() -> service.paySuccess("order-9")).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
-        verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer);
+    void unpaidNonPendingOrderRejectsSimulatedPayment(int status) {
+        Orders row = existing(status); row.setPayStatus(Orders.UN_PAID);
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(row);
+        assertThatThrownBy(() -> service.payment(paymentRequest())).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
+        verify(ordersMapper,never()).updateForUser(any(),anyInt(),anyLong()); verifyNoInteractions(webSocketServer);
     }
     @ParameterizedTest @ValueSource(ints = {1,2})
-    void concurrentCallbackAlreadyHandledIsIdempotent(int payStatus) {
+    void concurrentPaymentAlreadyHandledDoesNotNotifyAgain(int payStatus) throws Exception {
         Orders latest = existing(Orders.TO_BE_CONFIRMED); latest.setPayStatus(payStatus);
-        when(ordersMapper.getByNumber("order-9")).thenReturn(existing(Orders.PENDING_PAYMENT),latest);
-        when(ordersMapper.update(any(),eq(Orders.PENDING_PAYMENT))).thenReturn(0);
-        service.paySuccess("order-9"); verify(ordersMapper,times(2)).getByNumber("order-9"); verifyNoInteractions(webSocketServer);
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT),latest);
+        when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(0);
+        service.payment(paymentRequest());
+        verify(ordersMapper,times(2)).getByNumberAndUserId("order-9",USER_ID); verifyNoInteractions(webSocketServer);
     }
     @Test void concurrentCancellationRejectsPaymentWithoutNotification() {
         Orders cancelled = existing(Orders.CANCELLED); cancelled.setPayStatus(Orders.UN_PAID);
-        when(ordersMapper.getByNumber("order-9")).thenReturn(existing(Orders.PENDING_PAYMENT),cancelled);
-        when(ordersMapper.update(any(),eq(Orders.PENDING_PAYMENT))).thenReturn(0);
-        assertThatThrownBy(() -> service.paySuccess("order-9")).hasMessage(MessageConstant.ORDER_STATUS_ERROR); verifyNoInteractions(webSocketServer);
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT),cancelled);
+        when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(0);
+        assertThatThrownBy(() -> service.payment(paymentRequest())).hasMessage(MessageConstant.ORDER_STATUS_ERROR); verifyNoInteractions(webSocketServer);
     }
-    @Test void deletedOrderDuringPaymentRejectsCallback() {
-        when(ordersMapper.getByNumber("order-9")).thenReturn(existing(Orders.PENDING_PAYMENT),null);
-        when(ordersMapper.update(any(),eq(Orders.PENDING_PAYMENT))).thenReturn(0);
-        assertThatThrownBy(() -> service.paySuccess("order-9")).hasMessage(MessageConstant.ORDER_STATUS_ERROR); verifyNoInteractions(webSocketServer);
+    @Test void deletedOrderDuringPaymentRejectsWithoutNotification() {
+        when(ordersMapper.getByNumberAndUserId("order-9",USER_ID)).thenReturn(existing(Orders.PENDING_PAYMENT),null);
+        when(ordersMapper.updateForUser(any(),eq(Orders.PENDING_PAYMENT),eq(USER_ID))).thenReturn(0);
+        assertThatThrownBy(() -> service.payment(paymentRequest())).hasMessage(MessageConstant.ORDER_STATUS_ERROR); verifyNoInteractions(webSocketServer);
     }
 
     // Matrix covers every accepted transition, every invalid source state, and lost updates.
@@ -246,7 +236,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
             if (source == 2) assertThat(order.getValue().getPayStatus()).isEqualTo(Orders.REFUND);
             else assertThat(order.getValue().getPayStatus()).isNull();
         }
-        verifyNoInteractions(weChatPayUtil,webSocketServer);
+        verifyNoInteractions(webSocketServer);
     }
     @ParameterizedTest @MethodSource("transitions")
     void lostConcurrentUpdateRejectsTransition(String action,int source,int target) {
@@ -265,7 +255,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     void invalidSourceStatusDoesNotWriteOrNotify(String action,int source) {
         stubOrder(action,source);
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
-        verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer,weChatPayUtil);
+        verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer);
     }
     @ParameterizedTest @ValueSource(strings = {"confirm","reject","delivery","complete","userCancel","adminCancel","remind","detail"})
     void missingOrderRejectedForEveryOperation(String action) {

@@ -96,16 +96,6 @@ class OwnershipServiceTest extends ServiceTestSupport {
         verifyNoInteractions(ordersMapper,orderDetailMapper,addressBookService,shoppingCartService,shoppingCartMapper,userMapper,webSocketServer);
     }
 
-    @Test void callbackHasNoUserLoginContextAndStillProcessesForeignOwnedOrder() {
-        BaseContext.removeCurrentId();
-        when(ordersMapper.getByNumber("callback-order")).thenReturn(Orders.builder().id(9L).number("callback-order").userId(99L).status(1).payStatus(0).build());
-        when(ordersMapper.update(any(),eq(1))).thenReturn(1);
-        orders.paySuccess("callback-order");
-        verify(ordersMapper).update(any(),eq(1));
-        verify(ordersMapper,never()).updateForUser(any(),anyInt(),anyLong());
-        verify(webSocketServer).sendToAllClient(anyString());
-    }
-
     @Test void simulatedPaymentRetainsScopedIdempotencyWhenAnotherPaymentFinishesFirst() throws Exception {
         Orders pending=Orders.builder().id(9L).number("order-9").userId(USER_ID).status(1).payStatus(0).build();
         Orders paid=Orders.builder().id(9L).number("order-9").userId(USER_ID).status(2).payStatus(1).build();

@@ -22,12 +22,6 @@ public interface OrdersService {
     OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception;
 
     /**
-     * 支付成功，修改订单状态
-     * @param outTradeNo
-     */
-    void paySuccess(String outTradeNo);
-
-    /**
      * 用户查询历史订单，可支持根据订单状态查询
      */
     PageResult historyOrdersPageQuery(Integer page, Integer pageSize, Integer status);

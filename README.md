@@ -15,7 +15,7 @@
 
 ## ✨ 项目亮点
 
-- 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21，MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j 等框架也进行了适配升级。
+- 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
 
 开发中，待补充
 
@@ -110,6 +110,8 @@ sudo systemctl start redis
 cd project-rjwm-admin-vue-ts
 npm install
 npm run serve
+# 若 node 版本过新，Webpack 4 不兼容当前的 OpenSSL，可使用以下命令：
+NODE_OPTIONS=--openssl-legacy-provider npm run serve
 ```
 
 访问 http://localhost:8081。
@@ -206,7 +208,6 @@ sky-server/
     │   │   ├── config/              # MVC、Redis、WebSocket 配置
     │   │   ├── controller/          # 接口控制器
     │   │   │   ├── admin/           # 管理端接口
-    │   │   │   ├── notify/          # 支付回调接口
     │   │   │   └── user/            # 用户端接口
     │   │   ├── handler/             # 全局异常处理
     │   │   ├── interceptor/         # 管理端与用户端 JWT 拦截器
@@ -231,7 +232,7 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. 将 SpringBoot 版本升级为 3.5.16 -> 4.1.1 ,其它框架配套升级
+1. 升级一些过于陈旧的依赖，提升项目的安全性和稳定性
 2. 管理端前端升级到 Vue3
 3. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
 4. to be continued...
