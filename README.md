@@ -97,6 +97,7 @@ sudo systemctl start redis
 | `sky.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
 | `sky.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
 | `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
+| `sky.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
 这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
 

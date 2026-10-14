@@ -29,7 +29,6 @@
         <pagehelper>2.1.1</pagehelper>
         <knife4j>4.5.0</knife4j>
         <jjwt>0.13.0</jjwt>
-        <jaxb-api>2.3.1</jaxb-api>
         <poi>3.16</poi>
         <!-- knife4j 自动引入的版本可能过旧，手动指定 -->
         <springdoc.version>2.8.17</springdoc.version>
@@ -89,12 +88,6 @@
                 <artifactId>jjwt-jackson</artifactId>
                 <version>${jjwt}</version>
                 <scope>runtime</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api}</version>
             </dependency>
 
             <!-- poi -->

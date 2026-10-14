@@ -6,12 +6,22 @@ import com.sky.entity.Orders;
 import com.sky.json.JacksonObjectMapper;
 import com.sky.result.Result;
 import com.sky.utils.JwtUtil;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
+import static com.sky.support.WebTestConfiguration.ADMIN_SECRET;
+import static com.sky.support.WebTestConfiguration.USER_SECRET;
 import static org.assertj.core.api.Assertions.*;
 
 class CommonContractTest {
@@ -30,19 +40,74 @@ class CommonContractTest {
         } finally { pool.shutdownNow(); }
     }
     @Test void jwtRoundTripPreservesClaimsAndExpiry() {
-        long before = System.currentTimeMillis(); String token = JwtUtil.createJWT("test-secret",60000,new HashMap<>(Collections.singletonMap("empId",7L)));
-        Claims claims = JwtUtil.parseJWT("test-secret",token); assertThat(claims.get("empId",Number.class).longValue()).isEqualTo(7L);
+        long before = System.currentTimeMillis(); String token = JwtUtil.createJWT(ADMIN_SECRET,60000,new HashMap<>(Collections.singletonMap("empId",7L)));
+        Claims claims = JwtUtil.parseJWT(ADMIN_SECRET,token); assertThat(claims.get("empId",Number.class).longValue()).isEqualTo(7L);
         assertThat(claims.getExpiration().getTime()).isBetween(before+59000,System.currentTimeMillis()+60000);
     }
     @Test void jwtRejectsWrongSignature() {
-        String token = JwtUtil.createJWT("test-secret",60000,new HashMap<>(Collections.singletonMap("empId",7L)));
-        assertThatThrownBy(() -> JwtUtil.parseJWT("other-secret",token)).isInstanceOf(SignatureException.class);
+        String token = JwtUtil.createJWT(ADMIN_SECRET,60000,new HashMap<>(Collections.singletonMap("empId",7L)));
+        assertThatThrownBy(() -> JwtUtil.parseJWT(USER_SECRET,token)).isInstanceOf(SignatureException.class);
     }
     @Test void jwtRejectsExpiredTokenWithoutSleep() {
-        String token = JwtUtil.createJWT("test-secret",-60000,new HashMap<>(Collections.singletonMap("empId",7L)));
-        assertThatThrownBy(() -> JwtUtil.parseJWT("test-secret",token)).isInstanceOf(ExpiredJwtException.class);
+        String token = JwtUtil.createJWT(ADMIN_SECRET,-60000,new HashMap<>(Collections.singletonMap("empId",7L)));
+        assertThatThrownBy(() -> JwtUtil.parseJWT(ADMIN_SECRET,token)).isInstanceOf(ExpiredJwtException.class);
     }
-    @Test void jwtRejectsMalformedToken() { assertThatThrownBy(() -> JwtUtil.parseJWT("test-secret","invalid-token")).isInstanceOf(JwtException.class); }
+    @Test void jwtRejectsMalformedToken() { assertThatThrownBy(() -> JwtUtil.parseJWT(ADMIN_SECRET,"invalid-token")).isInstanceOf(JwtException.class); }
+
+    @Test
+    void jwtRejectsTamperedPayload() throws Exception {
+        String token = JwtUtil.createJWT(ADMIN_SECRET, 60000, Map.of("empId", 7L));
+        String[] parts = token.split("\\.");
+        var payload = (com.fasterxml.jackson.databind.node.ObjectNode)
+                json.readTree(Base64.getUrlDecoder().decode(parts[1]));
+        payload.put("empId", 999L);
+        parts[1] = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(json.writeValueAsBytes(payload));
+
+        assertThatThrownBy(() -> JwtUtil.parseJWT(ADMIN_SECRET, String.join(".", parts)))
+                .isInstanceOf(SignatureException.class);
+    }
+
+    @Test
+    void jwtRejectsUnsignedClaims() {
+        String unsigned = Jwts.builder()
+                .claims(Map.of("empId", 7L))
+                .expiration(new Date(System.currentTimeMillis() + 60000))
+                .compact();
+
+        assertThatThrownBy(() -> JwtUtil.parseJWT(ADMIN_SECRET, unsigned))
+                .isInstanceOf(UnsupportedJwtException.class);
+    }
+
+    @Test
+    void jwtRejectsOtherSignatureAlgorithms() {
+        // 合法的 48 字节测试密钥，确保失败原因是算法限制，而非密钥长度或错误签名。
+        byte[] bytes = new byte[48];
+        String secret = Base64.getEncoder().encodeToString(bytes);
+        String hs384 = Jwts.builder()
+                .claims(Map.of("empId", 7L))
+                .expiration(new Date(System.currentTimeMillis() + 60000))
+                .signWith(Keys.hmacShaKeyFor(bytes), Jwts.SIG.HS384)
+                .compact();
+        assertThat(Jwts.parser().verifyWith(Keys.hmacShaKeyFor(bytes)).build()
+                .parseSignedClaims(hs384).getPayload().get("empId", Number.class).longValue())
+                .isEqualTo(7L);
+
+        assertThatThrownBy(() -> JwtUtil.parseJWT(secret, hs384))
+                .isInstanceOf(SignatureException.class)
+                .hasCauseInstanceOf(UnsupportedJwtException.class);
+    }
+
+    @Test
+    void jwtRejectsWeakAndInvalidKeyConfiguration() {
+        String shortKey = Base64.getEncoder()
+                .encodeToString("itcast".getBytes(StandardCharsets.UTF_8));
+        assertThatThrownBy(() -> JwtUtil.keyFromBase64(shortKey))
+                .isInstanceOf(WeakKeyException.class);
+        assertThatThrownBy(() -> JwtUtil.keyFromBase64("invalid-base64"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Test void globalDateTimeSerializationPreservesMinutePrecision() throws Exception {
         assertThat(json.writeValueAsString(LocalDateTime.of(2026,10,8,12,30,45))).isEqualTo("\"2026-10-08 12:30\"");
         assertThat(json.readValue("\"2026-10-08 12:30\"",LocalDateTime.class)).isEqualTo(LocalDateTime.of(2026,10,8,12,30));

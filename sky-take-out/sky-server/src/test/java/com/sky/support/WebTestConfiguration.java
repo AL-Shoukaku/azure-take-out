@@ -25,8 +25,9 @@ import static org.mockito.Mockito.*;
 @Import({WebMvcConfiguration.class,JwtTokenAdminInterceptor.class,JwtTokenUserInterceptor.class,GlobalExceptionHandler.class})
 @SuppressWarnings("rawtypes")
 public class WebTestConfiguration {
-    public static final String ADMIN_SECRET = "admin-secret-for-isolated-tests-32";
-    public static final String USER_SECRET = "user-secret-for-isolated-tests-32";
+    // 公开测试数据：各自解码为 32 字节，只用于自动化测试。
+    public static final String ADMIN_SECRET = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+    public static final String USER_SECRET = "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=";
     @Bean public JwtProperties jwtProperties() {
         JwtProperties p = new JwtProperties(); p.setAdminSecretKey(ADMIN_SECRET); p.setAdminTtl(60000); p.setAdminTokenName("token");
         p.setUserSecretKey(USER_SECRET); p.setUserTtl(60000); p.setUserTokenName("authentication"); return p;
