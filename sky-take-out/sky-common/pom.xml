@@ -31,10 +31,24 @@
             <artifactId>spring-boot-starter-json</artifactId>
         </dependency>
 
+        <!-- JWT 相关依赖 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
+            <artifactId>jjwt-api</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!--支持配置属性类，yml文件中可以提示配置项-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
