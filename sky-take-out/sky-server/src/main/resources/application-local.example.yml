@@ -21,6 +21,6 @@ sky:
     secret: ""
 
   # 配置 JWT 密钥，可以用 openssl rand -base64 32 随机生成
-    jwt:
-      admin-secret-key: ""
-      user-secret-key: ""
+  jwt:
+    admin-secret-key: ""
+    user-secret-key: ""

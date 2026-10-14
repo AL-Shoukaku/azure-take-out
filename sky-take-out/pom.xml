@@ -33,6 +33,8 @@
         <!-- knife4j 自动引入的版本可能过旧，手动指定 -->
         <springdoc.version>2.8.17</springdoc.version>
         <swagger.version>2.2.47</swagger.version>
+        <!--    springboot使用的是3.17.0，有已知漏洞    -->
+        <commons-lang3.version>3.20.0</commons-lang3.version>
     </properties>
     <dependencyManagement>
         <dependencies>
