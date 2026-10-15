@@ -1,6 +1,6 @@
 {
   "name": "vue-typescript-admin-template",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "author": "Chong Guo <armourcy@gmail.com>",
   "scripts": {

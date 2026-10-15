@@ -1,6 +1,6 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.2.0-blue)
+![Version](https://img.shields.io/badge/version-v0.3.0-blue)
 
 ## 📖 项目简介
 
@@ -16,6 +16,7 @@
 ## ✨ 项目亮点
 
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
+- 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
 
 开发中，待补充
 
@@ -233,10 +234,9 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. 升级一些过于陈旧的依赖，提升项目的安全性和稳定性
-2. 管理端前端升级到 Vue3
-3. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
-4. to be continued...
+1. 管理端前端升级到 Vue3
+2. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
+3. to be continued...
 
 
 ## 🖼 项目截图

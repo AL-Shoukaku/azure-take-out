@@ -164,9 +164,10 @@ CREATE TABLE `employee` (
   UNIQUE KEY `idx_username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='员工信息';
 
+-- 两个初始账号的默认密码均为 123456；Argon2id 使用独立随机盐，因此哈希值不同。
 INSERT INTO `employee` (`id`, `name`, `username`, `password`, `phone`, `sex`, `id_number`, `status`, `create_time`, `update_time`, `create_user`, `update_user`) VALUES
-  (1, '管理员', 'admin', 'e10adc3949ba59abbe56e057f20f883e', '13900000101', '1', '000000000000000001', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
-  (2, '演示店员', 'staff', 'e10adc3949ba59abbe56e057f20f883e', '13900000102', '0', '000000000000000002', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
+  (1, '管理员', 'admin', '$argon2id$v=19$m=19456,t=2,p=1$BLLbgan81jBCyGynj7vfnQ$7LCmkvr/o8lq0d/ydLf7QrGJ+UdP3SyKxNJgvCFjf6M', '13900000101', '1', '000000000000000001', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1),
+  (2, '演示店员', 'staff', '$argon2id$v=19$m=19456,t=2,p=1$GGmSfgznQv9IEjHKlTfb7Q$Cq1HPn79F+x2DfWa7GaFpq+i8x2wn+1gjse7k6ljNpE', '13900000102', '0', '000000000000000002', 1, '2026-09-28 12:00:00', '2026-09-28 12:00:00', 1, 1);
 
 DROP TABLE IF EXISTS `order_detail`;
 CREATE TABLE `order_detail` (
