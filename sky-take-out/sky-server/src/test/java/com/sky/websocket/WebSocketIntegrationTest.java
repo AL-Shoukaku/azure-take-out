@@ -27,7 +27,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +53,8 @@ class WebSocketIntegrationTest {
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
-    void simulatedPaymentSendsNewOrderNotificationToBothRealWebSocketClients() throws Exception {
+    void simulatedPaymentAndReminderSendStructuredNotificationsToBothRealWebSocketClients()
+            throws Exception {
         try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
              ConnectedClient first = connect(client);
              ConnectedClient second = connect(client)) {
@@ -70,12 +73,36 @@ class WebSocketIntegrationTest {
             assertThat(saved.getStatus()).isEqualTo(Orders.TO_BE_CONFIRMED);
             assertThat(saved.getPayStatus()).isEqualTo(Orders.PAID);
             for (ConnectedClient receiver : new ConnectedClient[]{first, second}) {
-                JsonNode message = json.readTree(receiver.listener.message.get(10, TimeUnit.SECONDS));
-                assertThat(message.path("type").asInt()).isEqualTo(1);
-                assertThat(message.path("orderId").asLong()).isEqualTo(1L);
-                assertThat(message.path("content").asText()).isEqualTo("订单号 order-1");
+                assertNotification(receiver, 1);
+            }
+
+            HttpRequest reminder = HttpRequest.newBuilder(
+                            URI.create("http://localhost:" + port + "/user/order/reminder/1"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header(jwt.getUserTokenName(), token)
+                    .GET().build();
+            HttpResponse<String> reminderResponse = client.send(
+                    reminder, HttpResponse.BodyHandlers.ofString());
+            assertThat(reminderResponse.statusCode()).isEqualTo(200);
+            assertThat(json.readTree(reminderResponse.body()).path("code").asInt()).isEqualTo(1);
+            for (ConnectedClient receiver : new ConnectedClient[]{first, second}) {
+                assertNotification(receiver, 2);
             }
         }
+    }
+
+    private void assertNotification(ConnectedClient receiver, int expectedType) throws Exception {
+        CompletableFuture<String> received = receiver.listener.messages.poll(10, TimeUnit.SECONDS);
+        assertThat(received).as("WebSocket notification with type=%s", expectedType).isNotNull();
+        JsonNode message = json.readTree(received.get(10, TimeUnit.SECONDS));
+        assertThat(message.isObject()).isTrue();
+        assertThat(message.size()).isEqualTo(3);
+        assertThat(message.path("type").isIntegralNumber()).isTrue();
+        assertThat(message.path("type").intValue()).isEqualTo(expectedType);
+        assertThat(message.path("orderId").isIntegralNumber()).isTrue();
+        assertThat(message.path("orderId").longValue()).isEqualTo(1L);
+        assertThat(message.path("content").isTextual()).isTrue();
+        assertThat(message.path("content").textValue()).isEqualTo("订单号 order-1");
     }
 
     private ConnectedClient connect(HttpClient client) throws Exception {
@@ -109,7 +136,7 @@ class WebSocketIntegrationTest {
 
     private static class NotificationListener implements WebSocket.Listener {
         private final CompletableFuture<Void> ready = new CompletableFuture<>();
-        private final CompletableFuture<String> message = new CompletableFuture<>();
+        private final BlockingQueue<CompletableFuture<String>> messages = new LinkedBlockingQueue<>();
         private final CompletableFuture<Void> closed = new CompletableFuture<>();
         private final StringBuilder text = new StringBuilder();
 
@@ -129,7 +156,7 @@ class WebSocketIntegrationTest {
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             text.append(data);
             if (last) {
-                message.complete(text.toString());
+                messages.add(CompletableFuture.completedFuture(text.toString()));
                 text.setLength(0);
             }
             webSocket.request(1);
@@ -145,7 +172,7 @@ class WebSocketIntegrationTest {
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             ready.completeExceptionally(error);
-            message.completeExceptionally(error);
+            messages.add(CompletableFuture.failedFuture(error));
             closed.completeExceptionally(error);
         }
     }

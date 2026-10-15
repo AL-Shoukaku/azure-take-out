@@ -1,8 +1,8 @@
 package com.sky.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.interceptor.JwtTokenAdminInterceptor;
 import com.sky.interceptor.JwtTokenUserInterceptor;
-import com.sky.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +26,9 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
 
     @Autowired
     private JwtTokenUserInterceptor jwtTokenUserInterceptor;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Value("${sky.upload-path}")
     private String uploadPath;
@@ -68,7 +71,7 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         for (HttpMessageConverter<?> converter : converters) {
             if (converter instanceof MappingJackson2HttpMessageConverter jsonConverter) {
-                jsonConverter.setObjectMapper(new JacksonObjectMapper());
+                jsonConverter.setObjectMapper(objectMapper);
             }
         }
     }

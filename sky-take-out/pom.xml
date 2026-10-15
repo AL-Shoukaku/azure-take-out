@@ -23,7 +23,6 @@
         <maven.compiler.release>21</maven.compiler.release>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <mybatis.spring>3.0.5</mybatis.spring>
-        <fastjson>1.2.76</fastjson>
         <httpclient.version>4.5.14</httpclient.version>
         <druid>1.2.28</druid>
         <pagehelper>2.1.1</pagehelper>
@@ -35,6 +34,8 @@
         <swagger.version>2.2.47</swagger.version>
         <!--    springboot使用的是3.17.0，有已知漏洞    -->
         <commons-lang3.version>3.20.0</commons-lang3.version>
+        <!--    Springboot 管理的是 2.21.4，新版本无兼容性问题且有安全修复    -->
+        <jackson-bom.version>2.21.7</jackson-bom.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -42,12 +43,6 @@
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis.spring}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson}</version>
             </dependency>
 
             <dependency>

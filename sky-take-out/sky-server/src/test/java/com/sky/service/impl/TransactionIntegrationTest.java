@@ -2,6 +2,7 @@ package com.sky.service.impl;
 
 import com.sky.dto.*;
 import com.sky.entity.*;
+import com.sky.json.JacksonObjectMapper;
 import com.sky.mapper.*;
 import com.sky.support.TransactionTestSupport;
 import com.sky.vo.OrderSubmitVO;
@@ -23,7 +24,9 @@ class TransactionIntegrationTest extends TransactionTestSupport {
         inject(target,"orderDetailMapper",details); inject(target,"shoppingCartService",cart); inject(target,"addressBookService",addresses);
         inject(target,"userMapper",transactionalMapper(UserMapper.class)); inject(target,"shoppingCartMapper",transactionalMapper(ShoppingCartMapper.class));
         inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"setmealMapper",transactionalMapper(SetmealMapper.class));
-        inject(target,"webSocketServer",mock(WebSocketServer.class)); return transactionalService(target,OrdersServiceImpl.class);
+        inject(target,"webSocketServer",mock(WebSocketServer.class));
+        inject(target,"objectMapper",new JacksonObjectMapper());
+        return transactionalService(target,OrdersServiceImpl.class);
     }
     private OrdersSubmitDTO request() {
         OrdersSubmitDTO dto = new OrdersSubmitDTO(); dto.setAddressBookId(1L); dto.setPayMethod(1); dto.setDeliveryStatus(1); dto.setTablewareStatus(1); dto.setTablewareNumber(2); return dto;

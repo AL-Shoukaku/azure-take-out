@@ -1,6 +1,8 @@
 package com.sky.utils;
 
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.sky.json.JacksonObjectMapper;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -16,6 +18,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +29,10 @@ import java.util.Map;
 public class HttpClientUtil {
 
     static final  int TIMEOUT_MSEC = 5 * 1000;
+
+    private static final ObjectWriter HTTP_JSON_WRITER = new JacksonObjectMapper()
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .writerFor(Map.class);
 
     /**
      * 发送GET方式请求
@@ -115,48 +122,23 @@ public class HttpClientUtil {
      * @return
      * @throws IOException
      */
-    public static String doPost4Json(String url, Map<String, String> paramMap) throws IOException {
-        // 创建Httpclient对象
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        CloseableHttpResponse response = null;
-        String resultString = "";
-
-        try {
-            // 创建Http Post请求
-            HttpPost httpPost = new HttpPost(url);
-
-            if (paramMap != null) {
-                //构造json格式数据
-                JSONObject jsonObject = new JSONObject();
-                for (Map.Entry<String, String> param : paramMap.entrySet()) {
-                    jsonObject.put(param.getKey(),param.getValue());
-                }
-                StringEntity entity = new StringEntity(jsonObject.toString(),"utf-8");
-                //设置请求编码
-                entity.setContentEncoding("utf-8");
-                //设置数据类型
-                entity.setContentType("application/json");
-                httpPost.setEntity(entity);
-            }
-
-            httpPost.setConfig(builderRequestConfig());
-
-            // 执行http请求
-            response = httpClient.execute(httpPost);
-
-            resultString = EntityUtils.toString(response.getEntity(), "UTF-8");
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            try {
-                response.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public static String doPost4Json(String url, Map<String, String> paramMap)
+            throws IOException {
+        // 在打开 HTTP 资源之前完成序列化，失败时保留原始 IOException 子类型。
+        String body = paramMap == null ? null : HTTP_JSON_WRITER.writeValueAsString(paramMap);
+        HttpPost httpPost = new HttpPost(url);
+        if (body != null) {
+            StringEntity entity = new StringEntity(body, StandardCharsets.UTF_8);
+            entity.setContentType("application/json");
+            httpPost.setEntity(entity);
         }
-
-        return resultString;
+        httpPost.setConfig(builderRequestConfig());
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(httpPost)) {
+            return EntityUtils.toString(response.getEntity(), "UTF-8");
+        }
     }
+
     private static RequestConfig builderRequestConfig() {
         return RequestConfig.custom()
                 .setConnectTimeout(TIMEOUT_MSEC)

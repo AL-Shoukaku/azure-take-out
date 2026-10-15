@@ -15,11 +15,6 @@
             <artifactId>lombok</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-        </dependency>
-
         <!-- 微信登录的 HTTP 工具直接使用此依赖。 -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

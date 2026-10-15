@@ -1,11 +1,13 @@
 package com.sky.service.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.constant.MessageConstant;
 import com.sky.dto.*;
 import com.sky.entity.*;
 import com.sky.exception.*;
+import com.sky.json.JacksonObjectMapper;
 import com.sky.mapper.*;
 import com.sky.result.PageResult;
 import com.sky.service.*;
@@ -34,6 +36,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @Mock private SetmealMapper setmealMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
     @Mock private WebSocketServer webSocketServer;
+    @Spy private ObjectMapper objectMapper = new JacksonObjectMapper();
     @Captor private ArgumentCaptor<Orders> order;
     @Captor private ArgumentCaptor<List<OrderDetail>> details;
     @Captor private ArgumentCaptor<List<ShoppingCart>> cart;
@@ -53,6 +56,19 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     }
     private OrdersPaymentDTO paymentRequest() {
         OrdersPaymentDTO dto = new OrdersPaymentDTO(); dto.setOrderNumber("order-9"); dto.setPayMethod(1); return dto;
+    }
+
+    private void assertNotification(int expectedType) throws Exception {
+        verify(webSocketServer).sendToAllClient(notification.capture());
+        JsonNode payload = objectMapper.readTree(notification.getValue());
+        assertThat(payload.isObject()).isTrue();
+        assertThat(payload.size()).isEqualTo(3);
+        assertThat(payload.path("type").isIntegralNumber()).isTrue();
+        assertThat(payload.path("type").intValue()).isEqualTo(expectedType);
+        assertThat(payload.path("orderId").isIntegralNumber()).isTrue();
+        assertThat(payload.path("orderId").longValue()).isEqualTo(9L);
+        assertThat(payload.path("content").isTextual()).isTrue();
+        assertThat(payload.path("content").textValue()).isEqualTo("订单号 order-9");
     }
     @Test void submitComputesAmountFromUnitPricesQuantityDeliveryAndPackaging() {
         when(addressBookService.getById(5L)).thenReturn(address());
@@ -155,9 +171,23 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThat(order.getValue()).extracting(Orders::getId,Orders::getStatus,Orders::getPayStatus)
                 .containsExactly(9L,Orders.TO_BE_CONFIRMED,Orders.PAID);
         assertThat(order.getValue().getCheckoutTime()).isBetween(before,LocalDateTime.now());
-        verify(webSocketServer).sendToAllClient(notification.capture()); JSONObject payload = JSON.parseObject(notification.getValue());
-        assertThat(payload.getInteger("type")).isEqualTo(1); assertThat(payload.getLong("orderId")).isEqualTo(9L);
-        assertThat(payload.getString("content")).isEqualTo("订单号 order-9");
+        assertNotification(1);
+    }
+
+    @Test
+    void paymentSerializationFailureDoesNotUpdateOrderOrNotify() throws Exception {
+        when(ordersMapper.getByNumberAndUserId("order-9", USER_ID))
+                .thenReturn(existing(Orders.PENDING_PAYMENT));
+        JsonProcessingException failure = new JsonProcessingException("synthetic JSON failure") {};
+        doThrow(failure).when(objectMapper).writeValueAsString(any());
+
+        assertThatThrownBy(() -> service.payment(paymentRequest()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("订单通知 JSON 序列化失败")
+                .hasCause(failure);
+
+        verify(ordersMapper, never()).updateForUser(any(), anyInt(), anyLong());
+        verifyNoInteractions(webSocketServer);
     }
     @ParameterizedTest @ValueSource(ints = {2,3,4,5,6})
     void unpaidNonPendingOrderRejectsSimulatedPayment(int status) {
@@ -262,11 +292,25 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_NOT_FOUND);
         verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(orderDetailMapper,webSocketServer);
     }
-    @Test void reminderNotificationHasTypeTwo() {
+    @Test void reminderNotificationHasTypeTwo() throws Exception {
         when(ordersMapper.getByIdAndUserId(9L,USER_ID)).thenReturn(existing(2)); service.remindOrder(9L);
-        verify(webSocketServer).sendToAllClient(notification.capture()); JSONObject payload = JSON.parseObject(notification.getValue());
-        assertThat(payload.getInteger("type")).isEqualTo(2); assertThat(payload.getLong("orderId")).isEqualTo(9L);
-        assertThat(payload.getString("content")).isEqualTo("订单号 order-9"); verify(ordersMapper,never()).update(any(),anyInt());
+        assertNotification(2); verify(ordersMapper,never()).update(any(),anyInt());
+    }
+
+    @Test
+    void reminderSerializationFailureDoesNotUpdateOrderOrNotify() throws Exception {
+        when(ordersMapper.getByIdAndUserId(9L, USER_ID))
+                .thenReturn(existing(Orders.TO_BE_CONFIRMED));
+        JsonProcessingException failure = new JsonProcessingException("synthetic JSON failure") {};
+        doThrow(failure).when(objectMapper).writeValueAsString(any());
+
+        assertThatThrownBy(() -> service.remindOrder(9L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("订单通知 JSON 序列化失败")
+                .hasCause(failure);
+
+        verify(ordersMapper, never()).update(any(), anyInt());
+        verifyNoInteractions(webSocketServer);
     }
     @Test void detailCombinesOrderAndItems() {
         when(ordersMapper.getById(9L)).thenReturn(existing(2));

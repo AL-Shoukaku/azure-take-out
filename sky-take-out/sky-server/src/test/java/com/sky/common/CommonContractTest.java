@@ -1,10 +1,13 @@
 package com.sky.common;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.entity.Orders;
+import com.sky.entity.DishFlavor;
 import com.sky.json.JacksonObjectMapper;
 import com.sky.result.Result;
+import com.sky.result.PageResult;
 import com.sky.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -17,6 +20,7 @@ import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -31,6 +35,55 @@ class CommonContractTest {
         Result<String> success = Result.success("value"); assertThat(success.getCode()).isEqualTo(1); assertThat(success.getData()).isEqualTo("value");
         assertThat(Result.success().getData()).isNull();
         Result<?> error = Result.error("失败"); assertThat(error.getCode()).isZero(); assertThat(error.getMsg()).isEqualTo("失败"); assertThat(error.getData()).isNull();
+    }
+
+    @Test
+    void serializedResultEnvelopesRetainNullFields() throws Exception {
+        JsonNode success = json.readTree(json.writeValueAsString(Result.success()));
+        assertThat(success.size()).isEqualTo(3);
+        assertThat(success.path("code").intValue()).isEqualTo(1);
+        assertThat(success.has("msg")).isTrue();
+        assertThat(success.get("msg").isNull()).isTrue();
+        assertThat(success.has("data")).isTrue();
+        assertThat(success.get("data").isNull()).isTrue();
+
+        JsonNode error = json.readTree(json.writeValueAsString(Result.error("失败")));
+        assertThat(error.size()).isEqualTo(3);
+        assertThat(error.path("code").intValue()).isZero();
+        assertThat(error.path("msg").textValue()).isEqualTo("失败");
+        assertThat(error.has("data")).isTrue();
+        assertThat(error.get("data").isNull()).isTrue();
+    }
+
+    @Test
+    void emptyPageRemainsAnArrayAndTotalRemainsNumeric() throws Exception {
+        JsonNode page = json.readTree(json.writeValueAsString(
+                Result.success(new PageResult(0, Collections.emptyList())))).path("data");
+        assertThat(page.path("total").isIntegralNumber()).isTrue();
+        assertThat(page.path("total").longValue()).isZero();
+        assertThat(page.path("records").isArray()).isTrue();
+        assertThat(page.path("records").size()).isZero();
+    }
+
+    @Test
+    void orderIdsAndAmountsRemainJsonNumbers() throws Exception {
+        Orders order = Orders.builder().id(2147483648L).amount(new BigDecimal("12.50")).build();
+        JsonNode payload = json.readTree(json.writeValueAsString(order));
+        assertThat(payload.path("id").isIntegralNumber()).isTrue();
+        assertThat(payload.path("id").longValue()).isEqualTo(2147483648L);
+        assertThat(payload.path("amount").isNumber()).isTrue();
+        assertThat(payload.path("amount").decimalValue()).isEqualByComparingTo("12.50");
+    }
+
+    @Test
+    void dishFlavorValueRetainsItsJsonArrayStringContract() throws Exception {
+        String options = "[\"微辣\",\"中辣\"]";
+        DishFlavor flavor = DishFlavor.builder().name("辣度").value(options).build();
+        JsonNode payload = json.readTree(json.writeValueAsString(flavor));
+        assertThat(payload.path("value").isTextual()).isTrue();
+        assertThat(payload.path("value").textValue()).isEqualTo(options);
+        assertThat(json.readTree(payload.path("value").textValue()).get(0).textValue())
+                .isEqualTo("微辣");
     }
     @Test void contextIsIsolatedAcrossThreadsAndRemovable() throws Exception {
         BaseContext.setCurrentId(7L); ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -113,6 +166,7 @@ class CommonContractTest {
         assertThat(json.readValue("\"2026-10-08 12:30\"",LocalDateTime.class)).isEqualTo(LocalDateTime.of(2026,10,8,12,30));
         assertThat(json.writeValueAsString(LocalDate.of(2026,10,8))).isEqualTo("\"2026-10-08\"");
         assertThat(json.readValue("\"12:30:45\"",LocalTime.class)).isEqualTo(LocalTime.of(12,30,45));
+        assertThat(json.writeValueAsString(LocalTime.of(12,30,45))).isEqualTo("\"12:30:45\"");
     }
     @Test void deliveryRequestAnnotationPreservesSecondsAndUnknownFieldsAreIgnored() throws Exception {
         OrdersSubmitDTO dto = json.readValue("{\"addressBookId\":7,\"estimatedDeliveryTime\":\"2026-10-08 12:30:45\",\"futureField\":1}",OrdersSubmitDTO.class);

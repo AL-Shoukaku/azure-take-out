@@ -1,5 +1,6 @@
 package com.sky.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.SkyApplication;
 import com.sky.context.BaseContext;
 import com.sky.mapper.OrdersMapper;
@@ -13,8 +14,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(classes=SkyApplication.class, properties={
@@ -24,6 +27,8 @@ import static org.assertj.core.api.Assertions.*;
 class ApplicationContextTest {
     @Autowired private ApplicationContext context;
     @Autowired private OrdersMapper ordersMapper;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private RequestMappingHandlerAdapter handlerAdapter;
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
@@ -45,6 +50,18 @@ class ApplicationContextTest {
         assertThat(redis.getHost()).isEqualTo("unused.invalid");
         assertThat(redis.getPort()).isEqualTo(16379);
         assertThat(redis.getDatabase()).isEqualTo(6);
+    }
+
+    @Test
+    void mvcJsonConvertersUseTheSharedApplicationObjectMapper() {
+        assertThat(context.getBeanNamesForType(ObjectMapper.class)).containsExactly("objectMapper");
+        assertThat(context.getBean("objectMapper")).isSameAs(objectMapper);
+        var converters = handlerAdapter.getMessageConverters().stream()
+                .filter(MappingJackson2HttpMessageConverter.class::isInstance)
+                .map(MappingJackson2HttpMessageConverter.class::cast)
+                .toList();
+        assertThat(converters).isNotEmpty().allSatisfy(converter ->
+                assertThat(converter.getObjectMapper()).isSameAs(objectMapper));
     }
 
     @Test

@@ -1,8 +1,9 @@
 package com.sky.service.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.constant.MessageConstant;
 import com.sky.dto.UserLoginDTO;
 import com.sky.entity.User;
@@ -31,6 +32,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * 微信用户登录
@@ -61,11 +65,12 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 向微信服务器发送请求，获取openid
+     * 向微信服务器发送请求，获取 openid
      * @param code
      * @return
      */
     private String getOpenid(String code) {
+        // 准备要发送的信息
         Map<String, String> params = new HashMap<>();
         params.put("appid", weChatProperties.getAppid());
         params.put("secret", weChatProperties.getSecret());
@@ -76,9 +81,15 @@ public class UserServiceImpl implements UserService {
             return null;
         }
         try {
-            JSONObject response = JSON.parseObject(json);
-            return response == null ? null : response.getString("openid");
-        } catch (JSONException e) {
+            JsonNode response = objectMapper.reader()
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                    .readTree(json);
+            if (response == null || !response.isObject()) {
+                return null;
+            }
+            JsonNode openid = response.get("openid");
+            return openid != null && openid.isTextual() ? openid.textValue() : null;
+        } catch (JsonProcessingException e) {
             log.warn("微信登录响应无法解析");
             return null;
         }
