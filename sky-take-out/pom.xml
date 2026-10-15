@@ -36,6 +36,8 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <!--    Springboot 管理的是 2.21.4，新版本无兼容性问题且有安全修复    -->
         <jackson-bom.version>2.21.7</jackson-bom.version>
+        <!--        Argon2id      -->
+        <bouncycastle.version>1.86</bouncycastle.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -129,6 +131,13 @@
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-annotations-jakarta</artifactId>
                 <version>${swagger.version}</version>
+            </dependency>
+
+            <!-- Argon2id -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

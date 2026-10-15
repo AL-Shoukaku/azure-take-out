@@ -5,6 +5,7 @@ import com.sky.context.BaseContext;
 import com.sky.entity.Employee;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.properties.JwtProperties;
+import com.sky.security.PasswordHasher;
 import com.sky.task.OrderTask;
 import com.sky.utils.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -21,7 +22,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
@@ -40,6 +40,7 @@ class EmployeePasswordMvcIntegrationTest {
     @Autowired private JwtProperties jwt;
     @Autowired private EmployeeMapper employees;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PasswordHasher passwordHasher;
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
@@ -59,14 +60,46 @@ class EmployeePasswordMvcIntegrationTest {
                 .andExpect(jsonPath("$.code").value(0)).andExpect(jsonPath("$.msg").value(message));
         unchangedPasswords(); assertThat(BaseContext.getCurrentId()).isNull();
     }
-    @Test void frontendRequestChangesPasswordAndOnlyNewPasswordCanLogIn() throws Exception {
+    @Test void legacyLoginUpgradesItsHashAndTheSamePasswordCanLogInAgain() throws Exception {
+        assertThat(employees.getById(1L).getPassword()).isEqualTo(OLD_HASH);
+        assertThat(BaseContext.getCurrentId()).isNull();
+
+        mvc.perform(post("/admin/employee/login").contentType("application/json")
+                .content("{\"username\":\"admin\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.token").isNotEmpty())
+                .andExpect(jsonPath("$.data.password").doesNotExist());
+
+        Employee upgraded = employees.getById(1L);
+        String storedHash = upgraded.getPassword();
+        assertThat(storedHash).startsWith("$argon2id$");
+        assertThat(passwordHasher.matches("123456", storedHash)).isTrue();
+        assertThat(upgraded.getUpdateUser()).isEqualTo(1L);
+        assertThat(upgraded.getUpdateTime()).isNotNull();
+        assertThat(employees.getById(2L).getPassword()).isEqualTo(OLD_HASH);
+        assertThat(BaseContext.getCurrentId()).isNull();
+
+        mvc.perform(post("/admin/employee/login").contentType("application/json")
+                .content("{\"username\":\"admin\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.token").isNotEmpty());
+
+        assertThat(employees.getById(1L).getPassword()).isEqualTo(storedHash);
+        assertThat(BaseContext.getCurrentId()).isNull();
+    }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void frontendRequestChangesPasswordAndOnlyNewPasswordCanLogIn(boolean argon2id) throws Exception {
+        if (argon2id) {
+            jdbc.update("update employee set password = ? where id = ?", passwordHasher.encode("123456"), 1L);
+        }
         Employee original=employees.getById(1L);
         mvc.perform(request("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\",\"username\":\"hacked\",\"status\":0}",1L))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
                 .andExpect(jsonPath("$.password").doesNotExist());
         assertThat(BaseContext.getCurrentId()).isNull();
         Employee saved=employees.getById(1L);
-        assertThat(saved.getPassword()).isEqualTo(DigestUtils.md5DigestAsHex("New123".getBytes()));
+        assertThat(saved.getPassword()).startsWith("$argon2id$");
+        assertThat(passwordHasher.matches("New123", saved.getPassword())).isTrue();
         assertThat(saved.getPassword()).isNotEqualTo("New123");
         assertThat(saved.getUpdateUser()).isEqualTo(1L); assertThat(saved.getUpdateTime()).isNotNull();
         assertThat(saved).extracting(Employee::getUsername,Employee::getName,Employee::getStatus,Employee::getPhone,Employee::getIdNumber)
@@ -128,7 +161,8 @@ class EmployeePasswordMvcIntegrationTest {
                 largeId,"大 ID 员工","large-employee",OLD_HASH,"13800000003","1","123456789012345680",1);
         mvc.perform(request("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",largeId))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1));
-        assertThat(employees.getById(largeId).getPassword()).isEqualTo(DigestUtils.md5DigestAsHex("New123".getBytes()));
+        assertThat(employees.getById(largeId).getPassword()).startsWith("$argon2id$");
+        assertThat(passwordHasher.matches("New123", employees.getById(largeId).getPassword())).isTrue();
         assertThat(employees.getById(largeId).getUpdateUser()).isEqualTo(largeId);
         unchangedPasswords();
     }

@@ -18,20 +18,21 @@ import com.sky.exception.PasswordEditFailedException;
 import com.sky.exception.UserNotLoginException;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.result.PageResult;
+import com.sky.security.PasswordHasher;
 import com.sky.service.EmployeeService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
-
-import java.time.LocalDateTime;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
 
     @Autowired
     private EmployeeMapper employeeMapper;
+
+    @Autowired
+    private PasswordHasher passwordHasher;
 
     /**
      * 员工登录
@@ -52,18 +53,27 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
 
-        //密码比对,通过 MD5 码进行加密
-        password = DigestUtils.md5DigestAsHex(password.getBytes());
-        if (!password.equals(employee.getPassword())) {
-            //密码错误
+        String storedHash = employee.getPassword();
+        // 先检查密码是否正确，matches 方法能自动区分 MD5 和 Argon2id
+        if (!passwordHasher.matches(password, storedHash)) {
             throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
         }
 
-        if (employee.getStatus() == StatusConstant.DISABLE) {
-            //账号被锁定
+        if (!StatusConstant.ENABLE.equals(employee.getStatus())) {
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
         }
 
+        // 如果密码正确，但数据库中存储的哈希是旧的 MD5，则升级为 Argon2id
+        if (passwordHasher.needsUpgrade(storedHash)) {
+            employee.setPassword(passwordHasher.encode(password));
+            // update 会自动填充，登录时 baseContext 里没有当前用户 ID，需要手动设置，避免切面填充错误。
+            BaseContext.setCurrentId(employee.getId());
+            try {
+                employeeMapper.update(employee);
+            } finally {
+                BaseContext.removeCurrentId();
+            }
+        }
         //3、返回实体对象
         return employee;
     }
@@ -79,8 +89,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         // 设置 DTO 中没有的属性
         // 状态默认启用
         employee.setStatus(StatusConstant.ENABLE);
-        // 密码默认123456，加密
-        employee.setPassword(DigestUtils.md5DigestAsHex(PasswordConstant.DEFAULT_PASSWORD.getBytes()));
+        // 密码默认123456，使用 Argon2id 哈希算法加密，避免明文存储
+        employee.setPassword(passwordHasher.encode(PasswordConstant.DEFAULT_PASSWORD));
         // 创建人，修改人，创建时间，修改时间在切面中自动填充
 
         // 调用持久层，存入数据库
@@ -98,6 +108,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         PageHelper.startPage(employeePageQueryDTO.getPage(), employeePageQueryDTO.getPageSize());
         // 要求使用 Page 对象进行返回
         Page<Employee> page = employeeMapper.pageQuery(employeePageQueryDTO);
+        // 将密码掩码，防止泄露
+        page.forEach(employee -> employee.setPassword("****"));
         pageResult.setTotal(page.getTotal());
         pageResult.setRecords(page.getResult());
         return  pageResult;
@@ -151,13 +163,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (!StatusConstant.ENABLE.equals(current.getStatus())) {
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
         }
-        String oldPassword = DigestUtils.md5DigestAsHex(passwordEditDTO.getOldPassword().getBytes());
-        if (!oldPassword.equals(current.getPassword())) {
+
+        String oldPassword = passwordEditDTO.getOldPassword();
+        String storedHash = current.getPassword();
+        if (!passwordHasher.matches(oldPassword, storedHash)) {
             throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
         }
+
         Employee update = Employee.builder().id(empId)
-                .password(DigestUtils.md5DigestAsHex(passwordEditDTO.getNewPassword().getBytes())).build();
-        if (employeeMapper.updatePassword(update, oldPassword) == 0) {
+                .password(passwordHasher.encode(passwordEditDTO.getNewPassword())).build();
+        // 只传 ID 和新哈希，复用通用更新；操作人和时间由自动填充处理。
+        if (employeeMapper.update(update) == 0) {
             throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
         }
     }

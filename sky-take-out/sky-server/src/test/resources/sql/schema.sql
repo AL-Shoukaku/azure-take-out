@@ -60,7 +60,7 @@ CREATE TABLE `employee` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(32) NOT NULL,
   `username` varchar(32) NOT NULL,
-  `password` varchar(64) NOT NULL,
+  `password` varchar(128) NOT NULL,
   `phone` varchar(11) NOT NULL,
   `sex` varchar(2) NOT NULL,
   `id_number` varchar(18) NOT NULL,

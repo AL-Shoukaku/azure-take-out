@@ -2,11 +2,13 @@ package com.sky.service.impl;
 
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
+import com.sky.context.BaseContext;
 import com.sky.dto.*;
 import com.sky.entity.Employee;
 import com.sky.exception.*;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.result.PageResult;
+import com.sky.security.PasswordHasher;
 import com.sky.support.ServiceTestSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +20,7 @@ import static org.mockito.Mockito.*;
 class EmployeeServiceImplTest extends ServiceTestSupport {
     @InjectMocks private EmployeeServiceImpl service;
     @Mock private EmployeeMapper mapper;
+    @Spy private PasswordHasher passwordHasher = new PasswordHasher();
     @Captor private ArgumentCaptor<Employee> employee;
 
     private EmployeeLoginDTO login() {
@@ -47,6 +50,16 @@ class EmployeeServiceImplTest extends ServiceTestSupport {
         when(mapper.getByUsername("admin")).thenReturn(account(0));
         assertThatThrownBy(() -> service.login(login())).isInstanceOf(AccountLockedException.class)
                 .hasMessage(MessageConstant.ACCOUNT_LOCKED);
+        verify(mapper,never()).update(any());
+    }
+    @Test void failedLoginUpgradeClearsItsTemporaryEmployeeIdentity() {
+        BaseContext.removeCurrentId();
+        when(mapper.getByUsername("admin")).thenReturn(account(1));
+        when(mapper.update(any())).thenThrow(new IllegalStateException("injected update failure"));
+
+        assertThatThrownBy(() -> service.login(login()))
+                .isInstanceOf(IllegalStateException.class).hasMessage("injected update failure");
+        assertThat(BaseContext.getCurrentId()).isNull();
     }
     @Test void saveCopiesProfileAndSetsEnabledDefaultPassword() {
         EmployeeDTO dto = new EmployeeDTO(); dto.setName("员工"); dto.setUsername("new-user");
@@ -54,9 +67,10 @@ class EmployeeServiceImplTest extends ServiceTestSupport {
         service.save(dto);
         verify(mapper).insert(employee.capture());
         assertThat(employee.getValue()).extracting(Employee::getName, Employee::getUsername,
-                Employee::getPhone, Employee::getSex, Employee::getIdNumber, Employee::getStatus, Employee::getPassword)
-                .containsExactly("员工", "new-user", "13800000000", "1", "123456789", 1,
-                        "e10adc3949ba59abbe56e057f20f883e");
+                Employee::getPhone, Employee::getSex, Employee::getIdNumber, Employee::getStatus)
+                .containsExactly("员工", "new-user", "13800000000", "1", "123456789", 1);
+        assertThat(employee.getValue().getPassword()).startsWith("$argon2id$");
+        assertThat(passwordHasher.matches("123456", employee.getValue().getPassword())).isTrue();
     }
     @Test void pagePreservesTotalAndPaginationRequest() {
         EmployeePageQueryDTO dto = new EmployeePageQueryDTO(); dto.setPage(2); dto.setPageSize(5); dto.setName("员");
@@ -69,6 +83,7 @@ class EmployeeServiceImplTest extends ServiceTestSupport {
         PageResult result = service.pageQuery(dto);
         assertThat(result.getTotal()).isEqualTo(12);
         assertThat(result.getRecords()).containsExactly(expected);
+        assertThat(expected.getPassword()).isEqualTo("****");
     }
     @ParameterizedTest @ValueSource(ints = {0, 1})
     void statusChangeUpdatesOnlyTargetAndStatus(int status) {

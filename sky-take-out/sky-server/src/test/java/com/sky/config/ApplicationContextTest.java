@@ -2,8 +2,10 @@ package com.sky.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.SkyApplication;
+import com.sky.constant.PasswordConstant;
 import com.sky.context.BaseContext;
 import com.sky.mapper.OrdersMapper;
+import com.sky.security.PasswordHasher;
 import com.sky.service.*;
 import com.sky.task.OrderTask;
 import org.junit.jupiter.api.AfterEach;
@@ -78,6 +80,8 @@ class ApplicationContextTest {
         assertThat(saved.getCreateTime()).isNotNull();
         assertThat(saved.getUpdateTime()).isEqualTo(saved.getCreateTime());
         assertThat(saved.getStatus()).isEqualTo(1);
-        assertThat(saved.getPassword()).isEqualTo("e10adc3949ba59abbe56e057f20f883e");
+        assertThat(saved.getPassword()).startsWith("$argon2id$");
+        assertThat(context.getBean(PasswordHasher.class)
+                .matches(PasswordConstant.DEFAULT_PASSWORD, saved.getPassword())).isTrue();
     }
 }
