@@ -1,10 +1,12 @@
 package com.sky.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.dto.*;
 import com.sky.entity.*;
 import com.sky.exception.BaseException;
 import com.sky.exception.UserNotLoginException;
 import com.sky.context.BaseContext;
+import com.sky.json.JacksonObjectMapper;
 import com.sky.mapper.*;
 import com.sky.service.*;
 import com.sky.service.impl.*;
@@ -31,6 +33,7 @@ class OwnershipServiceTest extends ServiceTestSupport {
     @Mock private UserMapper userMapper;
     @Mock private AddressBookMapper addressBookMapper;
     @Mock private WebSocketServer webSocketServer;
+    @Spy private ObjectMapper objectMapper = new JacksonObjectMapper();
 
     @ParameterizedTest @ValueSource(strings={"detail","cancel","remind","payment","repetition"})
     void userCannotOperateAnotherUsersOrder(String operation) {

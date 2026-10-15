@@ -1,7 +1,7 @@
 package com.sky.support;
 
 import com.sky.context.BaseContext;
-import com.sky.json.JacksonObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.service.*;
 import com.sky.utils.JwtUtil;
 import org.junit.jupiter.api.*;
@@ -42,7 +42,7 @@ public abstract class WebTestSupport {
     @Autowired protected ValueOperations values;
     @Autowired protected CacheManager cacheManager;
     protected MockMvc mvc;
-    protected final JacksonObjectMapper json = new JacksonObjectMapper();
+    @Autowired protected ObjectMapper json;
     protected static final Path UPLOADS = createUploadDirectory();
     private static Path createUploadDirectory() {
         try { return Files.createTempDirectory("sky-mvc-upload-"); } catch (IOException e) { throw new ExceptionInInitializerError(e); }

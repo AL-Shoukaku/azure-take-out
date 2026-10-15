@@ -12,7 +12,7 @@
     <groupId>com.sky</groupId>
     <artifactId>sky-take-out</artifactId>
     <packaging>pom</packaging>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <modules>
         <module>sky-common</module>
         <module>sky-pojo</module>
@@ -23,17 +23,21 @@
         <maven.compiler.release>21</maven.compiler.release>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <mybatis.spring>3.0.5</mybatis.spring>
-        <fastjson>1.2.76</fastjson>
         <httpclient.version>4.5.14</httpclient.version>
         <druid>1.2.28</druid>
         <pagehelper>2.1.1</pagehelper>
         <knife4j>4.5.0</knife4j>
-        <jjwt>0.9.1</jjwt>
-        <jaxb-api>2.3.1</jaxb-api>
-        <poi>3.16</poi>
+        <jjwt>0.13.0</jjwt>
+        <poi>5.5.1</poi>
         <!-- knife4j 自动引入的版本可能过旧，手动指定 -->
-        <springdoc.version>2.8.17</springdoc.version>
-        <swagger.version>2.2.47</swagger.version>
+        <springdoc.version>2.9.1</springdoc.version>
+        <swagger.version>2.2.55</swagger.version>
+        <!--    springboot使用的是3.17.0，有已知漏洞    -->
+        <commons-lang3.version>3.20.0</commons-lang3.version>
+        <!--    Springboot 管理的是 2.21.4，新版本无兼容性问题且有安全修复    -->
+        <jackson-bom.version>2.21.7</jackson-bom.version>
+        <!--        Argon2id      -->
+        <bouncycastle.version>1.86</bouncycastle.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -41,12 +45,6 @@
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis.spring}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson}</version>
             </dependency>
 
             <dependency>
@@ -75,14 +73,20 @@
 
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
+                <artifactId>jjwt-api</artifactId>
                 <version>${jjwt}</version>
             </dependency>
-
             <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api}</version>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt}</version>
+                <scope>runtime</scope>
             </dependency>
 
             <!-- poi -->
@@ -127,6 +131,13 @@
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-annotations-jakarta</artifactId>
                 <version>${swagger.version}</version>
+            </dependency>
+
+            <!-- Argon2id -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

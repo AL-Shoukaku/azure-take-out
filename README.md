@@ -1,6 +1,6 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.2.0-blue)
+![Version](https://img.shields.io/badge/version-v0.3.0-blue)
 
 ## 📖 项目简介
 
@@ -16,6 +16,7 @@
 ## ✨ 项目亮点
 
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
+- 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
 
 开发中，待补充
 
@@ -97,6 +98,7 @@ sudo systemctl start redis
 | `sky.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
 | `sky.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
 | `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
+| `sky.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
 这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
 
@@ -154,76 +156,84 @@ mvn -f sky-take-out/pom.xml clean test
 
 ## 📂 项目结构
 
+以下展示主要源码、资源与测试目录。
+
 ```text
 sky-delivery-plus/
-├── sky-take-out/                  # 后端（Maven 多模块）
-│   ├── sky-common/                # 常量、工具类、自定义异常、统一返回结果
-│   ├── sky-pojo/                  # 项目所需要用到的对象类,entity / DTO / VO
-│   └── sky-server/                # 启动类、config、interceptor、
-├── project-rjwm-admin-vue-ts/     # 管理端前端（Vue 2 + TypeScript）
-├── mp-weixin/                     # 微信小程序（用户端）
-└── db/
-    ├── sky.sql                    # 建库建表 + 初始数据
-    └── 数据库设计文档.md
+├── sky-take-out/                              # 后端（Maven 多模块）
+│   ├── pom.xml                                # 父工程：模块聚合、版本与依赖管理
+│   ├── sky-common/                            # 常量、上下文、异常、JSON 与通用工具
+│   ├── sky-pojo/                              # 请求 DTO、数据库实体与响应 VO
+│   └── sky-server/                            # 应用启动、接口、业务、数据访问与测试
+├── project-rjwm-admin-vue-ts/                 # 管理端前端（Vue 2 + TypeScript）
+├── mp-weixin/                                 # 微信小程序用户端（uni-app 编译产物）
+├── db/
+│   ├── sky.sql                                # 建库建表与初始数据，默认密码使用 Argon2id 哈希
+│   └── 数据库设计文档.md
+├── .gitignore                                 # 构建产物、本地配置等忽略规则
+└── README.md                                  # 项目说明与运行指南
 ```
 
 ### sky-common
 
 ```text
 sky-common/
-├── pom.xml                          # 公共模块依赖配置
+├── pom.xml                                    # 公共模块依赖配置
 └── src/main/java/com/sky/
-    ├── constant/                    # 常量定义
-    ├── context/                     # 当前登录身份的线程上下文
-    ├── enumeration/                 # 枚举类型
-    ├── exception/                   # 自定义业务异常
-    ├── json/                        # JSON 序列化与反序列化配置
-    ├── properties/                  # 配置属性类
-    ├── result/                      # 统一响应结果与分页结果
-    └── utils/                       # JWT、HTTP、支付等通用工具
+    ├── constant/                              # 状态、JWT 声明、默认密码等常量
+    ├── context/                               # 当前登录身份的线程上下文
+    ├── enumeration/                           # 公共字段填充的操作类型枚举
+    ├── exception/                             # 自定义业务异常
+    ├── json/
+    │   └── JacksonObjectMapper.java           # Jackson 序列化规则与日期时间格式
+    ├── properties/                            # JWT、微信登录配置属性
+    ├── result/                                # 统一响应结果与分页结果
+    └── utils/                                 # JWT 签发与校验、HTTP 请求工具
 ```
 
 ### sky-pojo
 
 ```text
 sky-pojo/
-├── pom.xml                          # 数据对象模块依赖配置
+├── pom.xml                                    # 数据对象模块依赖配置
 └── src/main/java/com/sky/
-    ├── dto/                         # 接收请求参数的数据传输对象
-    ├── entity/                      # 与数据库表对应的实体类
-    └── vo/                          # 返回给前端的响应对象
+    ├── dto/                                   # 接收请求参数的数据传输对象
+    ├── entity/                                # 与数据库表对应的实体类
+    └── vo/                                    # 返回给前端的响应对象
 ```
 
 ### sky-server
 
 ```text
 sky-server/
-├── pom.xml                          # 服务模块依赖与构建配置
+├── pom.xml                                    # 服务模块依赖与构建配置
 └── src/
     ├── main/
     │   ├── java/com/sky/
-    │   │   ├── SkyApplication.java  # Spring Boot 启动类
-    │   │   ├── annotation/          # 自定义注解
-    │   │   ├── aspect/              # 公共字段自动填充等 AOP 切面
-    │   │   ├── config/              # MVC、Redis、WebSocket 配置
-    │   │   ├── controller/          # 接口控制器
-    │   │   │   ├── admin/           # 管理端接口
-    │   │   │   └── user/            # 用户端接口
-    │   │   ├── handler/             # 全局异常处理
-    │   │   ├── interceptor/         # 管理端与用户端 JWT 拦截器
-    │   │   ├── mapper/              # MyBatis 数据访问接口
-    │   │   ├── service/             # 业务服务接口
-    │   │   │   └── impl/            # 业务服务实现
-    │   │   ├── task/                # 订单定时任务
-    │   │   └── websocket/           # 来单提醒与催单消息推送
+    │   │   ├── SkyApplication.java            # Spring Boot 启动类
+    │   │   ├── annotation/                    # 自定义注解
+    │   │   ├── aspect/                        # 公共字段自动填充等 AOP 切面
+    │   │   ├── config/                        # MVC、Redis、WebSocket、OpenAPI 配置
+    │   │   ├── controller/                    # 接口控制器
+    │   │   │   ├── admin/                     # 管理端接口
+    │   │   │   └── user/                      # 用户端接口
+    │   │   ├── handler/                       # 全局异常处理
+    │   │   ├── interceptor/                   # 管理端与用户端 JWT 拦截器
+    │   │   ├── mapper/                        # MyBatis 数据访问接口
+    │   │   ├── security/
+    │   │   │   └── PasswordHasher.java        # Argon2id 密码哈希、验证与旧 MD5 兼容
+    │   │   ├── service/                       # 业务服务接口
+    │   │   │   └── impl/                      # 业务服务实现
+    │   │   ├── task/                          # 订单定时任务
+    │   │   └── websocket/                     # 来单提醒与催单消息推送
     │   └── resources/
-    │       ├── application.yml      # 主配置
+    │       ├── application.yml                # 主配置，默认启用 local 环境
     │       ├── application-local.example.yml  # 本地配置示例
     │       ├── application-local.yml          # 本机配置（不提交 Git）
-    │       ├── mapper/              # MyBatis SQL 映射文件
-    │       ├── menu-images/         # 演示菜品与套餐图片
-    │       └── template/            # 运营数据报表模板
-    └── test/java/com/sky/service/impl/  # 业务服务单元测试
+    │       ├── mapper/                        # MyBatis SQL 映射文件
+    │       ├── menu-images/                   # 本机演示菜品与套餐图片（不提交 Git）
+    │       └── template/                      # 运营数据报表模板
+    └── test/java/com/sky/service/impl/        # 业务服务单元测试
 ```
 
 ## 🗄 数据库设计
@@ -232,10 +242,9 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. 升级一些过于陈旧的依赖，提升项目的安全性和稳定性
-2. 管理端前端升级到 Vue3
-3. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
-4. to be continued...
+1. 管理端前端升级到 Vue3
+2. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
+3. to be continued...
 
 
 ## 🖼 项目截图

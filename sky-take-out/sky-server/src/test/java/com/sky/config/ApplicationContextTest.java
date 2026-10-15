@@ -1,8 +1,11 @@
 package com.sky.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.SkyApplication;
+import com.sky.constant.PasswordConstant;
 import com.sky.context.BaseContext;
 import com.sky.mapper.OrdersMapper;
+import com.sky.security.PasswordHasher;
 import com.sky.service.*;
 import com.sky.task.OrderTask;
 import org.junit.jupiter.api.AfterEach;
@@ -13,8 +16,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(classes=SkyApplication.class, properties={
@@ -24,6 +29,8 @@ import static org.assertj.core.api.Assertions.*;
 class ApplicationContextTest {
     @Autowired private ApplicationContext context;
     @Autowired private OrdersMapper ordersMapper;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private RequestMappingHandlerAdapter handlerAdapter;
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
@@ -48,6 +55,18 @@ class ApplicationContextTest {
     }
 
     @Test
+    void mvcJsonConvertersUseTheSharedApplicationObjectMapper() {
+        assertThat(context.getBeanNamesForType(ObjectMapper.class)).containsExactly("objectMapper");
+        assertThat(context.getBean("objectMapper")).isSameAs(objectMapper);
+        var converters = handlerAdapter.getMessageConverters().stream()
+                .filter(MappingJackson2HttpMessageConverter.class::isInstance)
+                .map(MappingJackson2HttpMessageConverter.class::cast)
+                .toList();
+        assertThat(converters).isNotEmpty().allSatisfy(converter ->
+                assertThat(converter.getObjectMapper()).isSameAs(objectMapper));
+    }
+
+    @Test
     @org.springframework.transaction.annotation.Transactional
     void employeeCreationUsesActualMapperAuditAspectAndDatabaseDefault() {
         BaseContext.setCurrentId(42L);
@@ -61,6 +80,8 @@ class ApplicationContextTest {
         assertThat(saved.getCreateTime()).isNotNull();
         assertThat(saved.getUpdateTime()).isEqualTo(saved.getCreateTime());
         assertThat(saved.getStatus()).isEqualTo(1);
-        assertThat(saved.getPassword()).isEqualTo("e10adc3949ba59abbe56e057f20f883e");
+        assertThat(saved.getPassword()).startsWith("$argon2id$");
+        assertThat(context.getBean(PasswordHasher.class)
+                .matches(PasswordConstant.DEFAULT_PASSWORD, saved.getPassword())).isTrue();
     }
 }

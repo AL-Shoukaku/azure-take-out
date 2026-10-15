@@ -1,6 +1,7 @@
 package com.sky.service.impl;
 
-import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
@@ -72,6 +73,9 @@ public class OrdersServiceImpl implements OrdersService {
     @Autowired
     private WebSocketServer webSocketServer;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Transactional
     public OrderSubmitVO submitOrder(OrdersSubmitDTO ordersSubmitDTO) {
         Long userId = getCurrentUserId();
@@ -118,9 +122,6 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 清空购物车数据
         shoppingCartService.cleanShoppingCart();
-
-        // 封装VO对象返回
-        OrderSubmitVO orderSubmitVO = new OrderSubmitVO();
 
         return OrderSubmitVO.builder()
                 .id(orders.getId())
@@ -177,6 +178,9 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     private void processPaymentSuccess(Orders ordersDB, Long userId) {
+        // 先把订单号、订单id和订单号封装成json字符串，这样如果序列化失败就不会更改数据库
+        String jsonStr = serializeNotification(1, ordersDB.getId(), ordersDB.getNumber());
+
         // 根据订单id更新订单的状态、支付方式、支付状态、结账时间
         Orders orders = Orders.builder()
                 .id(ordersDB.getId())
@@ -197,12 +201,7 @@ public class OrdersServiceImpl implements OrdersService {
         }
 
         // 通过 websocket 把来单消息推送给商家端，商家端收到消息后可以播放提示音
-        // 封装 type, orderId 和 message 三个字段
-        Map map = new HashMap<>();
-        map.put("type", 1);
-        map.put("orderId", ordersDB.getId());   // 1.表示来单提醒，2.表示客户催单
-        map.put("content", "订单号 " + ordersDB.getNumber());
-        String jsonStr = JSON.toJSONString(map);
+        // 封装 type, orderId 和 content 三个字段
         webSocketServer.sendToAllClient(jsonStr);
     }
 
@@ -435,6 +434,9 @@ public class OrdersServiceImpl implements OrdersService {
         updateOrderIfStatus(newOrders, Orders.DELIVERY_IN_PROGRESS);
     }
 
+    /**
+     * 商家接单
+     */
     public void confirmOrder(OrdersConfirmDTO ordersConfirmDTO) {
         Long id = ordersConfirmDTO.getId();
         Orders orders = ordersMapper.getById(id);
@@ -454,6 +456,10 @@ public class OrdersServiceImpl implements OrdersService {
         updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
     }
 
+
+    /**
+     * 商家拒单
+     */
     public void rejectOrder(OrdersRejectionDTO ordersRejectionDTO) {
         Long id = ordersRejectionDTO.getId();
         Orders orders = ordersMapper.getById(id);
@@ -476,6 +482,10 @@ public class OrdersServiceImpl implements OrdersService {
         updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
     }
 
+    /**
+     * 商家派送订单
+     * @param id 订单id
+     */
     public void deliveryOrder(Long id) {
         Orders orders = ordersMapper.getById(id);
         if (orders == null) {
@@ -507,18 +517,33 @@ public class OrdersServiceImpl implements OrdersService {
         }
 
         // 通过 websocket 把催单消息推送给商家端，商家端收到消息后可以播放提示音
-        // 封装 type, orderId 和 message 三个字段
-        Map map = new HashMap<>();
-        map.put("type", 2); // 1.表示来单提醒，2.表示客户催单
-        map.put("orderId", id);
-        map.put("content", "订单号 " + orders.getNumber());
-        String jsonStr = JSON.toJSONString(map);
+        // 封装 type, orderId 和 content 三个字段
+        String jsonStr = serializeNotification(2, id, orders.getNumber());
         webSocketServer.sendToAllClient(jsonStr);
     }
 
     private void updateOrderIfStatus(Orders order, Integer expectedStatus) {
         if (ordersMapper.update(order, expectedStatus) == 0) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+    }
+
+    /**
+     * 根据发送消息的类型，订单 id 和订单号序列化为 JSON 字符串
+     * @param type          1.表示来单提醒，2.表示客户催单
+     * @param orderId       订单 id
+     * @param orderNumber   订单号
+     * @return
+     */
+    private String serializeNotification(int type, Long orderId, String orderNumber) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", type);
+        message.put("orderId", orderId);
+        message.put("content", "订单号 " + orderNumber);
+        try {
+            return objectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("订单通知 JSON 序列化失败", e);
         }
     }
 

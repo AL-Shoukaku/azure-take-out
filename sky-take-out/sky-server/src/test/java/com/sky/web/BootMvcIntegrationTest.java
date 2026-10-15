@@ -133,13 +133,19 @@ class BootMvcIntegrationTest {
         LocalDateTime delivery = LocalDateTime.now().plusHours(2).withSecond(45).withNano(0);
         String body = """
                 {"addressBookId":1,"payMethod":1,"remark":"少盐","amount":42.00,"packAmount":3,
-                 "deliveryStatus":0,"estimatedDeliveryTime":"%s","tablewareStatus":0,"tablewareNumber":2}
+                 "deliveryStatus":0,"estimatedDeliveryTime":"%s","tablewareStatus":0,"tablewareNumber":2,
+                 "futureField":true}
                 """.formatted(delivery.format(SECONDS));
         byte[] response = mvc.perform(user(post("/user/order/submit").contentType("application/json").content(body)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
                 .andExpect(jsonPath("$.data.orderAmount").value(42.0))
                 .andReturn().getResponse().getContentAsByteArray();
-        JsonNode result = json.readTree(response).path("data");
+        JsonNode envelope = json.readTree(response);
+        assertThat(envelope.has("msg")).isTrue();
+        assertThat(envelope.get("msg").isNull()).isTrue();
+        JsonNode result = envelope.path("data");
+        assertThat(result.path("id").isIntegralNumber()).isTrue();
+        assertThat(result.path("orderAmount").isNumber()).isTrue();
         Orders saved = orders.getById(result.path("id").asLong());
         assertThat(saved.getEstimatedDeliveryTime()).isEqualTo(delivery);
         assertThat(saved.getRemark()).isEqualTo("少盐");
@@ -164,9 +170,13 @@ class BootMvcIntegrationTest {
 
     @Test
     void missingAdminOrderReturnsTheExistingBusinessErrorEnvelope() throws Exception {
-        mvc.perform(admin(get("/admin/order/details/999")))
+        byte[] response = mvc.perform(admin(get("/admin/order/details/999")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.msg").value("订单不存在"));
+                .andExpect(jsonPath("$.msg").value("订单不存在"))
+                .andReturn().getResponse().getContentAsByteArray();
+        JsonNode envelope = json.readTree(response);
+        assertThat(envelope.has("data")).isTrue();
+        assertThat(envelope.get("data").isNull()).isTrue();
         assertThat(BaseContext.getCurrentId()).isNull();
     }
 

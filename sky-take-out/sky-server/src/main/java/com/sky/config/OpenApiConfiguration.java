@@ -16,7 +16,7 @@ public class OpenApiConfiguration {
     public OpenAPI skyOpenApi() {
         return new OpenAPI().info(new Info()
                 .title("苍穹外卖项目接口文档")
-                .version("0.2.0")
+                .version("0.3.0")
                 .description("管理端与用户端接口"));
     }
 
