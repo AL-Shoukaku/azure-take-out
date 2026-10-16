@@ -1,35 +1,25 @@
-@import './base.css';
+/* 页面根元素，基本相当于 <html> 但优先级更高 */
+:root {
+  /* 设置字体 */
+  font-family: Arial, 'Microsoft YaHei', sans-serif;
+  color: #333;
+  color-scheme: light;
+}
 
+/* 全局通用的 box-sizing 设置 */
+*,
+*::before,
+*::after {
+  /* width 等将包括内容，内边距和边框 */
+  box-sizing: border-box;
+}
+
+/* 清楚浏览器默认外边距 */
+body {
+  margin: 0;
+}
+
+/* 选中 id 为 app 的元素，在 index.html 里 */
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
-
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+  min-height: 100vh;
 }

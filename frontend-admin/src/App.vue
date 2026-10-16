@@ -1,4 +1,13 @@
-<script setup lang="ts">
+<template>
+  <!-- 路由视图，当前地址对应哪个组件，就将它放在此处 -->
+  <RouterView />
+</template>
+
+<script setup lang="ts"></script>
+
+<style scoped></style>
+
+<!-- <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
 </script>
@@ -82,4 +91,4 @@ nav a:first-of-type {
     margin-top: 1rem;
   }
 }
-</style>
+</style> -->
