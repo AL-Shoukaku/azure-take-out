@@ -1,25 +1,29 @@
-/* 页面根元素，基本相当于 <html> 但优先级更高 */
 :root {
-  /* 设置字体 */
-  font-family: Arial, 'Microsoft YaHei', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
   color: #333;
-  color-scheme: light;
+  background: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --el-color-primary: #ffc200;
 }
 
-/* 全局通用的 box-sizing 设置 */
 *,
 *::before,
 *::after {
-  /* width 等将包括内容，内边距和边框 */
   box-sizing: border-box;
 }
 
-/* 清楚浏览器默认外边距 */
-body {
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
   margin: 0;
 }
 
-/* 选中 id 为 app 的元素，在 index.html 里 */
-#app {
-  min-height: 100vh;
+button,
+input {
+  font: inherit;
 }

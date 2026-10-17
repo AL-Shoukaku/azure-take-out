@@ -1,28 +1,40 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
+import { getToken } from '@/utils/auth'
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'home',
-      component: HomeView,
-    },
-    {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/login/LoginPage.vue'),
-    },
-  ],
-})
+export function createAppRouter(
+  history: RouterHistory = createWebHistory(import.meta.env.BASE_URL),
+) {
+  const router = createRouter({
+    history,
+    routes: [
+      { path: '/', redirect: '/dashboard' },
+      {
+        path: '/login',
+        name: 'login',
+        component: () => import('@/views/login/LoginPage.vue'),
+        meta: { title: '登录 · 苍穹外卖管理端' },
+      },
+      {
+        path: '/dashboard',
+        name: 'dashboard',
+        component: () => import('@/views/dashboard/DashboardPage.vue'),
+        meta: { title: '工作台 · 苍穹外卖管理端' },
+      },
+      { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
+    ],
+  })
 
-export default router
+  router.beforeEach((to) => {
+    const token = getToken()
+    if (!token && to.name !== 'login') return '/login'
+    if (token && to.name === 'login') return '/dashboard'
+  })
+
+  router.afterEach((to) => {
+    document.title = String(to.meta.title)
+  })
+
+  return router
+}
+
+export default createAppRouter()
