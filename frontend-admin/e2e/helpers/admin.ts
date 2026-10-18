@@ -18,6 +18,9 @@ export async function mockLayoutAPIs(page: Page) {
   await page.route('**/api/employee/page?**', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
   )
+  await page.route('**/api/category/page?**', (route) =>
+    route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
+  )
   await page.routeWebSocket(/\/ws\//, (socket) => {
     sockets.push(socket)
   })

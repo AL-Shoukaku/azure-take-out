@@ -19,8 +19,12 @@ export function createAppRouter(
             component:
               item.path === '/employee'
                 ? () => import('@/views/employee/EmployeeListPage.vue')
-                : () => import('@/views/PlaceholderPage.vue'),
-            props: item.path === '/employee' ? undefined : { pageTitle: item.title },
+                : item.path === '/category'
+                  ? () => import('@/views/category/CategoryPage.vue')
+                  : () => import('@/views/PlaceholderPage.vue'),
+            props: ['/employee', '/category'].includes(item.path)
+              ? undefined
+              : { pageTitle: item.title },
             meta: { title: `${item.title} · 苍穹外卖管理端`, pageTitle: item.title },
           })),
           {

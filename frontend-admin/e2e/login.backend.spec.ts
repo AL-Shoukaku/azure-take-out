@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 const username = process.env.E2E_ADMIN_USERNAME
 const password = process.env.E2E_ADMIN_PASSWORD
 
-test('连接真实后端登录，读取员工列表，刷新后保留会话', async ({ page, context }) => {
+test('连接真实后端登录，读取员工与分类列表，刷新后保留会话', async ({ page, context }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- 真实后端测试需要用户通过环境变量提供账号
   test.skip(
     !username || !password,
@@ -29,6 +29,13 @@ test('连接真实后端登录，读取员工列表，刷新后保留会话', as
   expect((await (await employeeResponse).json()).code).toBe(1)
   await expect(page.getByRole('region', { name: '员工管理', exact: true })).toBeVisible()
   await expect(page.getByRole('columnheader', { name: '员工姓名', exact: true })).toBeVisible()
+
+  const categoryResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/api/category/page',
+  )
+  await page.getByRole('menuitem', { name: '分类管理', exact: true }).click()
+  expect((await (await categoryResponse).json()).code).toBe(1)
+  await expect(page.getByRole('columnheader', { name: '分类名称', exact: true })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('region', { name: '员工管理', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '分类管理', exact: true })).toBeVisible()
 })

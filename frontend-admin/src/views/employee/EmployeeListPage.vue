@@ -1,7 +1,7 @@
 <template>
-  <section class="employee-list" aria-label="员工管理">
-    <div class="employee-toolbar">
-      <form class="employee-search" @submit.prevent="search">
+  <section class="management-list employee-list" aria-label="员工管理">
+    <div class="management-toolbar">
+      <form class="management-search" @submit.prevent="search">
         <label for="employee-name-query">员工姓名：</label>
         <ElInput
           id="employee-name-query"
@@ -11,14 +11,14 @@
           clearable
           @clear="search"
         />
-        <ElButton class="employee-dark-button" native-type="submit">查询</ElButton>
+        <ElButton class="management-dark-button" native-type="submit">查询</ElButton>
       </form>
       <ElButton type="primary" class="employee-add" @click="router.push('/employee/add')">
         + 添加员工
       </ElButton>
     </div>
 
-    <div v-if="loadError" class="employee-load-error" role="alert">
+    <div v-if="loadError" class="management-load-error" role="alert">
       <span>{{ loadError }}</span>
       <ElButton @click="loadEmployees">重试</ElButton>
     </div>
@@ -27,7 +27,7 @@
       v-loading="loading"
       :data="employees"
       stripe
-      class="employee-table"
+      class="management-table"
       row-key="id"
     >
       <ElTableColumn prop="name" label="员工姓名" min-width="120" />
@@ -36,7 +36,7 @@
       <!-- @vue-generic {Employee} -->
       <ElTableColumn label="账号状态" min-width="110">
         <template #default="{ row }">
-          <span class="employee-status" :class="{ 'is-disabled': row.status === 0 }">
+          <span class="management-status" :class="{ 'is-disabled': row.status === 0 }">
             {{ row.status === 1 ? '启用' : '禁用' }}
           </span>
         </template>
@@ -50,18 +50,18 @@
       <!-- @vue-generic {Employee} -->
       <ElTableColumn label="操作" width="160" align="center">
         <template #default="{ row }">
-          <div class="employee-actions">
+          <div class="management-actions">
             <ElButton
               link
-              class="employee-edit"
+              class="management-action-blue"
               :disabled="row.username === 'admin'"
               @click="router.push({ path: '/employee/add', query: { id: row.id } })"
               >修改</ElButton
             >
-            <span class="employee-action-divider" aria-hidden="true">|</span>
+            <span class="management-action-divider" aria-hidden="true">|</span>
             <ElButton
               link
-              :class="row.status === 1 ? 'employee-disable' : 'employee-edit'"
+              :class="row.status === 1 ? 'management-action-red' : 'management-action-blue'"
               :disabled="
                 row.username === 'admin' ||
                 (row.id === session.employee?.id && row.status === 1) ||
@@ -74,15 +74,11 @@
         </template>
       </ElTableColumn>
     </ElTable>
-    <ElPagination
-      v-model:current-page="page"
+    <ManagementPagination
+      v-model:page="page"
       v-model:page-size="pageSize"
-      class="employee-pagination"
-      :page-sizes="[10, 20, 30, 40]"
-      layout="total, sizes, prev, pager, next, jumper"
       :total="total"
       :disabled="loading"
-      @size-change="page = 1"
     />
   </section>
 </template>
@@ -95,14 +91,14 @@ import {
   ElInput,
   ElMessage,
   ElMessageBox,
-  ElPagination,
   ElTable,
   ElTableColumn,
   vLoading,
 } from 'element-plus'
 import { getEmployeePage, setEmployeeStatus, type Employee } from '@/api/employee'
 import { useSessionStore } from '@/stores/session'
-import './employee.css'
+import ManagementPagination from '@/components/ManagementPagination.vue'
+import '@/assets/styles/management.css'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -157,7 +153,7 @@ async function changeStatus(employee: Employee) {
     await ElMessageBox.confirm('确认调整该账号的状态?', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      customClass: 'employee-status-confirm',
+      customClass: 'management-confirm',
     })
     await setEmployeeStatus(employee.id, employee.status === 1 ? 0 : 1)
     ElMessage.success('账号状态更改成功！')
@@ -174,124 +170,7 @@ watch([page, pageSize, searchedName], loadEmployees)
 </script>
 
 <style scoped>
-.employee-list {
-  padding: 30px 28px;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.employee-toolbar,
-.employee-search {
-  display: flex;
-  align-items: center;
-}
-
-.employee-toolbar {
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 20px;
-}
-
-.employee-search label {
-  flex-shrink: 0;
-  margin-right: 5px;
-  font-size: 14px;
-}
-
-.employee-search .el-input {
-  width: 190px;
-  height: 40px;
-}
-
-.employee-search .el-button {
-  min-width: 70px;
-  margin-left: 20px;
-}
-
 .employee-add {
   flex-shrink: 0;
-}
-
-.employee-table {
-  width: 100%;
-  border: 1px solid #ebeef5;
-  border-bottom: 0;
-  --el-table-header-text-color: #606266;
-  --el-table-text-color: #606266;
-}
-
-.employee-table :deep(th.el-table__cell) {
-  height: 46px;
-}
-
-.employee-table :deep(th .cell) {
-  font-weight: 700;
-}
-
-.employee-table :deep(td.el-table__cell) {
-  height: 54px;
-}
-
-.employee-table :deep(.cell) {
-  padding: 0 30px;
-}
-
-.employee-table :deep(.el-table__cell:last-child .cell) {
-  padding: 0 12px;
-}
-
-.employee-status,
-.employee-actions {
-  display: flex;
-  align-items: center;
-}
-
-.employee-status::before {
-  width: 5px;
-  height: 5px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: #1dc779;
-  content: '';
-}
-
-.employee-status.is-disabled::before {
-  background: #bdbdbd;
-}
-
-.employee-actions {
-  justify-content: center;
-  gap: 14px;
-}
-
-.employee-actions .el-button {
-  margin: 0;
-}
-
-.employee-edit {
-  color: #419eff;
-}
-
-.employee-disable {
-  color: #f56c6c;
-}
-
-.employee-actions .el-button.is-disabled {
-  color: #bac0cd;
-}
-
-.employee-action-divider {
-  color: #ebeef5;
-}
-
-.employee-pagination {
-  justify-content: center;
-  margin-top: 30px;
-}
-
-@media (max-width: 1000px) {
-  .employee-table :deep(.cell) {
-    padding: 0 12px;
-  }
 }
 </style>
