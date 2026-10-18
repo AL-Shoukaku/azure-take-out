@@ -4,9 +4,9 @@ import { employee, mockAdminSession } from './helpers/admin.js'
 const pages = [
   ['/dashboard', '工作台', '当前为工作台页面'],
   ['/statistics', '数据统计', '当前为数据统计页面'],
-  ['/order', '订单管理', '当前为订单管理页面'],
-  ['/dish', '菜品管理', '当前为菜品管理页面'],
-  ['/setmeal', '套餐管理', '当前为套餐管理页面'],
+  ['/order', '订单管理', '全部订单'],
+  ['/dish', '菜品管理', '+ 新建菜品'],
+  ['/setmeal', '套餐管理', '+ 新建套餐'],
   ['/category', '分类管理', '+ 新增菜品分类'],
   ['/employee', '员工管理', '+ 添加员工'],
 ] as const
@@ -196,7 +196,7 @@ test('来单和催单通知点击进入对应订单，消息内容按文本显�
   sockets[0]!.send('ping')
   sockets[0]!.send(JSON.stringify({ type: 3, orderId: 999, content: '忽略的消息' }))
   await page.getByRole('menuitem', { name: '菜品管理', exact: true }).click()
-  await expect(page.getByText('当前为菜品管理页面', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '菜品管理', exact: true })).toBeVisible()
   expect(sockets).toHaveLength(1)
   sockets[0]!.send(
     JSON.stringify({ type: 1, orderId: 101, content: '订单号 <img src=x onerror=alert(1)>' }),

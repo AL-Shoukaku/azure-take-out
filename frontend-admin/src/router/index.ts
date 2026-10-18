@@ -21,10 +21,16 @@ export function createAppRouter(
                 ? () => import('@/views/employee/EmployeeListPage.vue')
                 : item.path === '/category'
                   ? () => import('@/views/category/CategoryPage.vue')
-                  : () => import('@/views/PlaceholderPage.vue'),
-            props: ['/employee', '/category'].includes(item.path)
-              ? undefined
-              : { pageTitle: item.title },
+                  : ['/dish', '/setmeal'].includes(item.path)
+                    ? () => import('@/views/product/ProductListPage.vue')
+                    : item.path === '/order'
+                      ? () => import('@/views/order/OrderPage.vue')
+                      : () => import('@/views/PlaceholderPage.vue'),
+            props: ['/dish', '/setmeal'].includes(item.path)
+              ? { kind: item.path.slice(1) }
+              : ['/employee', '/category', '/order'].includes(item.path)
+                ? undefined
+                : { pageTitle: item.title },
             meta: { title: `${item.title} · 苍穹外卖管理端`, pageTitle: item.title },
           })),
           {
@@ -36,6 +42,21 @@ export function createAppRouter(
             beforeEnter: (to) =>
               to.query.id && !/^[1-9]\d*$/.test(String(to.query.id)) ? '/employee' : true,
           },
+          ...(['dish', 'setmeal'] as const).map((kind) => ({
+            path: `${kind}/add`,
+            name: `${kind}-form`,
+            component: () => import('@/views/product/ProductFormPage.vue'),
+            props: (route: import('vue-router').RouteLocationNormalized) => ({
+              kind,
+              productId: route.query.id ? Number(route.query.id) : undefined,
+            }),
+            meta: {
+              title: `${kind === 'dish' ? '菜品' : '套餐'}资料 · 苍穹外卖管理端`,
+              activeMenu: `/${kind}`,
+            },
+            beforeEnter: (to: import('vue-router').RouteLocationNormalized) =>
+              to.query.id && !/^[1-9]\d*$/.test(String(to.query.id)) ? `/${kind}` : true,
+          })),
         ],
       },
       {

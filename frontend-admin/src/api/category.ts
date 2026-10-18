@@ -27,6 +27,10 @@ export function getCategoryPage(params: CategoryPageQuery): Promise<PageResult<C
   return request({ url: '/category/page', method: 'GET', params })
 }
 
+export function getCategoryList(type: CategoryType): Promise<Category[]> {
+  return request({ url: '/category/list', method: 'GET', params: { type } })
+}
+
 export function createCategory(data: CategoryFormDTO): Promise<null> {
   return request({ url: '/category', method: 'POST', data })
 }

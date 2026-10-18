@@ -8,10 +8,12 @@ import { h, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElNotification, type NotificationHandle } from 'element-plus'
 import { connectOrderSocket, type OrderNotification } from '@/services/orderSocket'
+import { useOrderEventsStore } from '@/stores/orderEvents'
 import incomingSound from '@/assets/sounds/preview.mp3'
 import reminderSound from '@/assets/sounds/reminder.mp3'
 
 const router = useRouter()
+const orderEvents = useOrderEventsStore()
 const incomingAudio = useTemplateRef<HTMLAudioElement>('incomingAudio')
 const reminderAudio = useTemplateRef<HTMLAudioElement>('reminderAudio')
 const notifications = new Set<NotificationHandle>()
@@ -20,6 +22,7 @@ let connectionWarning: NotificationHandle | undefined
 let connectionWarningShown = false
 
 function showOrder(message: OrderNotification): void {
+  orderEvents.received()
   const isIncoming = message.type === 1
   const audio = isIncoming ? incomingAudio.value : reminderAudio.value
   if (audio) {
