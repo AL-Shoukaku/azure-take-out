@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '/admin'),
         },
+        '/ws': {
+          target: env.VITE_API_PROXY_TARGET || 'http://localhost:8080',
+          ws: true,
+        },
       },
     },
   }

@@ -109,7 +109,7 @@ async function handleLogin(): Promise<void> {
     if (!valid) return
 
     const employee = await login({ username: form.username.trim(), password: form.password })
-    session.startSession(employee.token)
+    session.startSession(employee)
     await router.replace('/dashboard')
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '登录失败，请稍后重试')

@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { mockLayoutAPIs } from './helpers/admin.js'
 
 const employee = { id: 1, userName: 'admin', name: '管理员', token: 'e2e-login-token' }
+
+test.beforeEach(async ({ page }) => {
+  await mockLayoutAPIs(page)
+})
 
 test('未登录访问首页和工作台，都会进入登录页', async ({ page }) => {
   await page.goto('/')
@@ -53,12 +58,14 @@ test('提交期间显示登录中，禁止重复提交，成功后保持登录',
 
   finishLogin()
   await expect(page).toHaveURL('/dashboard')
-  await expect(page.getByText('完成登录', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: employee.name, exact: true })).toBeVisible()
   const token = (await context.cookies()).find((cookie) => cookie.name === 'token')
   expect(token).toMatchObject({ value: employee.token, path: '/', sameSite: 'Lax' })
   await page.reload()
   await expect(page).toHaveURL('/dashboard')
-  await expect(page.getByText('完成登录', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: employee.name, exact: true })).toBeVisible()
   await page.goto('/')
   await expect(page).toHaveURL('/dashboard')
   await page.goto('/login')

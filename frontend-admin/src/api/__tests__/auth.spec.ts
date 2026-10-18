@@ -79,13 +79,14 @@ describe('登录接口和统一请求', () => {
 
   it('401 时清除登录态并返回登录页', async () => {
     const session = useSessionStore()
-    session.startSession('expired-token')
+    session.startSession({ ...employee, token: 'expired-token' })
     const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
     http.defaults.adapter = respondWith(null, 401)
 
     await expect(request({ url: '/employee/page' })).rejects.toThrow('登录已过期，请重新登录')
     expect(getToken()).toBe('')
     expect(session.token).toBe('')
+    expect(session.employee).toBeNull()
     expect(replace).toHaveBeenCalledWith('/login')
   })
 })

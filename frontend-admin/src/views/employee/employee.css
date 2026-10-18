@@ -1,0 +1,77 @@
+.employee-list .el-button:not(.is-link),
+.employee-form-page .el-button {
+  height: 40px;
+  font-size: 14px;
+}
+
+.employee-list .el-button--primary,
+.employee-form-page .el-button--primary,
+.employee-status-confirm .el-button--primary {
+  border-color: #ffc200;
+  background: #ffc200;
+  color: #333;
+}
+
+.employee-list .el-button--primary:hover,
+.employee-form-page .el-button--primary:hover,
+.employee-status-confirm .el-button--primary:hover {
+  border-color: #f7c744;
+  background: #f7c744;
+}
+
+.employee-dark-button.el-button,
+.employee-dark-button.el-button:hover {
+  border-color: #333;
+  background: #333;
+  color: #fff;
+}
+
+.employee-dark-button.el-button:hover {
+  border-color: #666;
+  background: #666;
+}
+
+.employee-load-error {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #818693;
+}
+
+.employee-status-confirm.el-message-box {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 20px 30px 30px;
+  border-radius: 4px;
+}
+
+.employee-status-confirm .el-message-box__header {
+  padding: 0 0 20px;
+}
+
+.employee-status-confirm .el-message-box__title {
+  color: #333;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.employee-status-confirm .el-message-box__headerbtn {
+  top: 0;
+  right: -14px;
+}
+
+.employee-status-confirm .el-message-box__content {
+  padding: 0 0 28px;
+  color: #666;
+}
+
+.employee-status-confirm .el-message-box__btns {
+  padding: 0;
+}
+
+.employee-status-confirm .el-button {
+  min-width: 80px;
+  height: 34px;
+}

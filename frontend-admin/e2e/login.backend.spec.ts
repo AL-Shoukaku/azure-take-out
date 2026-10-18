@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 const username = process.env.E2E_ADMIN_USERNAME
 const password = process.env.E2E_ADMIN_PASSWORD
 
-test('连接真实后端登录，刷新后仍显示完成登录', async ({ page, context }) => {
+test('连接真实后端登录，读取员工列表，刷新后保留会话', async ({ page, context }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- 真实后端测试需要用户通过环境变量提供账号
   test.skip(
     !username || !password,
@@ -15,9 +15,20 @@ test('连接真实后端登录，刷新后仍显示完成登录', async ({ page,
   await page.getByPlaceholder('密码').fill(password!)
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page).toHaveURL('/dashboard')
-  await expect(page.getByText('完成登录', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+  await expect(page.getByRole('status', { name: '店铺营业状态' })).toHaveText(/营业中|打烊中/)
   expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(true)
 
   await page.reload()
-  await expect(page.getByText('完成登录', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+
+  const employeeResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/api/employee/page',
+  )
+  await page.getByRole('menuitem', { name: '员工管理', exact: true }).click()
+  expect((await (await employeeResponse).json()).code).toBe(1)
+  await expect(page.getByRole('region', { name: '员工管理', exact: true })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '员工姓名', exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('region', { name: '员工管理', exact: true })).toBeVisible()
 })
