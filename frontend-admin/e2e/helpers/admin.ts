@@ -1,4 +1,6 @@
 import type { BrowserContext, Page, WebSocketRoute } from '@playwright/test'
+import { mockReportAPIs } from './reports.js'
+import { mockWorkspace } from './workspace.js'
 
 export const employee = {
   id: 7,
@@ -38,6 +40,8 @@ export async function mockLayoutAPIs(page: Page) {
   await page.route('**/api/order/details/*', (route) =>
     route.fulfill({ json: { code: 0, msg: '订单不存在', data: null } }),
   )
+  await mockReportAPIs(page)
+  await mockWorkspace(page)
   await page.routeWebSocket(/\/ws\//, (socket) => {
     sockets.push(socket)
   })

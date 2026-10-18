@@ -25,12 +25,12 @@ export function createAppRouter(
                     ? () => import('@/views/product/ProductListPage.vue')
                     : item.path === '/order'
                       ? () => import('@/views/order/OrderPage.vue')
-                      : () => import('@/views/PlaceholderPage.vue'),
+                      : item.path === '/statistics'
+                        ? () => import('@/views/statistics/StatisticsPage.vue')
+                        : () => import('@/views/dashboard/DashboardPage.vue'),
             props: ['/dish', '/setmeal'].includes(item.path)
               ? { kind: item.path.slice(1) }
-              : ['/employee', '/category', '/order'].includes(item.path)
-                ? undefined
-                : { pageTitle: item.title },
+              : undefined,
             meta: { title: `${item.title} · 苍穹外卖管理端`, pageTitle: item.title },
           })),
           {

@@ -2,8 +2,8 @@ import { expect, test, type Route } from '@playwright/test'
 import { employee, mockAdminSession } from './helpers/admin.js'
 
 const pages = [
-  ['/dashboard', '工作台', '当前为工作台页面'],
-  ['/statistics', '数据统计', '当前为数据统计页面'],
+  ['/dashboard', '工作台', '今日数据'],
+  ['/statistics', '数据统计', '营业额统计'],
   ['/order', '订单管理', '全部订单'],
   ['/dish', '菜品管理', '+ 新建菜品'],
   ['/setmeal', '套餐管理', '+ 新建套餐'],
@@ -174,7 +174,7 @@ for (const scenario of logoutResponses) {
     const sockets = await mockAdminSession(page, context, baseURL!)
     await page.route('**/api/employee/logout', scenario.respond)
     await page.goto('/dashboard')
-    await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+    await expect(page.getByRole('region', { name: '今日数据', exact: true })).toBeVisible()
     let closed = false
     sockets[0]!.onClose(() => {
       closed = true
@@ -191,7 +191,7 @@ for (const scenario of logoutResponses) {
 test('来单和催单通知点击进入对应订单，消息内容按文本显示', async ({ page, context, baseURL }) => {
   const sockets = await mockAdminSession(page, context, baseURL!)
   await page.goto('/dashboard')
-  await expect(page.getByText('当前为工作台页面', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '今日数据', exact: true })).toBeVisible()
   await expect.poll(() => sockets.length).toBe(1)
   sockets[0]!.send('ping')
   sockets[0]!.send(JSON.stringify({ type: 3, orderId: 999, content: '忽略的消息' }))

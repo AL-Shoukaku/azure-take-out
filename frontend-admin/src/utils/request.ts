@@ -14,15 +14,19 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ msg?: string }>) => {
+  async (error: AxiosError<{ msg?: string } | Blob>) => {
     if (error.response?.status === 401) {
       useSessionStore().clearSession()
       void router.replace('/login')
       return Promise.reject(new Error('登录已过期，请重新登录'))
     }
 
+    let data = error.response?.data
+    if (data instanceof Blob && data.type.includes('json')) {
+      data = JSON.parse(await data.text()) as { msg?: string }
+    }
     const message =
-      error.response?.data?.msg ||
+      (!(data instanceof Blob) && data?.msg) ||
       (error.code === AxiosError.ECONNABORTED
         ? '请求超时，请稍后重试'
         : error.response
