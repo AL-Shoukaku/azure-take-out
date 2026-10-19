@@ -13,7 +13,7 @@
           @submit.prevent="handleLogin"
         >
           <h1 class="login-title">
-            <img :src="logo" alt="瑞吉外卖" width="149" height="38" />
+            <img :src="logo" alt="晴空食堂" width="208" height="52" />
           </h1>
 
           <ElFormItem prop="username">
@@ -84,8 +84,8 @@ import { ElButton, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { login, type LoginCredentials } from '@/api/auth'
 import { useSessionStore } from '@/stores/session'
-import loginImage from '@/assets/images/login/login-l.png'
-import logo from '@/assets/images/login/icon_logo.png'
+import loginImage from '@/assets/images/login/background.png'
+import logo from '@/assets/images/brand/logo-with-name.png'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -164,7 +164,7 @@ async function handleLogin(): Promise<void> {
 
 .login-title {
   display: flex;
-  height: 38px;
+  height: 52px;
   align-items: center;
   justify-content: center;
   margin: 0 0 40px;
@@ -172,7 +172,8 @@ async function handleLogin(): Promise<void> {
 
 .login-title img {
   display: block;
-  filter: hue-rotate(175deg);
+  max-width: 100%;
+  height: auto;
 }
 
 .login-form :deep(.el-form-item) {
@@ -250,7 +251,7 @@ async function handleLogin(): Promise<void> {
 
   .login-image {
     height: 200px;
-    object-position: center 45%;
+    object-position: center top;
   }
 
   .login-panel {

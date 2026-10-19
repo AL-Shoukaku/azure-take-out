@@ -1,8 +1,8 @@
 <template>
   <aside class="admin-sidebar">
-    <RouterLink to="/dashboard" class="sidebar-brand" aria-label="瑞吉外卖工作台">
-      <img v-if="collapsed" :src="miniLogo" alt="瑞吉外卖" width="30" height="30" />
-      <img v-else :src="logo" alt="瑞吉外卖" width="120" height="31" />
+    <RouterLink to="/dashboard" class="sidebar-brand" aria-label="晴空食堂工作台">
+      <img v-if="collapsed" :src="miniLogo" alt="晴空食堂" width="36" height="36" />
+      <img v-else :src="logo" alt="晴空食堂" width="168" height="42" />
     </RouterLink>
     <nav class="sidebar-navigation" aria-label="管理菜单">
       <ElMenu
@@ -32,8 +32,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { ElMenu, ElMenuItem } from 'element-plus'
 import { adminMenu } from '@/router/menu'
 import MenuIcon from './MenuIcon.vue'
-import logo from '@/assets/images/layout/logo.png'
-import miniLogo from '@/assets/images/layout/mini-logo.png'
+import logo from '@/assets/images/brand/logo-with-name.png'
+import miniLogo from '@/assets/images/brand/logo.png'
 
 defineProps<{ collapsed: boolean }>()
 const route = useRoute()
@@ -62,7 +62,9 @@ const route = useRoute()
 }
 
 .sidebar-brand img {
-  filter: brightness(0) invert(1);
+  display: block;
+  border-radius: 4px;
+  object-fit: contain;
 }
 
 .sidebar-navigation {

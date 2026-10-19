@@ -12,7 +12,7 @@ test('未登录访问首页和工作台，都会进入登录页', async ({ page 
   await expect(page).toHaveURL('/login')
   await expect(page.getByPlaceholder('账号')).toBeEmpty()
   await expect(page.getByPlaceholder('密码')).toHaveAttribute('type', 'password')
-  await expect(page.getByRole('img', { name: '瑞吉外卖' })).toBeVisible()
+  await expect(page.getByRole('img', { name: '晴空食堂' })).toBeVisible()
   await page.goto('/dashboard')
   await expect(page).toHaveURL('/login')
 })
