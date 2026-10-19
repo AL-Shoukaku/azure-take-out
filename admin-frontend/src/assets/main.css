@@ -1,0 +1,66 @@
+:root {
+  font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+  color: #333;
+  background: var(--admin-canvas);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --admin-primary: #2563eb;
+  --admin-primary-hover: #1d4ed8;
+  --admin-on-primary: #fff;
+  --admin-canvas: #eaf2fc;
+  --admin-surface: #f7faff;
+  --admin-surface-soft: #edf5ff;
+  --admin-surface-active: #dbeafe;
+  --admin-border: #bfd6f5;
+  --admin-chart-secondary: #ef4444;
+  --admin-sidebar: #172d50;
+  --admin-header-background: var(--admin-primary);
+  --el-color-primary: var(--admin-primary);
+  --el-color-primary-dark-2: var(--admin-primary-hover);
+  --el-color-primary-light-3: #5b8af0;
+  --el-color-primary-light-5: #93b4f7;
+  --el-color-primary-light-7: #bfd2fb;
+  --el-color-primary-light-8: #d5e3fd;
+  --el-color-primary-light-9: #eff6ff;
+  --el-bg-color: var(--admin-surface);
+  --el-bg-color-page: var(--admin-canvas);
+  --el-fill-color-light: var(--admin-surface-soft);
+  --el-fill-color-lighter: #f1f7ff;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--admin-primary);
+  --el-button-border-color: var(--admin-primary);
+  --el-button-hover-bg-color: var(--admin-primary-hover);
+  --el-button-hover-border-color: var(--admin-primary-hover);
+  --el-button-active-bg-color: #1e40af;
+  --el-button-active-border-color: #1e40af;
+}
+
+.el-table {
+  --el-table-bg-color: var(--admin-surface);
+  --el-table-tr-bg-color: var(--admin-surface);
+  --el-table-header-bg-color: var(--admin-surface-soft);
+  --el-table-row-hover-bg-color: var(--admin-surface-active);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}

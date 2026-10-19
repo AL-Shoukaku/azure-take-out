@@ -1,0 +1,118 @@
+.admin-dialog.el-dialog {
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  color: #333;
+}
+
+.admin-dialog .el-dialog__header {
+  display: flex;
+  height: 61px;
+  align-items: center;
+  margin: 0;
+  padding: 0 30px;
+  background: var(--admin-surface-soft);
+}
+
+.admin-dialog .el-dialog__title {
+  color: #333;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.admin-dialog .el-dialog__headerbtn {
+  width: 60px;
+  height: 61px;
+}
+
+.admin-dialog .el-dialog__body {
+  padding: 30px 30px 0;
+}
+
+.admin-dialog .el-dialog__footer {
+  padding: 30px;
+}
+
+.admin-dialog .el-dialog__footer .el-button {
+  min-width: 74px;
+  height: 40px;
+  color: #818693;
+  font-size: 14px;
+}
+
+.admin-dialog .el-dialog__footer .el-button--primary {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+  color: var(--admin-on-primary);
+}
+
+.admin-dialog .el-dialog__footer .el-button--primary:hover {
+  border-color: var(--admin-primary-hover);
+  background: var(--admin-primary-hover);
+}
+
+.password-dialog .el-dialog__body {
+  padding: 60px 100px 0;
+}
+
+.password-dialog .el-dialog__footer {
+  padding-top: 14px;
+}
+
+.employee-dropdown.el-popper {
+  width: 120px;
+  border: 0;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 14%);
+}
+
+.employee-dropdown .el-dropdown-menu {
+  padding: 0 0 5px;
+}
+
+.employee-dropdown .el-dropdown-menu__item {
+  min-height: 32px;
+  justify-content: space-between;
+  padding: 0 12px;
+  color: #333;
+  font-size: 14px;
+}
+
+.employee-dropdown .el-dropdown-menu__item:not(.is-disabled):hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.order-notification.el-notification {
+  width: 419px;
+  max-width: calc(100vw - 32px);
+  cursor: pointer;
+}
+
+.order-notification .el-notification__title {
+  margin-bottom: 14px;
+  color: #333;
+}
+
+.order-notification .el-notification__content {
+  margin: 0;
+  color: #818693;
+  line-height: 20px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.order-notification-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #419eff;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .password-dialog .el-dialog__body {
+    padding: 32px 24px 0;
+  }
+}

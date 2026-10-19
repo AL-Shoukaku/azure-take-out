@@ -1,0 +1,186 @@
+.management-list {
+  padding: 30px 28px;
+  border-radius: 4px;
+  background: var(--admin-surface);
+}
+
+.management-toolbar,
+.management-search {
+  display: flex;
+  align-items: center;
+}
+
+.management-toolbar {
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.management-search label {
+  flex-shrink: 0;
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.management-search .el-input {
+  width: 190px;
+  height: 40px;
+}
+
+.management-search .management-dark-button {
+  min-width: 70px;
+  margin-left: 20px;
+}
+
+.management-list .el-button:not(.is-link) {
+  height: 40px;
+  font-size: 14px;
+}
+
+.management-list .el-button--primary,
+.management-confirm .el-button--primary {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+  color: var(--admin-on-primary);
+}
+
+.management-list .el-button--primary:hover,
+.management-confirm .el-button--primary:hover {
+  border-color: var(--admin-primary-hover);
+  background: var(--admin-primary-hover);
+}
+
+.management-dark-button.el-button {
+  border-color: #333;
+  background: #333;
+  color: #fff;
+}
+
+.management-dark-button.el-button:hover {
+  border-color: #666;
+  background: #666;
+  color: #fff;
+}
+
+.management-table {
+  width: 100%;
+  border: 1px solid #ebeef5;
+  border-bottom: 0;
+  --el-table-header-text-color: #606266;
+  --el-table-text-color: #606266;
+}
+
+.management-table th.el-table__cell {
+  height: 46px;
+}
+
+.management-table th .cell {
+  font-weight: 700;
+}
+
+.management-table td.el-table__cell {
+  height: 54px;
+}
+
+.management-table .cell {
+  padding: 0 30px;
+}
+
+.management-table .el-table__cell:last-child .cell {
+  padding: 0 12px;
+}
+
+.management-status,
+.management-actions {
+  display: flex;
+  align-items: center;
+}
+
+.management-status::before {
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #1dc779;
+  content: '';
+}
+
+.management-status.is-disabled::before {
+  background: #bdbdbd;
+}
+
+.management-actions {
+  justify-content: center;
+  gap: 14px;
+}
+
+.management-actions .el-button {
+  margin: 0;
+}
+
+.management-action-blue.el-button {
+  color: #419eff;
+}
+
+.management-action-red.el-button {
+  color: #f56c6c;
+}
+
+.management-actions .el-button.is-disabled {
+  color: #bac0cd;
+}
+
+.management-action-divider {
+  color: #ebeef5;
+}
+
+.management-load-error {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #818693;
+}
+
+.management-confirm.el-message-box {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 20px 30px 30px;
+  border-radius: 4px;
+}
+
+.management-confirm .el-message-box__header {
+  padding: 0 0 20px;
+}
+
+.management-confirm .el-message-box__title {
+  color: #333;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.management-confirm .el-message-box__headerbtn {
+  top: 0;
+  right: -14px;
+}
+
+.management-confirm .el-message-box__content {
+  padding: 0 0 28px;
+  color: #666;
+}
+
+.management-confirm .el-message-box__btns {
+  padding: 0;
+}
+
+.management-confirm .el-button {
+  min-width: 80px;
+  height: 34px;
+}
+
+@media (max-width: 1000px) {
+  .management-table .cell {
+    padding: 0 12px;
+  }
+}
