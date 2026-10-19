@@ -17,7 +17,7 @@
 
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
 - 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
-- 管理端已迁移至 Vue 3、TypeScript、Vite、Element Plus 和 Pinia，旧版前端源码可从 Git 历史查阅
+- 将管理端前端升级为 Vue 3、Vite、Element Plus 和 Pinia，制作了新的 logo 和背景图
 
 开发中，待补充
 
@@ -52,7 +52,7 @@
 
 | 模块 | 技术 | 端口 |
 | --- | --- | --- |
-| 后端 | Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
+| 后端 | JDK21、Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
 | 管理端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5173（dev server） |
 | 微信小程序 | uni-app | — |
 | 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
@@ -119,16 +119,6 @@ npm run dev
 
 访问终端显示的地址，默认 http://localhost:5173。
 
-开发环境由 Vite 提供页面，将 `/api/*` 代理到后端 `/admin/*`，并将 `/ws/*` 代理到同一个后端，**不需要启动 Nginx**。默认后端地址为 `http://localhost:8080`。需要调整时，在 `admin-frontend/.env.development.local` 中设置以下内容并重启开发服务：
-
-```dotenv
-VITE_API_PROXY_TARGET=http://localhost:8080
-```
-
-若使用 Windows Nginx 访问 WSL 中的后端，`/api/`、`/user/` 和 `/ws/` 必须转发到同一个 WSL 后端地址。建议统一使用 `upstream webservers`；只把 `/api/` 改成 WSL IP、却让 `/ws/` 继续连接 Windows 的 `127.0.0.1:8080`，会出现登录正常但来单提醒、催单和语音都不可用的问题。`/ws/` 还需配置 HTTP/1.1 和 `Upgrade`、`Connection` 请求头。
-
-生产环境使用 HTTPS。在 `admin-frontend/` 中运行 `npm run build`，将 `dist/` 中的内容部署到静态目录；若使用项目附带的 Nginx，该目录为 `tools/nginx-1.20.2/html/sky/`。新版使用 History 路由，静态页面的 `location /` 需添加 `try_files $uri $uri/ /index.html;`，以支持直接访问和刷新管理页面。订单提醒使用同源 `/ws/`，HTTPS 下自动使用 `wss`。修改 Nginx 配置后，先运行 `nginx.exe -t`，检查通过后再运行 `nginx.exe -s reload`。详细运行、测试与部署说明见 [管理端 README](admin-frontend/README.md)。
-
 ### 5. 启动微信小程序（可选）
 
 用微信开发者工具打开 `mp-weixin/` 目录。项目内的 `project.config.json` 将 AppID 留空；在本地创建 `mp-weixin/project.private.config.json`，填写自己的 `appid`，例如：
@@ -147,14 +137,6 @@ VITE_API_PROXY_TARGET=http://localhost:8080
 | --- | --- | --- |
 | 管理端 | `admin` | `123456` |
 
-### 运行测试
-
-```bash
-mvn -f sky-take-out/pom.xml clean test
-```
-
-管理端的单元、组件与浏览器测试命令见 [管理端验证说明](admin-frontend/README.md#验证)。
-
 ## 📂 项目结构
 
 以下展示主要源码、资源与测试目录。
@@ -162,11 +144,7 @@ mvn -f sky-take-out/pom.xml clean test
 ```text
 sky-delivery-plus/
 ├── sky-take-out/                              # 后端（Maven 多模块）
-│   ├── pom.xml                                # 父工程：模块聚合、版本与依赖管理
-│   ├── sky-common/                            # 常量、上下文、异常、JSON 与通用工具
-│   ├── sky-pojo/                              # 请求 DTO、数据库实体与响应 VO
-│   └── sky-server/                            # 应用启动、接口、业务、数据访问与测试
-├── admin-frontend/                           # 管理端前端（Vue 3 + TypeScript + Vite）
+├── admin-frontend/                            # 管理端前端（Vue 3 + TypeScript + Vite）
 ├── mp-weixin/                                 # 微信小程序用户端（uni-app 编译产物）
 ├── db/
 │   ├── sky.sql                                # 建库建表与初始数据，默认密码使用 Argon2id 哈希
@@ -175,67 +153,10 @@ sky-delivery-plus/
 └── README.md                                  # 项目说明与运行指南
 ```
 
-### sky-common
+模块文档：
 
-```text
-sky-common/
-├── pom.xml                                    # 公共模块依赖配置
-└── src/main/java/com/sky/
-    ├── constant/                              # 状态、JWT 声明、默认密码等常量
-    ├── context/                               # 当前登录身份的线程上下文
-    ├── enumeration/                           # 公共字段填充的操作类型枚举
-    ├── exception/                             # 自定义业务异常
-    ├── json/
-    │   └── JacksonObjectMapper.java           # Jackson 序列化规则与日期时间格式
-    ├── properties/                            # JWT、微信登录配置属性
-    ├── result/                                # 统一响应结果与分页结果
-    └── utils/                                 # JWT 签发与校验、HTTP 请求工具
-```
-
-### sky-pojo
-
-```text
-sky-pojo/
-├── pom.xml                                    # 数据对象模块依赖配置
-└── src/main/java/com/sky/
-    ├── dto/                                   # 接收请求参数的数据传输对象
-    ├── entity/                                # 与数据库表对应的实体类
-    └── vo/                                    # 返回给前端的响应对象
-```
-
-### sky-server
-
-```text
-sky-server/
-├── pom.xml                                    # 服务模块依赖与构建配置
-└── src/
-    ├── main/
-    │   ├── java/com/sky/
-    │   │   ├── SkyApplication.java            # Spring Boot 启动类
-    │   │   ├── annotation/                    # 自定义注解
-    │   │   ├── aspect/                        # 公共字段自动填充等 AOP 切面
-    │   │   ├── config/                        # MVC、Redis、WebSocket、OpenAPI 配置
-    │   │   ├── controller/                    # 接口控制器
-    │   │   │   ├── admin/                     # 管理端接口
-    │   │   │   └── user/                      # 用户端接口
-    │   │   ├── handler/                       # 全局异常处理
-    │   │   ├── interceptor/                   # 管理端与用户端 JWT 拦截器
-    │   │   ├── mapper/                        # MyBatis 数据访问接口
-    │   │   ├── security/
-    │   │   │   └── PasswordHasher.java        # Argon2id 密码哈希、验证与旧 MD5 兼容
-    │   │   ├── service/                       # 业务服务接口
-    │   │   │   └── impl/                      # 业务服务实现
-    │   │   ├── task/                          # 订单定时任务
-    │   │   └── websocket/                     # 来单提醒与催单消息推送
-    │   └── resources/
-    │       ├── application.yml                # 主配置，默认启用 local 环境
-    │       ├── application-local.example.yml  # 本地配置示例
-    │       ├── application-local.yml          # 本机配置（不提交 Git）
-    │       ├── mapper/                        # MyBatis SQL 映射文件
-    │       ├── menu-images/                   # 本机演示菜品与套餐图片（不提交 Git）
-    │       └── template/                      # 运营数据报表模板
-    └── test/java/com/sky/service/impl/        # 业务服务单元测试
-```
+- [后端 README](sky-take-out/README.md)：主要技术栈、模块划分与目录职责。
+- [管理端前端 README](admin-frontend/README.md)：主要技术栈、目录结构及运行、测试与部署说明。
 
 ## 🗄 数据库设计
 
@@ -243,8 +164,8 @@ sky-server/
 
 ## 🗺 后续计划
 
-将用户端重写为与管理端同样的网页模式，不再使用微信小程序。
-
+1. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序。
+2. to be continued...
 
 ## 🖼 项目截图
 
