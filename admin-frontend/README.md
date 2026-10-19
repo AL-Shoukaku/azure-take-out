@@ -1,6 +1,7 @@
 # 苍穹外卖管理端
 
 管理端采用 Vue 3、Composition API 和 TypeScript 严格模式，提供登录、公共后台布局及七个管理页面。项目整体功能与后端启动步骤见 [项目 README](../README.md)。
+
 ## 主要技术栈及版本
 
 版本以当前 [package-lock.json](package-lock.json) 为准。
@@ -49,7 +50,6 @@ admin-frontend/
 │   └── main.ts                               # 应用入口
 ├── e2e/                                      # 浏览器流程测试
 │   └── helpers/                              # 模拟接口及测试辅助代码
-├── BUSINESS.md                               # 页面行为与接口约定
 ├── index.html                                # HTML 入口与浏览器图标
 ├── package.json                              # 依赖与运行脚本
 ├── package-lock.json                         # 依赖版本锁定
@@ -62,7 +62,7 @@ admin-frontend/
 
 ## 本地运行
 
-需要 Node.js `^22.18.0` 或 `>=24.12.0`，并启动后端。在本目录执行：
+需要 Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`，并启动后端。在本目录执行：
 
 ```sh
 npm ci

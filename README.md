@@ -1,6 +1,6 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.3.0-blue)
+![Version](https://img.shields.io/badge/version-v0.4.0-blue)
 
 ## 📖 项目简介
 
@@ -109,7 +109,7 @@ sudo systemctl start redis
 
 ### 4. 启动管理端前端
 
-需要 Node.js `^22.18.0` 或 `>=24.12.0`。
+需要 Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`。
 
 ```bash
 cd admin-frontend
