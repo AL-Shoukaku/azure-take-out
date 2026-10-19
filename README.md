@@ -17,6 +17,7 @@
 
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
 - 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
+- 管理端已迁移至 Vue 3、TypeScript、Vite、Element Plus 和 Pinia，旧版前端源码可从 Git 历史查阅
 
 开发中，待补充
 
@@ -52,7 +53,7 @@
 | 模块 | 技术 | 端口 |
 | --- | --- | --- |
 | 后端 | Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
-| 管理端前端 | Vue 2 + TypeScript + Element UI | 8081（dev server） |
+| 管理端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5173（dev server） |
 | 微信小程序 | uni-app | — |
 | 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
 | 缓存 | Redis，`database` 为 **0** | 6379 |
@@ -108,27 +109,25 @@ sudo systemctl start redis
 
 ### 4. 启动管理端前端
 
+需要 Node.js `^22.18.0` 或 `>=24.12.0`。
+
 ```bash
-cd project-rjwm-admin-vue-ts
-npm install
-npm run serve
-# 若 node 版本过新，Webpack 4 不兼容当前的 OpenSSL，可使用以下命令：
-NODE_OPTIONS=--openssl-legacy-provider npm run serve
+cd admin-frontend
+npm ci
+npm run dev
 ```
 
-访问 http://localhost:8081。
+访问终端显示的地址，默认 http://localhost:5173。
 
-开发环境由 Vue Dev Server 提供前端页面并代理后端请求，**不需要启动 Nginx**。`.env.development` 中的相关配置如下：
+开发环境由 Vite 提供页面，将 `/api/*` 代理到后端 `/admin/*`，并将 `/ws/*` 代理到同一个后端，**不需要启动 Nginx**。默认后端地址为 `http://localhost:8080`。需要调整时，在 `admin-frontend/.env.development.local` 中设置以下内容并重启开发服务：
 
-```
-VUE_APP_BASE_API = '/api'
-VUE_APP_URL      = 'http://localhost:8080/admin'   # /api 请求代理到这里
-VUE_APP_SOCKET_URL = 'ws://localhost:8080/ws/'     # 来单提醒 WebSocket
+```dotenv
+VITE_API_PROXY_TARGET=http://localhost:8080
 ```
 
 若使用 Windows Nginx 访问 WSL 中的后端，`/api/`、`/user/` 和 `/ws/` 必须转发到同一个 WSL 后端地址。建议统一使用 `upstream webservers`；只把 `/api/` 改成 WSL IP、却让 `/ws/` 继续连接 Windows 的 `127.0.0.1:8080`，会出现登录正常但来单提醒、催单和语音都不可用的问题。`/ws/` 还需配置 HTTP/1.1 和 `Upgrade`、`Connection` 请求头。
 
-Nginx 当前提供的页面位于 `tools/nginx-1.20.2/html/sky/`，与管理端源码目录不同。修改前端源码后，需重新打包并更新 Nginx 的静态文件；生产环境的 WebSocket 使用同源 `/ws/` 地址。修改 Nginx 配置后，先运行 `nginx.exe -t`，检查通过后再运行 `nginx.exe -s reload`。
+生产环境使用 HTTPS。在 `admin-frontend/` 中运行 `npm run build`，将 `dist/` 中的内容部署到静态目录；若使用项目附带的 Nginx，该目录为 `tools/nginx-1.20.2/html/sky/`。新版使用 History 路由，静态页面的 `location /` 需添加 `try_files $uri $uri/ /index.html;`，以支持直接访问和刷新管理页面。订单提醒使用同源 `/ws/`，HTTPS 下自动使用 `wss`。修改 Nginx 配置后，先运行 `nginx.exe -t`，检查通过后再运行 `nginx.exe -s reload`。详细运行、测试与部署说明见 [管理端 README](admin-frontend/README.md)。
 
 ### 5. 启动微信小程序（可选）
 
@@ -154,6 +153,8 @@ Nginx 当前提供的页面位于 `tools/nginx-1.20.2/html/sky/`，与管理端�
 mvn -f sky-take-out/pom.xml clean test
 ```
 
+管理端的单元、组件与浏览器测试命令见 [管理端验证说明](admin-frontend/README.md#验证)。
+
 ## 📂 项目结构
 
 以下展示主要源码、资源与测试目录。
@@ -165,7 +166,7 @@ sky-delivery-plus/
 │   ├── sky-common/                            # 常量、上下文、异常、JSON 与通用工具
 │   ├── sky-pojo/                              # 请求 DTO、数据库实体与响应 VO
 │   └── sky-server/                            # 应用启动、接口、业务、数据访问与测试
-├── project-rjwm-admin-vue-ts/                 # 管理端前端（Vue 2 + TypeScript）
+├── admin-frontend/                           # 管理端前端（Vue 3 + TypeScript + Vite）
 ├── mp-weixin/                                 # 微信小程序用户端（uni-app 编译产物）
 ├── db/
 │   ├── sky.sql                                # 建库建表与初始数据，默认密码使用 Argon2id 哈希
@@ -242,9 +243,7 @@ sky-server/
 
 ## 🗺 后续计划
 
-1. 管理端前端升级到 Vue3
-2. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序
-3. to be continued...
+将用户端重写为与管理端同样的网页模式，不再使用微信小程序。
 
 
 ## 🖼 项目截图

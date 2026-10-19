@@ -1,6 +1,8 @@
 # 苍穹外卖管理端
 
-使用 Vue 3、TypeScript 严格模式、Vite、Element Plus、Vue Router 4、Pinia 和 Axios。目前实现登录页、公共后台布局、员工管理、分类管理、菜品管理、套餐管理和订单管理，其余管理页面显示“当前为 xx 页面”占位。页面复用旧版 Logo、菜单图标、登录背景图和订单提醒音。
+使用 Vue 3、TypeScript 严格模式、Vite、Element Plus、Vue Router 4、Pinia 和 Axios。已实现登录、公共后台布局、工作台、数据统计、订单管理、菜品管理、套餐管理、分类管理和员工管理。
+
+登录页与后台使用晴空食堂 Logo 和配套登录背景图，资源分别位于 `src/assets/images/brand/` 和 `src/assets/images/login/`。沿用的菜单图标、工作台图标和订单提醒音已保存在本项目内，许可声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。旧版管理端源码已移除，历史实现可从 Git 历史查阅。
 
 ## 本地运行
 
@@ -90,7 +92,7 @@ npx playwright install chromium
 npm run test:e2e -- --project=chromium
 ```
 
-单元和组件测试覆盖接口数据、统计日期边界、二进制下载及错误解析、会话与路由守卫、密码弹窗及消息连接的清理和重连。浏览器测试覆盖登录、公共布局、员工、分类、菜品和套餐的查询分页、新增/修改及校验、状态确认、批量删除、口味、图片上传、套餐选菜与份数、订单六种状态与详情、原因填写、处理流程、通知联动、操作限制和失败重试，以及统计图表、时间切换、独立重试、空销量与报表下载。默认测试模拟后端接口和 WebSocket。
+单元和组件测试覆盖接口数据、统计日期边界、二进制下载及错误解析、会话与路由守卫、密码弹窗及消息连接的清理和重连。浏览器测试覆盖登录、公共布局、员工、分类、菜品和套餐的查询分页、新增/修改及校验、状态确认、批量删除、口味、图片上传、套餐选菜与份数、订单六种状态与详情、原因填写、处理流程、通知联动、操作限制和失败重试，以及工作台概览、统计图表、时间切换、独立重试、空销量与报表下载。默认测试模拟后端接口和 WebSocket。
 
 如需使用本机安装的 Chrome，可设置 `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome`。
 
@@ -104,4 +106,4 @@ E2E_ADMIN_USERNAME=你的账号 E2E_ADMIN_PASSWORD=你的密码 npm run test:e2e
 
 ## 构建部署
 
-`npm run build` 输出到 `dist/`。部署服务器需将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一后端并支持 WebSocket Upgrade，同时将前端路由回退到 `index.html`，以支持直接访问和刷新管理页面。
+`npm run build` 输出到 `dist/`，生产环境使用 HTTPS。部署服务器需将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一后端并支持 WebSocket Upgrade，同时将前端路由回退到 `index.html`，以支持直接访问和刷新管理页面。Nginx 的静态页面 `location /` 中可使用 `try_files $uri $uri/ /index.html;`。
