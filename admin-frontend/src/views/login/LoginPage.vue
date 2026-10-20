@@ -13,7 +13,7 @@
           @submit.prevent="handleLogin"
         >
           <h1 class="login-title">
-            <img :src="logo" alt="晴空食堂" width="208" height="52" />
+            <img :src="logo" alt="碧蓝外卖" width="208" height="52" />
           </h1>
 
           <ElFormItem prop="username">
@@ -84,8 +84,8 @@ import { ElButton, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { login, type LoginCredentials } from '@/api/auth'
 import { useSessionStore } from '@/stores/session'
-import loginImage from '@/assets/images/login/background.png'
-import logo from '@/assets/images/brand/logo-with-name.png'
+import loginImage from '@/assets/images/login/background.webp'
+import logo from '@/assets/images/brand/logo-with-name.webp'
 
 const router = useRouter()
 const session = useSessionStore()
