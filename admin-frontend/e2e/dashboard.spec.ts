@@ -128,6 +128,50 @@ test('待处理列表支持分页，切换状态回到首页，接单后同步�
   ])
 })
 
+for (const surface of ['列表', '详情'] as const) {
+  test(`工作台待派送${surface}使用对应取消原因，成功后刷新列表和今日概览`, async ({ page }) => {
+    const workspace = await mockWorkspace(page)
+    const orders = await mockOrders(page)
+    await page.goto('/dashboard')
+    const list = page.getByRole('region', { name: '订单信息', exact: true })
+    await list.getByRole('tab', { name: /^待派送/ }).click()
+    const current = list.getByRole('row').filter({ hasText: 'order-0003' })
+    const detail = page.getByRole('dialog', { name: '订单信息', exact: true })
+    if (surface === '详情') await current.getByRole('button', { name: '查看', exact: true }).click()
+    await (surface === '列表' ? current : detail)
+      .getByRole('button', { name: '取消', exact: true })
+      .click()
+    const reason = page.getByRole('dialog', { name: '取消原因', exact: true })
+    await reason.locator('.el-select').click()
+    await expect(page.getByRole('option')).toHaveText([
+      '客户协商取消',
+      '食材不足',
+      '设备故障',
+      '无法安排配送',
+      '其他原因',
+    ])
+    await page.getByRole('option', { name: '客户协商取消', exact: true }).click()
+    const readsBefore = workspace.reads.filter((endpoint) => endpoint === 'overviewOrders').length
+    workspace.data.overviewOrders.deliveredOrders = 1
+    workspace.data.overviewOrders.cancelledOrders = 5
+    await reason.getByRole('button', { name: '确定', exact: true }).click()
+    await expect(reason).toBeHidden()
+    await expect(detail).toBeHidden()
+    await expect(current).toHaveCount(0)
+    await expect(list.getByRole('tab', { name: /^待派送/ })).toHaveText('待派送5')
+    const overview = page.getByRole('region', { name: '订单管理', exact: true })
+    await expect(overview.getByLabel('今日待派送数量')).toHaveText('1')
+    await expect(overview.getByLabel('今日已取消数量')).toHaveText('5')
+    expect(
+      workspace.reads.filter((endpoint) => endpoint === 'overviewOrders').length,
+    ).toBeGreaterThan(readsBefore)
+    expect(orders.writes).toEqual([
+      { path: '/api/order/cancel', body: { id: 3, cancelReason: '客户协商取消' } },
+    ])
+    await expect(page).toHaveURL('/dashboard')
+  })
+}
+
 test('订单详情和拒单复用现有流程，失败保留原因，成功后自动打开下一条', async ({ page }) => {
   const orders = await mockOrders(page)
   await page.goto('/dashboard')
@@ -143,7 +187,7 @@ test('订单详情和拒单复用现有流程，失败保留原因，成功后�
   await detail.getByRole('button', { name: '拒单', exact: true }).click()
   const reason = page.getByRole('dialog', { name: '拒绝原因', exact: true })
   await reason.locator('.el-select').click()
-  await page.getByRole('option', { name: '自定义原因', exact: true }).click()
+  await page.getByRole('option', { name: '其他原因', exact: true }).click()
   await reason.getByRole('textbox').fill('菜品售罄')
   orders.failures.action = '订单状态错误'
   await reason.getByRole('button', { name: '确定', exact: true }).click()

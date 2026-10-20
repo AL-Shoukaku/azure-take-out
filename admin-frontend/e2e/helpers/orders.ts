@@ -102,7 +102,13 @@ export async function mockOrders(page: Page, total = 36) {
       row.status = 5
       row.deliveryTime = '2026-10-18 13:20:00'
     } else {
+      if (url.pathname.endsWith('/cancel')) {
+        if (![1, 3, 4, 5].includes(row.status)) return fail('订单状态错误')
+        if (typeof body?.cancelReason !== 'string' || !body.cancelReason.trim())
+          return fail('订单取消原因不能为空')
+      } else if (row.status !== 2) return fail('订单状态错误')
       row.status = 6
+      if (row.payStatus === 1) row.payStatus = 2
       row.cancelTime = '2026-10-18 12:40:00'
       row.cancelReason = (body?.cancelReason as string | undefined) || null
       row.rejectionReason = (body?.rejectionReason as string | undefined) || null

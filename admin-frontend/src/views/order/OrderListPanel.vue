@@ -94,7 +94,7 @@
           ><template #default="{ row }"
             ><div
               class="order-row-actions"
-              :class="{ 'is-view-only': [5, 6].includes(row.status) }"
+              :class="{ 'is-view-only': row.status === 6 }"
             >
               <div>
                 <ElButton
@@ -148,8 +148,10 @@
       @action="(action) => requestAction(action, detail!, true)"
     />
     <OrderReasonDialog
+      v-if="actionOrder"
       v-model="reasonVisible"
       :mode="reasonMode"
+      :status="actionOrder.status"
       :busy="busy"
       @confirm="(reason) => executeAction(reasonMode, actionOrder!, actionFromDetail, reason)"
     />

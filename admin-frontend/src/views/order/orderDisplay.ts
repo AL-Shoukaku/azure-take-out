@@ -28,7 +28,7 @@ export const primaryActions: Partial<Record<OrderStatus, ActionOption>> = {
 }
 export function secondaryAction(status: OrderStatus): ActionOption | undefined {
   if (status === 2) return { action: 'reject', label: '拒单' }
-  if ([1, 3, 4].includes(status)) return { action: 'cancel', label: '取消' }
+  if ([1, 3, 4, 5].includes(status)) return { action: 'cancel', label: '取消' }
 }
 export function formatTime(time: string | null) {
   return time?.replace('T', ' ').slice(0, 16) || '—'

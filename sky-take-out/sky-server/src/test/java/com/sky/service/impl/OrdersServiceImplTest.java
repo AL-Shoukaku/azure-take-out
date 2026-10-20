@@ -220,16 +220,17 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     private static Stream<Arguments> transitions() {
         return Stream.of(Arguments.of("confirm",2,3),Arguments.of("reject",2,6),Arguments.of("delivery",3,4),
                 Arguments.of("complete",4,5),Arguments.of("userCancel",1,6),Arguments.of("userCancel",2,6),
-                Arguments.of("adminCancel",1,6),Arguments.of("adminCancel",2,6));
+                Arguments.of("adminCancel",1,6),Arguments.of("adminCancel",3,6),
+                Arguments.of("adminCancel",4,6),Arguments.of("adminCancel",5,6));
     }
     private void transition(String action) {
         switch (action) {
             case "confirm": OrdersConfirmDTO confirm = new OrdersConfirmDTO(); confirm.setId(9L); service.confirmOrder(confirm); break;
-            case "reject": OrdersRejectionDTO reject = new OrdersRejectionDTO(); reject.setId(9L); reject.setRejectionReason("售罄"); service.rejectOrder(reject); break;
+            case "reject": OrdersRejectionDTO reject = new OrdersRejectionDTO(); reject.setId(9L); reject.setRejectionReason(" 售罄 "); service.rejectOrder(reject); break;
             case "delivery": service.deliveryOrder(9L); break;
             case "complete": service.completeOrder(9L); break;
             case "userCancel": service.userCancelOrder(9L); break;
-            case "adminCancel": OrdersCancelDTO cancel = new OrdersCancelDTO(); cancel.setId(9L); cancel.setCancelReason("停业"); service.cancelOrder(cancel); break;
+            case "adminCancel": OrdersCancelDTO cancel = new OrdersCancelDTO(); cancel.setId(9L); cancel.setCancelReason(" 停业 "); service.cancelOrder(cancel); break;
             case "remind": service.remindOrder(9L); break;
             case "detail": service.queryUserOrderDetail(9L); break;
             default: throw new IllegalArgumentException(action);
@@ -262,9 +263,10 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         }
         if (action.equals("reject")) { assertThat(order.getValue().getRejectionReason()).isEqualTo("售罄"); assertThat(order.getValue().getPayStatus()).isEqualTo(Orders.REFUND); }
         if (action.equals("adminCancel")) assertThat(order.getValue().getCancelReason()).isEqualTo("停业");
+        if (action.equals("userCancel")) assertThat(order.getValue().getCancelReason()).isEqualTo("用户在接单前取消");
         if (action.endsWith("Cancel")) {
-            if (source == 2) assertThat(order.getValue().getPayStatus()).isEqualTo(Orders.REFUND);
-            else assertThat(order.getValue().getPayStatus()).isNull();
+            assertThat(order.getValue().getPayStatus())
+                    .isEqualTo(source == Orders.PENDING_PAYMENT ? null : Orders.REFUND);
         }
         verifyNoInteractions(webSocketServer);
     }
@@ -276,7 +278,9 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     private static Stream<Arguments> invalidTransitions() {
         return Stream.of("confirm","reject","delivery","complete","userCancel","adminCancel","remind").flatMap(action ->
                 Stream.of(1,2,3,4,5,6).filter(status -> {
-                    if (action.endsWith("Cancel")) return status != 1 && status != 2;
+                    if (action.equals("userCancel")) return status != 1 && status != 2;
+                    if (action.equals("adminCancel"))
+                        return status != 1 && status != 3 && status != 4 && status != 5;
                     int allowed = action.equals("delivery") ? 3 : action.equals("complete") ? 4 : 2;
                     return status != allowed;
                 }).map(status -> Arguments.of(action,status)));
@@ -287,6 +291,24 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_STATUS_ERROR);
         verify(ordersMapper,never()).update(any(),anyInt()); verifyNoInteractions(webSocketServer);
     }
+    @ParameterizedTest @NullAndEmptySource @ValueSource(strings = {"   "})
+    void adminCancelRequiresNonBlankReason(String reason) {
+        when(ordersMapper.getById(9L)).thenReturn(existing(Orders.CONFIRMED));
+        OrdersCancelDTO cancel = new OrdersCancelDTO(); cancel.setId(9L); cancel.setCancelReason(reason);
+        assertThatThrownBy(() -> service.cancelOrder(cancel))
+                .hasMessage(MessageConstant.ORDER_CANCEL_REASON_REQUIRED);
+        verify(ordersMapper,never()).update(any(),anyInt());
+    }
+
+    @ParameterizedTest @NullAndEmptySource @ValueSource(strings = {"   "})
+    void rejectRequiresNonBlankReason(String reason) {
+        when(ordersMapper.getById(9L)).thenReturn(existing(Orders.TO_BE_CONFIRMED));
+        OrdersRejectionDTO reject = new OrdersRejectionDTO(); reject.setId(9L); reject.setRejectionReason(reason);
+        assertThatThrownBy(() -> service.rejectOrder(reject))
+                .hasMessage(MessageConstant.ORDER_CANCEL_REASON_REQUIRED);
+        verify(ordersMapper,never()).update(any(),anyInt());
+    }
+
     @ParameterizedTest @ValueSource(strings = {"confirm","reject","delivery","complete","userCancel","adminCancel","remind","detail"})
     void missingOrderRejectedForEveryOperation(String action) {
         assertThatThrownBy(() -> transition(action)).isInstanceOf(OrderBusinessException.class).hasMessage(MessageConstant.ORDER_NOT_FOUND);

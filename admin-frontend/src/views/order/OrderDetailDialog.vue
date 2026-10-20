@@ -103,7 +103,7 @@
           <ElButton :disabled="busy" @click="visible = false">返回</ElButton
           ><template v-if="order && !error && !loading"
             ><ElButton
-              v-if="[1, 2].includes(order.status) && secondaryAction(order.status)"
+              v-if="secondaryAction(order.status)"
               :disabled="busy"
               @click="emit('action', secondaryAction(order.status)!.action)"
               >{{ secondaryAction(order.status)!.label }}</ElButton

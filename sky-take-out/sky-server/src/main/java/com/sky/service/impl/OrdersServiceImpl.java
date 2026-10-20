@@ -32,6 +32,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
 public class OrdersServiceImpl implements OrdersService {
 
     private static final BigDecimal DELIVERY_FEE = new BigDecimal("6.00");
+    private static final String USER_CANCEL_REASON = "用户在接单前取消";
 
     @Autowired
     private OrdersMapper ordersMapper;
@@ -89,6 +91,7 @@ public class OrdersServiceImpl implements OrdersService {
             throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
         checkShoppingCartProductStatus(shoppingCartList);
+
         // 向订单表 orders 中插入一条数据
         Orders orders = new Orders();
         // 直接复制 DTO 中的数据，手动计算 amount 和 packAmount，防止来自非前端的恶意数据
@@ -131,6 +134,10 @@ public class OrdersServiceImpl implements OrdersService {
                 .build();
     }
 
+    /**
+     * 检查购物车中套餐和菜品的状态，不能包含停售的菜品和套餐，套餐内部可以包含停售的菜品
+     * @param shoppingCartList  要检查的购物车列表
+     */
     private void checkShoppingCartProductStatus(List<ShoppingCart> shoppingCartList) {
         for (ShoppingCart item : shoppingCartList) {
             Integer status = null;
@@ -244,6 +251,9 @@ public class OrdersServiceImpl implements OrdersService {
         return getOrderDetail(orders);
     }
 
+    /**
+     * 查询订单详情的公共方法，封装成OrderVO返回
+     */
     private OrderVO getOrderDetail(Orders orders) {
         OrderVO orderVO = new OrderVO();
         BeanUtils.copyProperties(orders, orderVO);
@@ -270,6 +280,7 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setId(id);
         newOrders.setStatus(Orders.CANCELLED);
         newOrders.setCancelTime(LocalDateTime.now());
+        newOrders.setCancelReason(USER_CANCEL_REASON);
 
         // 已支付订单在本地模拟退款。
         if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
@@ -312,11 +323,17 @@ public class OrdersServiceImpl implements OrdersService {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
 
-        // 对于已经接单的订单，商家不能取消
+        // 1，3，4，5 允许取消，2 只能拒单，
         //订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
         if (!Orders.PENDING_PAYMENT.equals(orders.getStatus())
-                && !Orders.TO_BE_CONFIRMED.equals(orders.getStatus())) {
+                && !Orders.CONFIRMED.equals(orders.getStatus())
+                && !Orders.DELIVERY_IN_PROGRESS.equals(orders.getStatus())
+                && !Orders.COMPLETED.equals(orders.getStatus())) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        if (!StringUtils.hasText(ordersCancelDTO.getCancelReason())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_CANCEL_REASON_REQUIRED);
         }
 
         // 修改订单状态为已经取消
@@ -324,10 +341,10 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setId(ordersCancelDTO.getId());
         newOrders.setStatus(Orders.CANCELLED);
         newOrders.setCancelTime(LocalDateTime.now());
-        newOrders.setCancelReason(ordersCancelDTO.getCancelReason());
+        newOrders.setCancelReason(ordersCancelDTO.getCancelReason().trim());
 
         // 已支付订单在本地模拟退款。
-        if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
+        if (orders.getPayStatus().equals(Orders.PAID)) {
             //支付状态修改为 退款
             newOrders.setPayStatus(Orders.REFUND);
         }
@@ -472,12 +489,16 @@ public class OrdersServiceImpl implements OrdersService {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
 
+        if (!StringUtils.hasText(ordersRejectionDTO.getRejectionReason())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_CANCEL_REASON_REQUIRED);
+        }
+
         // 修改订单状态为已取消，并设置拒单原因，支付状态为退款
         Orders newOrders = new Orders();
         newOrders.setId(id);
         newOrders.setStatus(Orders.CANCELLED);
         newOrders.setCancelTime(LocalDateTime.now());
-        newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason());
+        newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason().trim());
         newOrders.setPayStatus(Orders.REFUND);
         updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
     }

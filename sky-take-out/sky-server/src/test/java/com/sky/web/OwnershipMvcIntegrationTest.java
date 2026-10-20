@@ -198,9 +198,14 @@ class OwnershipMvcIntegrationTest {
         return admin(put("/admin/order/cancel").contentType("application/json")
                 .content("{\"id\":1,\"cancelReason\":\"停业\"}"),7L);
     }
-    @ParameterizedTest @ValueSource(strings={"userPendingPayment","userPaid","adminPendingPayment","adminPaid","reject"})
+    @ParameterizedTest @ValueSource(strings={"userPendingPayment","userPaid","adminPendingPayment","adminConfirmed","adminDeliveryInProgress","adminCompleted","reject"})
     void cancellationPersistsTimeAndRepeatedRequestsKeepOriginalTime(String action) throws Exception {
-        int source = action.endsWith("PendingPayment") ? Orders.PENDING_PAYMENT : Orders.TO_BE_CONFIRMED;
+        int source;
+        if (action.equals("userPendingPayment") || action.equals("adminPendingPayment")) source = Orders.PENDING_PAYMENT;
+        else if (action.equals("userPaid") || action.equals("reject")) source = Orders.TO_BE_CONFIRMED;
+        else if (action.equals("adminConfirmed")) source = Orders.CONFIRMED;
+        else if (action.equals("adminDeliveryInProgress")) source = Orders.DELIVERY_IN_PROGRESS;
+        else source = Orders.COMPLETED;
         int originalPayStatus = source == Orders.PENDING_PAYMENT ? Orders.UN_PAID : Orders.PAID;
         jdbc.update("update orders set status=?,pay_status=? where id=1",source,originalPayStatus);
         LocalDateTime before = LocalDateTime.now();
@@ -208,9 +213,10 @@ class OwnershipMvcIntegrationTest {
         Orders saved = orders.getById(1L);
         assertThat(saved.getStatus()).isEqualTo(Orders.CANCELLED);
         assertThat(saved.getCancelTime()).isBetween(before.minusSeconds(1),LocalDateTime.now().plusSeconds(1));
-        assertThat(saved.getPayStatus()).isEqualTo(source == Orders.TO_BE_CONFIRMED ? Orders.REFUND : Orders.UN_PAID);
+        assertThat(saved.getPayStatus()).isEqualTo(source == Orders.PENDING_PAYMENT ? Orders.UN_PAID : Orders.REFUND);
         if (action.equals("reject")) assertThat(saved.getRejectionReason()).isEqualTo("售罄");
         else if (action.startsWith("admin")) assertThat(saved.getCancelReason()).isEqualTo("停业");
+        else assertThat(saved.getCancelReason()).isEqualTo("用户在接单前取消");
         mvc.perform(admin(get("/admin/order/details/1"),7L)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.cancelTime").isNotEmpty());
         mvc.perform(cancellationRequest(action)).andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0));

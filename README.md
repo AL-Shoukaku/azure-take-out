@@ -1,6 +1,6 @@
 # sky-delivery-plus
 
-![Version](https://img.shields.io/badge/version-v0.4.0-blue)
+![Version](https://img.shields.io/badge/version-v0.4.1-blue)
 
 ## 📖 项目简介
 

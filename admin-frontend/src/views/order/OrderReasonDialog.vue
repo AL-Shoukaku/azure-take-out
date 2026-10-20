@@ -30,7 +30,7 @@
             :label="option"
             :value="option" /></ElSelect
       ></ElFormItem>
-      <ElFormItem v-if="form.reason === '自定义原因'" label="原因：" prop="custom"
+      <ElFormItem v-if="form.reason === '其他原因'" label="原因：" prop="custom"
         ><ElInput
           v-model="form.custom"
           type="textarea"
@@ -61,20 +61,25 @@ import {
   type FormInstance,
   type FormRules,
 } from 'element-plus'
+import type { OrderStatus } from '@/api/order'
 
-const props = defineProps<{ mode: 'reject' | 'cancel'; busy: boolean }>()
+const props = defineProps<{ mode: 'reject' | 'cancel'; status: OrderStatus; busy: boolean }>()
 const emit = defineEmits<{ confirm: [reason: string] }>()
 const visible = defineModel<boolean>({ required: true })
 const form = reactive({ reason: '', custom: '' })
 const formRef = ref<FormInstance>()
 const label = computed(() => (props.mode === 'reject' ? '拒绝' : '取消'))
+const cancellationReasons: Partial<Record<OrderStatus, string[]>> = {
+  1: ['客户要求取消', '重复下单', '门店无法履约'],
+  3: ['客户协商取消', '食材不足', '设备故障', '无法安排配送'],
+  4: ['餐品损坏或遗失', '配送事故', '无法送达且已协商取消'],
+  5: ['客户申请退款', '餐品质量问题', '配送服务问题', '经用户协商后退款'],
+}
 const options = computed(() => [
-  '订单量较多，暂时无法接单',
-  '菜品已销售完，暂时无法接单',
   ...(props.mode === 'reject'
-    ? ['餐厅已打烊，暂时无法接单']
-    : ['骑手不足无法配送', '客户电话取消']),
-  '自定义原因',
+    ? ['订单量较多，暂时无法接单', '菜品已销售完，暂时无法接单', '餐厅已打烊，暂时无法接单']
+    : (cancellationReasons[props.status] ?? [])),
+  '其他原因',
 ])
 const rules = computed<FormRules>(() => ({
   reason: [{ required: true, message: `请选择${label.value}原因`, trigger: 'change' }],
@@ -91,7 +96,7 @@ async function reset() {
 async function submit() {
   if (props.busy) return
   const valid = await formRef.value?.validate().catch(() => false)
-  if (valid) emit('confirm', form.reason === '自定义原因' ? form.custom.trim() : form.reason)
+  if (valid) emit('confirm', form.reason === '其他原因' ? form.custom.trim() : form.reason)
 }
 </script>
 
