@@ -32,6 +32,13 @@ public interface UserMapper {
     User getById(Long id);
 
     /**
+     * 按 ID 更新用户的非空字段
+     * @param user 用户信息，必须包含用户 ID
+     * @return 受影响行数
+     */
+    int updateUser(User user);
+
+    /**
      * 根据时间获取总用户数
      * @param endTime  截止时间
      * @return 总用户数

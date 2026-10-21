@@ -1,8 +1,10 @@
 package com.sky.service;
 
+import com.sky.dto.PasswordEditDTO;
+import com.sky.dto.UserInfoDTO;
 import com.sky.dto.UserLoginDTO;
 import com.sky.dto.UserRegisterDTO;
-import com.sky.entity.User;
+import com.sky.vo.UserInfoVO;
 import com.sky.vo.UserLoginVO;
 
 public interface UserService {
@@ -19,4 +21,22 @@ public interface UserService {
      * @return              登录成功的用户信息
      */
     UserLoginVO login(UserLoginDTO userLoginDTO);
+
+    /**
+     * 更新用户信息
+     * @param userInfoDTO   用户信息
+     */
+    void updateUserInfo(UserInfoDTO userInfoDTO);
+
+    /**
+     * 查询当前登录用户的信息
+     * @return      用户信息
+     */
+    UserInfoVO getCurrentUserInfo();
+
+    /**
+     * 校验旧密码后修改当前登录用户的密码
+     * @param passwordEditDTO   用户修改密码信息，包括新旧密码
+     */
+    void editPassword(PasswordEditDTO passwordEditDTO);
 }

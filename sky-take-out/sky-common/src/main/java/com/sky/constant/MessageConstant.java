@@ -19,6 +19,7 @@ public class MessageConstant {
     public static final String LOGIN_FAILED = "登录失败";
     public static final String UPLOAD_FAILED = "文件上传失败";
     public static final String SETMEAL_ENABLE_FAILED = "套餐内包含未启售菜品，无法启售";
+    public static final String OLD_PASSWORD_ERROR = "原密码错误";
     public static final String PASSWORD_EDIT_FAILED = "密码修改失败";
     public static final String PASSWORD_FORMAT_ERROR = "新密码应为6-20位数字或字母";
     public static final String DISH_ON_SALE = "起售中的菜品不能删除";
@@ -28,4 +29,6 @@ public class MessageConstant {
     public static final String ORDER_NOT_FOUND = "订单不存在";
     public static final String ALREADY_EXISTS = "已经存在";
     public static final String ORDER_CANCEL_REASON_REQUIRED = "订单取消原因不能为空";
+    public static final String USER_NOT_FOUND = "用户不存在";
+    public static final String INPUT_CAN_NOT_BE_EMPTY = "输入不能为空";
 }

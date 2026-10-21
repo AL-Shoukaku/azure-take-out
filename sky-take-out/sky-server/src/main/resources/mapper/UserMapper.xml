@@ -8,6 +8,23 @@
         (#{account}, #{password}, #{username}, #{status}, #{name}, #{phone}, #{sex}, #{idNumber}, #{avatar}, #{createTime}, #{updateTime})
     </insert>
 
+    <update id="updateUser" parameterType="com.sky.entity.User">
+        update user
+        <set>
+            <if test="account != null">account = #{account},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="username != null">username = #{username},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="sex != null">sex = #{sex},</if>
+            <if test="idNumber != null">id_number = #{idNumber},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+
     <select id="countByMap" resultType="java.lang.Integer">
         select count(*) from user
         <where>

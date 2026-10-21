@@ -1,12 +1,12 @@
 package com.sky.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sky.constant.JwtClaimsConstant;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.StatusConstant;
+import com.sky.context.BaseContext;
+import com.sky.dto.PasswordEditDTO;
+import com.sky.dto.UserInfoDTO;
 import com.sky.dto.UserLoginDTO;
 import com.sky.dto.UserRegisterDTO;
 import com.sky.entity.User;
@@ -17,10 +17,11 @@ import com.sky.properties.JwtProperties;
 import com.sky.properties.WeChatProperties;
 import com.sky.security.PasswordHasher;
 import com.sky.service.UserService;
-import com.sky.utils.HttpClientUtil;
 import com.sky.utils.JwtUtil;
+import com.sky.vo.UserInfoVO;
 import com.sky.vo.UserLoginVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -125,5 +126,72 @@ public class UserServiceImpl implements UserService {
                 .avatar(user.getAvatar())
                 .token(token)
                 .build();
+    }
+
+    /**
+     * 更新用户信息
+     * @param userInfoDTO   用户信息
+     */
+    @Override
+    public void updateUserInfo(UserInfoDTO userInfoDTO) {
+        if (!BaseContext.getCurrentId().equals(userInfoDTO.getId())) {
+            throw new BaseException("不能修改其他用户信息");
+        }
+
+        User user = new User();
+        BeanUtils.copyProperties(userInfoDTO, user);
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateUser(user);
+    }
+
+    /**
+     * 查询当前用户的信息
+     * @return      用户信息
+     */
+    @Override
+    public UserInfoVO getCurrentUserInfo() {
+        Long id = BaseContext.getCurrentId();
+        User user = userMapper.getById(id);
+        if (user == null) {
+            throw new BaseException("用户不存在");
+        }
+        UserInfoVO userInfoVO = new UserInfoVO();
+        BeanUtils.copyProperties(user, userInfoVO);
+        return userInfoVO;
+    }
+
+    /**
+     * 校验旧密码后修改当前登录用户的密码
+     * @param passwordEditDTO   用户修改密码信息，包括新旧密码
+     */
+    @Override
+    public void editPassword(PasswordEditDTO passwordEditDTO) {
+        // 输入不能为空
+        String oldPassword = passwordEditDTO.getOldPassword();
+        String newPassword = passwordEditDTO.getNewPassword();
+        if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
+            throw new BaseException(MessageConstant.INPUT_CAN_NOT_BE_EMPTY);
+        }
+
+        // 根据当前 id 获取用户并检查是否为空
+        Long userId = BaseContext.getCurrentId();
+        User user = userMapper.getById(userId);
+        if (user == null) {
+            throw new BaseException(MessageConstant.USER_NOT_FOUND);
+        }
+        // 校验输入的旧密码是否正确
+        String storeHash = user.getPassword();
+        if (!passwordHasher.matches(oldPassword, storeHash)) {
+            throw new BaseException(MessageConstant.OLD_PASSWORD_ERROR);
+        }
+
+        // 校验通过，更新密码
+        String newHash = passwordHasher.encode(newPassword);
+        User update = User.builder()
+                .id(userId)
+                .password(newHash)
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.updateUser(update);
     }
 }

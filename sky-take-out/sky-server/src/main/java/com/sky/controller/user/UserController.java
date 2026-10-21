@@ -1,22 +1,20 @@
 package com.sky.controller.user;
 
-import com.sky.constant.JwtClaimsConstant;
+import com.sky.context.BaseContext;
+import com.sky.dto.PasswordEditDTO;
+import com.sky.dto.UserInfoDTO;
 import com.sky.dto.UserLoginDTO;
 import com.sky.dto.UserRegisterDTO;
-import com.sky.entity.User;
 import com.sky.properties.JwtProperties;
 import com.sky.result.Result;
 import com.sky.service.UserService;
-import com.sky.utils.JwtUtil;
+import com.sky.vo.UserInfoVO;
 import com.sky.vo.UserLoginVO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/user/user")
@@ -53,6 +51,30 @@ public class UserController {
     @PostMapping("/logout")
     @Operation(summary = "用户退出登录")
     public Result<Void> logout() {
+        return Result.success();
+    }
+
+    @PutMapping("/update")
+    @Operation(summary = "更新用户信息")
+    public Result<Void> updateUserInfo(@RequestBody UserInfoDTO userInfoDTO) {
+        log.info("更新用户信息, user: {}", userInfoDTO);
+        userService.updateUserInfo(userInfoDTO);
+        return Result.success();
+    }
+
+    @GetMapping("/info")
+    @Operation(summary = "查询用户信息")
+    public Result<UserInfoVO> queryUserInfo() {
+        log.info("查询当前用户的信息, id: {}", BaseContext.getCurrentId());
+        UserInfoVO userInfoVO = userService.getCurrentUserInfo();
+        return Result.success(userInfoVO);
+    }
+
+    @PutMapping("/editPassword")
+    @Operation(summary = "用户修改密码")
+    public Result<Void> editPassword(@RequestBody PasswordEditDTO passwordEditDTO) {
+        log.info("用户修改密码, id: {}", BaseContext.getCurrentId());
+        userService.editPassword(passwordEditDTO);
         return Result.success();
     }
 }

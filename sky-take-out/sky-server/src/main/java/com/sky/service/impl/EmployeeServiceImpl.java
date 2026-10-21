@@ -146,7 +146,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         // 前端只传新旧密码；兼容文档中的 empId，但不能修改其他员工的密码。
         if (passwordEditDTO == null
-                || (passwordEditDTO.getEmpId() != null && !empId.equals(passwordEditDTO.getEmpId()))
                 || !StringUtils.hasText(passwordEditDTO.getOldPassword())
                 || !StringUtils.hasText(passwordEditDTO.getNewPassword())) {
             throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
