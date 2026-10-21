@@ -1,8 +1,57 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
+import { getToken } from '@/utils/auth'
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [],
-})
+export function createAppRouter(
+  history: RouterHistory = createWebHistory(import.meta.env.BASE_URL),
+) {
+  const router = createRouter({
+    history,
+    routes: [
+      { path: '/login', name: 'login', component: () => import('@/views/login/LoginPage.vue') },
+      {
+        path: '/',
+        redirect: '/menu',
+        component: () => import('@/layouts/UserLayout.vue'),
+        children: [
+          {
+            path: 'menu',
+            name: 'menu',
+            component: () => import('@/views/SectionPlaceholder.vue'),
+            props: { section: '在线点餐' },
+            meta: { section: '在线点餐' },
+          },
+          {
+            path: 'orders',
+            name: 'orders',
+            component: () => import('@/views/SectionPlaceholder.vue'),
+            props: { section: '我的订单' },
+            meta: { section: '我的订单' },
+          },
+          {
+            path: 'addresses',
+            name: 'addresses',
+            component: () => import('@/views/SectionPlaceholder.vue'),
+            props: { section: '收货地址' },
+            meta: { section: '收货地址' },
+          },
+          {
+            path: 'profile',
+            name: 'profile',
+            component: () => import('@/views/profile/ProfilePage.vue'),
+            meta: { section: '我的' },
+          },
+        ],
+      },
+    ],
+  })
 
-export default router
+  router.beforeEach((to) => {
+    const token = getToken()
+    if (to.name !== 'login' && !token) return '/login'
+    if (to.name === 'login' && token) return '/menu'
+  })
+
+  return router
+}
+
+export default createAppRouter()

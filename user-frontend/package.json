@@ -17,9 +17,11 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "axios": "^1.20.0",
+    "element-plus": "^2.14.7",
     "pinia": "^4.0.3",
     "vue": "^3.5.42",
-    "vue-router": "^5.3.1"
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -49,6 +51,6 @@
     "vue-tsc": "^3.3.11"
   },
   "engines": {
-    "node": "^22.18.0 || >=24.12.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   }
 }

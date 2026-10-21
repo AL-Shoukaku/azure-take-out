@@ -1,6 +1,7 @@
 -- 苍穹外卖演示数据。此文件会重建 sky_take_out 全部 11 张表，导入前请备份自己的数据。
 -- 菜品与套餐图片保存在 sky-server/src/main/resources/menu-images，来源见 db/IMAGE_SOURCES.md。
 -- 演示用户账号为 demo01 ~ demo05，密码均为 123456；用户与员工密码均使用 Argon2id 哈希和独立随机盐。
+
 CREATE DATABASE IF NOT EXISTS `sky_take_out` DEFAULT CHARACTER SET utf8mb4;
 USE `sky_take_out`;
 SET NAMES utf8mb4;

@@ -126,9 +126,10 @@ class UserAccountMvcIntegrationTest {
         String token = login.path("token").asText();
         assertThat(JwtUtil.parseJWT(jwt.getUserSecretKey(), token).get("userId", Long.class)).isEqualTo(saved.getId());
         JsonNode info = success(get("/user/user/info").header(jwt.getUserTokenName(), token));
+        assertThat(info.path("id").asLong()).isEqualTo(saved.getId());
+        assertThat(info.path("account").asText()).isEqualTo(saved.getAccount());
         assertThat(info.path("username").asText()).isEqualTo(saved.getUsername());
         assertThat(info.has("password")).isFalse();
-        assertThat(info.has("account")).isFalse();
     }
 
     @Test void duplicateAccountDoesNotReplaceAnExistingUser() throws Exception {
@@ -157,6 +158,8 @@ class UserAccountMvcIntegrationTest {
 
     @Test void currentProfileUsesTokenIdentityRatherThanQueryParameter() throws Exception {
         JsonNode info = success(user(get("/user/user/info").param("id", "43")));
+        assertThat(info.path("id").asLong()).isEqualTo(42L);
+        assertThat(info.path("account").asText()).isEqualTo("user42");
         assertThat(info.path("username").asText()).isEqualTo("测试昵称");
         assertThat(info.path("phone").asText()).isEqualTo("13800000042");
         mvc.perform(user(get("/user/user/info/43"))).andExpect(status().isNotFound());

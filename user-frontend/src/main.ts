@@ -1,3 +1,7 @@
+import 'element-plus/dist/index.css'
+import './assets/styles/main.css'
+import './assets/styles/dialog.css'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
