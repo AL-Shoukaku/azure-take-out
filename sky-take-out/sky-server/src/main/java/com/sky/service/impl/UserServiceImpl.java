@@ -4,16 +4,25 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sky.constant.JwtClaimsConstant;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.dto.UserLoginDTO;
+import com.sky.dto.UserRegisterDTO;
 import com.sky.entity.User;
+import com.sky.exception.BaseException;
 import com.sky.exception.LoginFailedException;
 import com.sky.mapper.UserMapper;
+import com.sky.properties.JwtProperties;
 import com.sky.properties.WeChatProperties;
+import com.sky.security.PasswordHasher;
 import com.sky.service.UserService;
 import com.sky.utils.HttpClientUtil;
+import com.sky.utils.JwtUtil;
+import com.sky.vo.UserLoginVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -36,62 +45,85 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private PasswordHasher passwordHasher;
+
+    @Autowired
+    private JwtProperties jwtProperties;
+
     /**
-     * 微信用户登录
-     * @param userLoginDTO
-     * @return
+     * 用户注册
+     * @param userRegisterDTO   用户注册信息
      */
     @Override
-    public User wxLogin(UserLoginDTO userLoginDTO) {
-        // 向微信服务器发送请求，获取openid
-        String openid = getOpenid(userLoginDTO.getCode());
+    public void register(UserRegisterDTO userRegisterDTO) {
+        String account = userRegisterDTO.getAccount();
+        String password = passwordHasher.encode(userRegisterDTO.getPassword());
+        String username = "用户" + System.currentTimeMillis();
+        int status = StatusConstant.ENABLE; // 1表示启用，0表示禁用
+        LocalDateTime now = LocalDateTime.now();
 
-        // 检查 openid
-        if (!StringUtils.hasText(openid)) {
-            throw new LoginFailedException(MessageConstant.LOGIN_FAILED);
+        // 检查账号和密码是否为空
+        if (!StringUtils.hasText(account)
+                || !StringUtils.hasText(password)) {
+            throw new LoginFailedException("账号和密码不能为空");
         }
 
-        // 检查该用户是否为新用户
-        User user = userMapper.getUserByOpenid(openid);
-        if (user == null) {
-            // 新用户，保存用户信息
-            user = User.builder()
-                    .openid(openid)
-                    .createTime(LocalDateTime.now())
-                    .build();
+        User user = User.builder()
+                .account(account)
+                .password(password)
+                .username(username)
+                .status(status)
+                .createTime(now)
+                .updateTime(now)
+                .build();
+
+        try {
             userMapper.save(user);
+        } catch (DuplicateKeyException e) {
+            log.error("用户注册失败", e);
+            throw new BaseException("账号已存在");
         }
-        return user;
     }
 
     /**
-     * 向微信服务器发送请求，获取 openid
-     * @param code
-     * @return
+     * 用户登录
      */
-    private String getOpenid(String code) {
-        // 准备要发送的信息
-        Map<String, String> params = new HashMap<>();
-        params.put("appid", weChatProperties.getAppid());
-        params.put("secret", weChatProperties.getSecret());
-        params.put("js_code", code);
-        params.put("grant_type", "authorization_code");
-        String json = HttpClientUtil.doGet(WX_LOGIN_URL, params);
-        if (!StringUtils.hasText(json)) {
-            return null;
+    @Override
+    public UserLoginVO login(UserLoginDTO userLoginDTO) {
+        String account = userLoginDTO.getAccount();
+        String password = userLoginDTO.getPassword();
+
+        // 检查账号和密码是否为空
+        if (!StringUtils.hasText(account) || !StringUtils.hasText(password)) {
+            throw new LoginFailedException("账号和密码不能为空");
         }
-        try {
-            JsonNode response = objectMapper.reader()
-                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                    .readTree(json);
-            if (response == null || !response.isObject()) {
-                return null;
-            }
-            JsonNode openid = response.get("openid");
-            return openid != null && openid.isTextual() ? openid.textValue() : null;
-        } catch (JsonProcessingException e) {
-            log.warn("微信登录响应无法解析");
-            return null;
+
+        User user = userMapper.getByAccount(account);
+        // 处理各种异常情况（用户名不存在、密码不对、账号被锁定）
+        if (user == null) {
+            throw new LoginFailedException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
+        if (!passwordHasher.matches(password, user.getPassword())) {
+            throw new LoginFailedException(MessageConstant.PASSWORD_ERROR);
+        }
+        if (!StatusConstant.ENABLE.equals(user.getStatus())) {
+            throw new LoginFailedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+
+        // 无异常，登录成功，生成 token 与 UserLoginVO
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(JwtClaimsConstant.USER_ID, user.getId());
+        String token = JwtUtil.createJWT(
+                jwtProperties.getUserSecretKey(),
+                jwtProperties.getUserTtl(),
+                claims);
+
+        return UserLoginVO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .avatar(user.getAvatar())
+                .token(token)
+                .build();
     }
 }

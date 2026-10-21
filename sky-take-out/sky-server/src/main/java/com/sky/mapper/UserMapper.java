@@ -12,16 +12,16 @@ import java.util.Map;
 public interface UserMapper {
 
     /**
-     * 根据 openid 查询用户信息
-     * @param openid
-     * @return
+     * 根据 account 查询用户信息
+     * @param account   用户账号
+     * @return          用户信息
      */
-    @Select("select * from user where openid = #{openid}")
-    User getUserByOpenid(String openid);
+    @Select("select * from user where account = #{account}")
+    User getByAccount(String account);
 
     /**
      * 插入一个新用户
-     * @param user
+     * @param user  用户信息
      */
     void save(User user);
 

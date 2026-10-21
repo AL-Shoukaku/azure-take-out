@@ -2,6 +2,7 @@ package com.sky.controller.user;
 
 import com.sky.constant.JwtClaimsConstant;
 import com.sky.dto.UserLoginDTO;
+import com.sky.dto.UserRegisterDTO;
 import com.sky.entity.User;
 import com.sky.properties.JwtProperties;
 import com.sky.result.Result;
@@ -29,24 +30,29 @@ public class UserController {
     @Autowired
     private JwtProperties jwtProperties;
 
+    @PostMapping("/register")
+    @Operation(summary = "用户注册")
+    public Result register(@RequestBody UserRegisterDTO userRegisterDTO) {
+        log.info("用户注册, account: {}", userRegisterDTO.getAccount());
+        userService.register(userRegisterDTO);
+        return Result.success();
+    }
+
     @PostMapping("/login")
-    @Operation(summary = "微信用户登录")
+    @Operation(summary = "用户登录")
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
-        log.info("微信用户登录, userLoginDTO: {}", userLoginDTO);
-        // 微信用户登录
-        User user = userService.wxLogin(userLoginDTO);
-
-        // 为微信用户生成jwt令牌
-        Map<String,Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.USER_ID, user.getId());
-        String token = JwtUtil.createJWT(jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl(), claims);
-
-        // 封装返回结果
-        UserLoginVO userLoginVO = UserLoginVO.builder()
-                                    .id(user.getId())
-                                    .openid(user.getOpenid())
-                                    .token(token)
-                                    .build();
+        log.info("用户登录, account: {}", userLoginDTO.getAccount());
+        UserLoginVO userLoginVO = userService.login(userLoginDTO);
         return Result.success(userLoginVO);
+    }
+
+    /**
+     * 用户退出登录,由前端负责清楚 cookie 里的 jwt 令牌以及 Pinia 里的用户信息,后端不做任何处理
+     * @return
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "用户退出登录")
+    public Result<Void> logout() {
+        return Result.success();
     }
 }

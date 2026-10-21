@@ -3,9 +3,9 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.sky.mapper.UserMapper">
     <insert id="save" parameterType="com.sky.entity.User" keyProperty="id" useGeneratedKeys="true">
-        insert into user (openid, name, phone, sex, id_number, avatar, create_time)
+        insert into user (account, password, username, status, name, phone, sex, id_number, avatar, create_time, update_time)
         values
-        (#{openid}, #{name}, #{phone}, #{sex}, #{idNumber}, #{avatar}, #{createTime})
+        (#{account}, #{password}, #{username}, #{status}, #{name}, #{phone}, #{sex}, #{idNumber}, #{avatar}, #{createTime}, #{updateTime})
     </insert>
 
     <select id="countByMap" resultType="java.lang.Integer">

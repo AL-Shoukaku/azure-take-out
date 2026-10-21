@@ -1,6 +1,6 @@
 -- 苍穹外卖演示数据。此文件会重建 sky_take_out 全部 11 张表，导入前请备份自己的数据。
 -- 菜品与套餐图片保存在 sky-server/src/main/resources/menu-images，来源见 db/IMAGE_SOURCES.md。
--- 演示用户的 openid 为占位值，仅用于后台列表和报表；微信登录会创建真实用户。
+-- 演示用户账号为 demo01 ~ demo05，密码均为 123456；用户与员工密码均使用 Argon2id 哈希和独立随机盐。
 CREATE DATABASE IF NOT EXISTS `sky_take_out` DEFAULT CHARACTER SET utf8mb4;
 USE `sky_take_out`;
 SET NAMES utf8mb4;
@@ -380,19 +380,23 @@ INSERT INTO `shopping_cart` (`id`, `name`, `image`, `user_id`, `dish_id`, `setme
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `openid` varchar(45) COLLATE utf8_bin DEFAULT NULL COMMENT '微信用户唯一标识',
-  `name` varchar(32) COLLATE utf8_bin DEFAULT NULL COMMENT '姓名',
+  `account` varchar(32) collate utf8_bin NOT NULL UNIQUE COMMENT '账号',
+  `password` varchar(128) collate utf8_bin NOT NULL COMMENT '密码哈希',
+  `username` varchar(32) COLLATE utf8_bin NOT NULL COMMENT '用户名',
+  `name` varchar(32) COLLATE utf8_bin DEFAULT NULL COMMENT '真实姓名',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态 0:禁用，1:启用',
   `phone` varchar(11) COLLATE utf8_bin DEFAULT NULL COMMENT '手机号',
   `sex` varchar(2) COLLATE utf8_bin DEFAULT NULL COMMENT '性别',
   `id_number` varchar(18) COLLATE utf8_bin DEFAULT NULL COMMENT '身份证号',
   `avatar` varchar(500) COLLATE utf8_bin DEFAULT NULL COMMENT '头像',
   `create_time` datetime DEFAULT NULL,
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb3 COLLATE=utf8_bin COMMENT='用户信息';
 
-INSERT INTO `user` (`id`, `openid`, `name`, `phone`, `sex`, `id_number`, `avatar`, `create_time`) VALUES
-  (1, 'demo_openid_01', '演示用户01', '13900000001', '1', NULL, NULL, '2026-09-28 12:00:00'),
-  (2, 'demo_openid_02', '演示用户02', '13900000002', '0', NULL, NULL, '2026-09-28 12:00:00'),
-  (3, 'demo_openid_03', '演示用户03', '13900000003', '1', NULL, NULL, '2026-09-28 12:00:00'),
-  (4, 'demo_openid_04', '演示用户04', '13900000004', '0', NULL, NULL, '2026-09-28 12:00:00'),
-  (5, 'demo_openid_05', '演示用户05', '13900000005', '1', NULL, NULL, '2026-09-28 12:00:00');
+INSERT INTO `user` (`id`, `account`, `password`, `username`, `name`, `status`, `phone`, `sex`, `id_number`, `avatar`, `create_time`, `update_time`) VALUES
+  (1, 'demo01', '$argon2id$v=19$m=19456,t=2,p=1$HpHcnVag/Pxp92Din7qmvg$dJnJ1kYjPMLWTaw7uQiE0BjG9oe6ZdNIA5oPmxIPEF0', '演示用户01', '演示用户01', 1, '13900000001', '1', NULL, NULL, '2026-09-28 12:00:00', '2026-09-28 12:00:00'),
+  (2, 'demo02', '$argon2id$v=19$m=19456,t=2,p=1$ipOjrox7S3/LcamjHWtl0g$qicDLeEJHZ34HN87vaz3iAh+6ZK8qKQabJDwmt97hlk', '演示用户02', '演示用户02', 1, '13900000002', '0', NULL, NULL, '2026-09-28 12:00:00', '2026-09-28 12:00:00'),
+  (3, 'demo03', '$argon2id$v=19$m=19456,t=2,p=1$WNRC0Eewu5dC2MXac3Ry3Q$xt4Kf/19YZZRmEXMGcwRbEIC6F3jwxf+oVyxBJA9mMU', '演示用户03', '演示用户03', 1, '13900000003', '1', NULL, NULL, '2026-09-28 12:00:00', '2026-09-28 12:00:00'),
+  (4, 'demo04', '$argon2id$v=19$m=19456,t=2,p=1$3fBBopX+oeZk3U6l7EDgiQ$8dCuwWBv9tv2hpV2y4b5j+oYlzDCLlDf/fTK+km22XU', '演示用户04', '演示用户04', 1, '13900000004', '0', NULL, NULL, '2026-09-28 12:00:00', '2026-09-28 12:00:00'),
+  (5, 'demo05', '$argon2id$v=19$m=19456,t=2,p=1$0R+6mtzLdq30fSQrE+QN+w$J7WRWAaySsJVIZMbBWo4Ou7kKFGOSGefUgY/V1zfmRA', '演示用户05', '演示用户05', 1, '13900000005', '1', NULL, NULL, '2026-09-28 12:00:00', '2026-09-28 12:00:00');
