@@ -57,7 +57,7 @@ public abstract class WebTestSupport {
     }
     @AfterEach void clearMvcState() throws IOException {
         BaseContext.removeCurrentId();
-        try (Stream<Path> files = Files.list(UPLOADS)) { for (Path path : (Iterable<Path>)files::iterator) Files.delete(path); }
+        ImageFixtures.clearDirectory(UPLOADS);
     }
     protected MockHttpServletRequestBuilder admin(MockHttpServletRequestBuilder request) {
         return request.header("token",JwtUtil.createJWT(WebTestConfiguration.ADMIN_SECRET,60000,new HashMap<>(Collections.singletonMap("empId",7L))));

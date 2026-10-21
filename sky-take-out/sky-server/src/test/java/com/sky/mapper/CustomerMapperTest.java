@@ -100,8 +100,8 @@ class CustomerMapperTest extends SqlTestSupport {
         assertThat(mapper(EmployeeMapper.class).getById(1L).getUsername()).isEqualTo("admin");
     }
     @Test void userSaveBackfillsIdAndDateCountsIncludeBoundaries() {
-        UserMapper mapper = mapper(UserMapper.class); User newUser = User.builder().openid("new-openid").name("新用户").createTime(LocalDateTime.of(2026,10,3,0,0)).build();
-        mapper.save(newUser); assertThat(newUser.getId()).isNotNull(); assertThat(mapper.getUserByOpenid("new-openid").getId()).isEqualTo(newUser.getId());
+        UserMapper mapper = mapper(UserMapper.class); User newUser = User.builder().account("new-account").password(mapper.getById(USER_ID).getPassword()).username("新昵称").status(1).name("新用户").createTime(LocalDateTime.of(2026,10,3,0,0)).build();
+        mapper.save(newUser); assertThat(newUser.getId()).isNotNull(); assertThat(mapper.getByAccount("new-account").getId()).isEqualTo(newUser.getId());
         assertThat(mapper.getById(newUser.getId()).getName()).isEqualTo("新用户");
         assertThat(mapper.getTotalUserByTime(LocalDateTime.of(2026,10,3,0,0))).isEqualTo(3);
         assertThat(mapper.getNewUserByTime(LocalDateTime.of(2026,10,1,0,0),LocalDateTime.of(2026,10,2,12,0))).isEqualTo(2);

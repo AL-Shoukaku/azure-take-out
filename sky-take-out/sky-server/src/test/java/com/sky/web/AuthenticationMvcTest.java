@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthenticationMvcTest extends WebTestSupport {
     @ParameterizedTest @ValueSource(strings={"/admin/employee/page","/admin/category/list","/admin/dish/list","/admin/setmeal/page",
             "/admin/shop/status","/admin/order/statistics","/admin/report/top10","/admin/workspace/overviewDishes",
-            "/user/category/list","/user/dish/list","/user/setmeal/list","/user/addressBook/list","/user/shoppingCart/list","/user/order/historyOrders"})
+            "/user/category/list","/user/dish/list","/user/setmeal/list","/user/addressBook/list","/user/shoppingCart/list","/user/order/historyOrders","/user/user/info"})
     void everyProtectedControllerRejectsMissingToken(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isUnauthorized());
         verifyNoInteractions(employeeService,categoryService,dishService,setmealService,addressBookService,shoppingCartService,ordersService,reportService,workspaceService);
@@ -93,7 +93,16 @@ class AuthenticationMvcTest extends WebTestSupport {
     @Test void requiredSetmealQueryParameterIsEnforced() throws Exception {
         mvc.perform(admin(post("/admin/setmeal/status/1"))).andExpect(status().isBadRequest()); verifyNoInteractions(setmealService);
     }
-    @Test void unimplementedUserLogoutIsNotInventedByTestConfiguration() throws Exception {
-        mvc.perform(user(post("/user/user/logout"))).andExpect(status().isNotFound());
+    @Test void authenticatedUserCanLogOut() throws Exception {
+        successful(user(post("/user/user/logout")));
+    }
+    @Test void profileChangesPasswordChangesAndLogoutRequireLogin() throws Exception {
+        mvc.perform(put("/user/user/update").contentType("application/json").content("{\"id\":42}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/user/user/editPassword").contentType("application/json")
+                .content("{\"oldPassword\":\"123456\",\"newPassword\":\"654321\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/user/user/logout")).andExpect(status().isUnauthorized());
+        verifyNoInteractions(userService);
     }
 }

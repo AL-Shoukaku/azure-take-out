@@ -157,12 +157,16 @@ CREATE TABLE `shopping_cart` (
 
 CREATE TABLE `user` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `openid` varchar(45) DEFAULT NULL,
+  `account` varchar(32) NOT NULL UNIQUE,
+  `password` varchar(128) NOT NULL,
+  `username` varchar(32) NOT NULL,
+  `status` int NOT NULL DEFAULT '1',
   `name` varchar(32) DEFAULT NULL,
   `phone` varchar(11) DEFAULT NULL,
   `sex` varchar(2) DEFAULT NULL,
   `id_number` varchar(18) DEFAULT NULL,
   `avatar` varchar(500) DEFAULT NULL,
   `create_time` datetime DEFAULT NULL,
+  `update_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 );

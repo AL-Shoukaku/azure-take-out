@@ -18,7 +18,9 @@ public class MessageConstant {
     public static final String ADDRESS_BOOK_NOT_FOUND = "地址不存在";
     public static final String LOGIN_FAILED = "登录失败";
     public static final String UPLOAD_FAILED = "文件上传失败";
-    public static final String SETMEAL_ENABLE_FAILED = "套餐内包含未启售菜品，无法启售";
+    public static final String UPLOAD_EMPTY = "上传图片不能为空";
+    public static final String UPLOAD_TYPE_ERROR = "仅支持 JPG、JPEG、PNG 格式的图片";
+    public static final String UPLOAD_SIZE_EXCEEDED = "上传图片大小不能超过1MB";
     public static final String OLD_PASSWORD_ERROR = "原密码错误";
     public static final String PASSWORD_EDIT_FAILED = "密码修改失败";
     public static final String PASSWORD_FORMAT_ERROR = "新密码应为6-20位数字或字母";

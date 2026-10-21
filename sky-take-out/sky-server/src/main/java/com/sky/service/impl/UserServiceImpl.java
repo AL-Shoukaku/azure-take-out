@@ -58,8 +58,10 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public void register(UserRegisterDTO userRegisterDTO) {
+
+
         String account = userRegisterDTO.getAccount();
-        String password = passwordHasher.encode(userRegisterDTO.getPassword());
+        String password = userRegisterDTO.getPassword();
         String username = "用户" + System.currentTimeMillis();
         int status = StatusConstant.ENABLE; // 1表示启用，0表示禁用
         LocalDateTime now = LocalDateTime.now();
@@ -72,7 +74,7 @@ public class UserServiceImpl implements UserService {
 
         User user = User.builder()
                 .account(account)
-                .password(password)
+                .password(passwordHasher.encode(password))
                 .username(username)
                 .status(status)
                 .createTime(now)

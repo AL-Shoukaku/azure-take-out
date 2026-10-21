@@ -41,20 +41,15 @@ class EmployeePasswordServiceTest extends ServiceTestSupport {
                 .containsOnlyNulls();
     }
     @ParameterizedTest @ValueSource(longs={42L,4294967338L})
-    void optionalMatchingEmployeeIdUsesEntireAuthenticatedLongId(long empId) {
+    void passwordChangeUsesEntireAuthenticatedLongId(long empId) {
         BaseContext.setCurrentId(empId);
         when(mapper.getById(empId)).thenReturn(current(1)); when(mapper.update(any())).thenReturn(1);
-        PasswordEditDTO dto=request(); dto.setEmpId(empId); service.editPassword(dto);
+        service.editPassword(request());
         verify(mapper).update(argThat(e -> e.getId().equals(empId)));
     }
     @Test void absentLoginFailsBeforeDatabaseAccess() {
         BaseContext.removeCurrentId();
         assertThatThrownBy(() -> service.editPassword(request())).isInstanceOf(UserNotLoginException.class);
-        verifyNoInteractions(mapper);
-    }
-    @Test void forgedEmployeeIdFailsBeforeReadingAnotherEmployeesPassword() {
-        PasswordEditDTO dto=request(); dto.setEmpId(99L);
-        assertThatThrownBy(() -> service.editPassword(dto)).isInstanceOf(PasswordEditFailedException.class);
         verifyNoInteractions(mapper);
     }
     @ParameterizedTest @ValueSource(strings={"dto","old","new","blankOld","blankNew"})

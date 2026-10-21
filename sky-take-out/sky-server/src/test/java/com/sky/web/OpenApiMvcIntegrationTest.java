@@ -100,6 +100,33 @@ class OpenApiMvcIntegrationTest {
     }
 
     @Test
+    void userAccountSchemasReflectPasswordLoginAndSharedPasswordChangeDto() throws Exception {
+        JsonNode doc = document("user");
+        JsonNode paths = doc.path("paths");
+        for (String path : List.of("/user/user/register", "/user/user/login", "/user/user/logout", "/user/common/upload")) {
+            assertThat(paths.path(path).has("post")).as(path).isTrue();
+        }
+        assertThat(paths.path("/user/user/info").has("get")).isTrue();
+        assertThat(paths.path("/user/user/update").has("put")).isTrue();
+        assertThat(paths.path("/user/user/editPassword").has("put")).isTrue();
+        JsonNode schemas = doc.path("components").path("schemas");
+        assertThat(propertyNames(schemas.path("UserLoginDTO"))).containsExactlyInAnyOrder("account", "password");
+        assertThat(propertyNames(schemas.path("UserRegisterDTO"))).containsExactlyInAnyOrder("account", "password");
+        assertThat(propertyNames(schemas.path("UserLoginVO"))).containsExactlyInAnyOrder("id", "username", "avatar", "token");
+        assertThat(propertyNames(schemas.path("UserInfoVO"))).contains("username").doesNotContain("password", "account");
+        assertThat(propertyNames(schemas.path("UserInfoDTO"))).contains("id", "username", "avatar");
+        assertThat(propertyNames(schemas.path("PasswordEditDTO"))).containsExactlyInAnyOrder("oldPassword", "newPassword");
+        assertThat(propertyNames(document("admin").path("components").path("schemas").path("PasswordEditDTO")))
+                .containsExactlyInAnyOrder("oldPassword", "newPassword");
+    }
+
+    private List<String> propertyNames(JsonNode schema) {
+        List<String> names = new ArrayList<>();
+        schema.path("properties").fieldNames().forEachRemaining(names::add);
+        return names;
+    }
+
+    @Test
     void documentUiConfigurationExposesBothGroups() throws Exception {
         JsonNode config = readJson("/v3/api-docs/swagger-config");
         List<String> urls = new ArrayList<>();

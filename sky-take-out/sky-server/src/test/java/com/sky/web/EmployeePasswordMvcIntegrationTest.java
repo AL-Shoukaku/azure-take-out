@@ -113,13 +113,12 @@ class EmployeePasswordMvcIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
                 .andExpect(jsonPath("$.data.token").isNotEmpty()).andExpect(jsonPath("$.data.password").doesNotExist());
     }
-    @Test void matchingOptionalEmployeeIdSupportsTheReferenceDocumentBody() throws Exception {
-        mvc.perform(request("{\"empId\":1,\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",1L))
+    @Test void unrecognizedEmployeeIdCannotRetargetPasswordChange() throws Exception {
+        mvc.perform(request("{\"empId\":2,\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",1L))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1));
-        assertThat(employees.getById(1L).getPassword()).isNotEqualTo(OLD_HASH);
-    }
-    @Test void knowingAnotherEmployeesOldPasswordDoesNotPermitChangingIt() throws Exception {
-        failed("{\"empId\":2,\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}",1L,"密码修改失败");
+        assertThat(passwordHasher.matches("New123",employees.getById(1L).getPassword())).isTrue();
+        assertThat(employees.getById(2L).getPassword()).isEqualTo(OLD_HASH);
+        assertThat(BaseContext.getCurrentId()).isNull();
     }
     @Test void wrongOldPasswordDoesNotChangeEitherAccount() throws Exception {
         failed("{\"oldPassword\":\"654321\",\"newPassword\":\"New123\"}",1L,"密码错误");

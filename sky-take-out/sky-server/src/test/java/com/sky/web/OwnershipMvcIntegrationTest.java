@@ -16,9 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.io.IOException;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -91,18 +87,13 @@ class OwnershipMvcIntegrationTest {
         assertThat(BaseContext.getCurrentId()).isNull();
     }
 
-    @Test void wechatConnectionFailureReturnsLoginErrorWithoutCreatingUserOrToken() throws Exception {
+    @Test void wrongAccountPasswordReturnsLoginErrorWithoutCreatingUserOrToken() throws Exception {
         List<Map<String,Object>> users=jdbc.queryForList("select * from `user` order by id");
-        CloseableHttpClient client=mock(CloseableHttpClient.class);
-        when(client.execute(any(HttpUriRequest.class))).thenThrow(new IOException("synthetic WeChat connection failure"));
-        try (MockedStatic<HttpClients> factory=mockStatic(HttpClients.class)) {
-            factory.when(HttpClients::createDefault).thenReturn(client);
-            mvc.perform(post("/user/user/login").contentType("application/json").content("{\"code\":\"test-login-code\"}"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0))
-                    .andExpect(jsonPath("$.msg").value(MessageConstant.LOGIN_FAILED))
-                    .andExpect(jsonPath("$.data").doesNotExist());
-        }
-        verify(client).close();
+        mvc.perform(post("/user/user/login").contentType("application/json")
+                .content("{\"account\":\"user42\",\"password\":\"wrong-password\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value(MessageConstant.PASSWORD_ERROR))
+                .andExpect(jsonPath("$.data").doesNotExist());
         assertThat(jdbc.queryForList("select * from `user` order by id")).isEqualTo(users);
         assertThat(BaseContext.getCurrentId()).isNull();
     }
@@ -254,7 +245,8 @@ class OwnershipMvcIntegrationTest {
     }
     @Test void historyPreservesLargeUserIdInsteadOfMatchingItsTruncatedIntegerValue() throws Exception {
         long largeId=(1L << 32)+42L;
-        jdbc.update("insert into `user` (id,openid,name) values (?,?,?)",largeId,"large-openid","大 ID 用户");
+        jdbc.update("insert into `user` (id,account,password,username,name,status) select ?,?,password,?,?,1 from `user` where id=42",
+                largeId,"large-account","大 ID 昵称","大 ID 用户");
         AddressBook address=addresses.getById(1L); address.setUserId(largeId); addresses.insert(address);
         Orders largeOrder=orders.getById(1L); largeOrder.setId(null); largeOrder.setNumber("large-user-order");
         largeOrder.setUserId(largeId); largeOrder.setAddressBookId(addresses.list(AddressBook.builder().userId(largeId).build()).get(0).getId());

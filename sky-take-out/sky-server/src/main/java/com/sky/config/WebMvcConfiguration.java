@@ -62,8 +62,13 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
         if (!location.endsWith("/")) {
             location += "/";
         }
+        registry.addResourceHandler("/images/admin/**")
+                .addResourceLocations(location + "admin/");
+        registry.addResourceHandler("/images/user/**")
+                .addResourceLocations(location + "user/");
+        // 旧管理端图片移动到 admin 后，原 /images/文件名 地址仍然可用。
         registry.addResourceHandler("/images/**")
-                .addResourceLocations(location);
+                .addResourceLocations(location + "admin/");
     }
 
     /**

@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 @EnableWebMvc
 @ComponentScan(basePackages="com.sky.controller",useDefaultFilters=false,
         includeFilters=@ComponentScan.Filter(type=FilterType.ANNOTATION,classes=RestController.class))
-@Import({JacksonObjectMapper.class,WebMvcConfiguration.class,JwtTokenAdminInterceptor.class,JwtTokenUserInterceptor.class,GlobalExceptionHandler.class})
+@Import({JacksonObjectMapper.class,WebMvcConfiguration.class,JwtTokenAdminInterceptor.class,JwtTokenUserInterceptor.class,GlobalExceptionHandler.class,com.sky.service.impl.FileUploadServiceImpl.class})
 @SuppressWarnings("rawtypes")
 public class WebTestConfiguration {
     // 公开测试数据：各自解码为 32 字节，只用于自动化测试。

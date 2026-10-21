@@ -101,6 +101,15 @@ sudo systemctl start redis
 | `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
 | `sky.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
+上传目录以 `sky.upload-path` 为根目录，管理端图片保存到 `admin/`，用户头像保存到 `user/`；上传时会自动创建对应子目录。
+
+- 管理端：`POST /admin/common/upload`，请求头使用员工 `token`。
+- 用户端：`POST /user/common/upload`，请求头使用用户 `authentication`。
+- 两个接口均使用 `multipart/form-data`，文件字段名为 `file`；支持 JPG、JPEG、PNG 图片，单文件最大 1MB，并检查实际图片内容。
+- 成功时返回 `Result<String>`，`data` 为完整图片 URL，分别使用 `/images/admin/文件名` 和 `/images/user/文件名` 路径。
+- 用户端上传只保存文件并返回地址，保存个人资料时将该地址放入 `avatar`，调用现有 `PUT /user/user/update`。
+- 旧上传文件归入 `admin/` 后，原 `/images/文件名` 地址仍可访问，已有菜品和套餐图片地址无需修改。
+
 这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
 
 然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。

@@ -14,8 +14,9 @@ INSERT INTO setmeal(id,category_id,name,price,status,create_time) VALUES
  (1,3,'单人套餐',29.90,1,'2026-10-01 10:00:00'),(2,3,'停售套餐',39.90,0,'2026-10-02 10:00:00');
 INSERT INTO setmeal_dish(id,setmeal_id,dish_id,name,price,copies) VALUES
  (1,1,1,'鸡丁',12.50,2),(2,1,2,'米饭',8.00,1),(3,2,3,'停售菜品',10.00,1);
-INSERT INTO `user`(id,openid,name,create_time) VALUES
- (42,'openid-42','测试用户','2026-10-01 00:00:00'),(43,'openid-43','其他用户','2026-10-02 12:00:00');
+INSERT INTO `user`(id,account,password,username,name,status,phone,create_time,update_time) VALUES
+ (42,'user42','$argon2id$v=19$m=19456,t=2,p=1$HpHcnVag/Pxp92Din7qmvg$dJnJ1kYjPMLWTaw7uQiE0BjG9oe6ZdNIA5oPmxIPEF0','测试昵称','测试用户',1,'13800000042','2026-10-01 00:00:00','2026-10-01 00:00:00'),
+ (43,'user43','$argon2id$v=19$m=19456,t=2,p=1$ipOjrox7S3/LcamjHWtl0g$qicDLeEJHZ34HN87vaz3iAh+6ZK8qKQabJDwmt97hlk','其他昵称','其他用户',1,'13800000043','2026-10-02 12:00:00','2026-10-02 12:00:00');
 INSERT INTO address_book(id,user_id,consignee,phone,detail,is_default) VALUES
  (1,42,'张三','13800000000','测试路1号',1),(2,42,'张三','13800000000','测试路2号',0),(3,43,'李四','13800000001','他人地址',1);
 INSERT INTO shopping_cart(id,name,user_id,dish_id,dish_flavor,number,amount,create_time) VALUES

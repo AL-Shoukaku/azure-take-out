@@ -15,13 +15,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class CustomerMvcTest extends WebTestSupport {
-    @Test void publicWechatLoginIssuesUserJwt() throws Exception {
-        when(userService.wxLogin(any())).thenReturn(User.builder().id(42L).openid("openid-42").build());
-        String body = successful(post("/user/user/login").contentType("application/json").content("{\"code\":\"login-code\"}"))
-                .andExpect(jsonPath("$.data.openid").value("openid-42")).andReturn().getResponse().getContentAsString();
-        String token = json.readTree(body).at("/data/token").asText();
-        assertThat(JwtUtil.parseJWT(WebTestConfiguration.USER_SECRET,token).get("userId",Number.class).longValue()).isEqualTo(42L);
-        verify(userService).wxLogin(argThat(dto -> dto.getCode().equals("login-code")));
+    @Test void publicAccountLoginReturnsUserProfileAndToken() throws Exception {
+        String token = JwtUtil.createJWT(WebTestConfiguration.USER_SECRET,60000,Map.of("userId",42L));
+        when(userService.login(any())).thenReturn(com.sky.vo.UserLoginVO.builder()
+                .id(42L).username("测试昵称").avatar(null).token(token).build());
+        successful(post("/user/user/login").contentType("application/json")
+                .content("{\"account\":\"user42\",\"password\":\"123456\"}"))
+                .andExpect(jsonPath("$.data.id").value(42))
+                .andExpect(jsonPath("$.data.username").value("测试昵称"))
+                .andExpect(jsonPath("$.data.token").value(token))
+                .andExpect(jsonPath("$.data.password").doesNotExist())
+                .andExpect(jsonPath("$.data.openid").doesNotExist());
+        verify(userService).login(argThat(dto -> dto.getAccount().equals("user42") && dto.getPassword().equals("123456")));
     }
     @Test void addressListUsesIdentityFromJwt() throws Exception {
         when(addressBookService.list(any())).thenAnswer(i -> {

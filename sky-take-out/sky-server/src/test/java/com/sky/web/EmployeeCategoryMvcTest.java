@@ -33,8 +33,8 @@ class EmployeeCategoryMvcTest extends WebTestSupport {
         successful(admin(put("/admin/employee/editPassword").contentType("application/json")
                 .content("{\"oldPassword\":\"123456\",\"newPassword\":\"New123\"}")))
                 .andExpect(jsonPath("$.password").doesNotExist());
-        verify(employeeService).editPassword(argThat(dto -> dto.getEmpId()==null
-                && dto.getOldPassword().equals("123456") && dto.getNewPassword().equals("New123")));
+        verify(employeeService).editPassword(argThat(dto -> dto.getOldPassword().equals("123456")
+                && dto.getNewPassword().equals("New123")));
     }
     @Test void passwordChangeIsProtectedByAdminAuthentication() throws Exception {
         mvc.perform(put("/admin/employee/editPassword").contentType("application/json")

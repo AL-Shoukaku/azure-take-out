@@ -163,7 +163,7 @@ class BootMvcIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(1))
                 .andReturn().getResponse().getContentAsByteArray();
         String path = URI.create(json.readTree(response).path("data").asText()).getPath();
-        assertThat(Files.readAllBytes(UPLOADS.resolve(Path.of(path).getFileName()))).isEqualTo(image);
+        assertThat(Files.readAllBytes(UPLOADS.resolve("admin").resolve(Path.of(path).getFileName()))).isEqualTo(image);
         mvc.perform(get(path)).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("image/png")).andExpect(content().bytes(image));
     }
