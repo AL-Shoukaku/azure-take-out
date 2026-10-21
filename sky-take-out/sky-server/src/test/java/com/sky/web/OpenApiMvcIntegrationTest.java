@@ -113,7 +113,7 @@ class OpenApiMvcIntegrationTest {
         assertThat(propertyNames(schemas.path("UserLoginDTO"))).containsExactlyInAnyOrder("account", "password");
         assertThat(propertyNames(schemas.path("UserRegisterDTO"))).containsExactlyInAnyOrder("account", "password");
         assertThat(propertyNames(schemas.path("UserLoginVO"))).containsExactlyInAnyOrder("id", "username", "avatar", "token");
-        assertThat(propertyNames(schemas.path("UserInfoVO"))).contains("username").doesNotContain("password", "account");
+        assertThat(propertyNames(schemas.path("UserInfoVO"))).contains("id", "account", "username").doesNotContain("password");
         assertThat(propertyNames(schemas.path("UserInfoDTO"))).contains("id", "username", "avatar");
         assertThat(propertyNames(schemas.path("PasswordEditDTO"))).containsExactlyInAnyOrder("oldPassword", "newPassword");
         assertThat(propertyNames(document("admin").path("components").path("schemas").path("PasswordEditDTO")))

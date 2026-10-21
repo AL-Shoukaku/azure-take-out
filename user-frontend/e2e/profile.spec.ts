@@ -44,7 +44,7 @@ test('编辑资料回显全部字段，按指定顺序排列并虚化背景', as
   const dialog = await openEditor(page)
   await expect(dialog.getByLabel('昵称', { exact: true })).toHaveValue('小蓝')
   await expect(dialog.getByLabel('真实姓名', { exact: true })).toHaveValue('蓝同学')
-  await expect(dialog.getByLabel('性别', { exact: true })).toContainText('男')
+  await expect(dialog.getByText('男', { exact: true })).toBeVisible()
   await expect(dialog.getByLabel('手机号', { exact: true })).toHaveValue('13800000000')
   await expect(dialog.getByLabel('身份证号', { exact: true })).toHaveValue('110101199001010011')
   await expect(dialog.locator('.el-form-item__label')).toHaveText([
@@ -87,7 +87,7 @@ test('保存资料后同步更新页面和导航栏，刷新保留服务器结�
   await dialog.getByLabel('真实姓名', { exact: true }).fill('')
   await dialog.getByLabel('手机号', { exact: true }).fill('')
   await dialog.getByLabel('身份证号', { exact: true }).fill('')
-  await dialog.getByLabel('性别', { exact: true }).click()
+  await dialog.getByRole('combobox', { name: '性别', exact: true }).press('ArrowDown')
   await page.getByRole('option', { name: '女', exact: true }).click()
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   await expect(dialog).toBeHidden()
@@ -170,13 +170,11 @@ test('头像限制 PNG/JPEG 和 1 MB，错误文件不上传', async ({ page }) 
     .getByLabel('选择头像文件')
     .setInputFiles({ name: 'avatar.gif', mimeType: 'image/gif', buffer: Buffer.from('gif') })
   await expect(page.getByText('仅支持 PNG、JPEG 格式的头像')).toBeVisible()
-  await dialog
-    .getByLabel('选择头像文件')
-    .setInputFiles({
-      name: 'avatar.png',
-      mimeType: 'image/png',
-      buffer: Buffer.alloc(1024 * 1024 + 1),
-    })
+  await dialog.getByLabel('选择头像文件').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(1024 * 1024 + 1),
+  })
   await expect(page.getByText('头像大小不能超过 1 MB')).toBeVisible()
   expect(uploads).toBe(0)
 })

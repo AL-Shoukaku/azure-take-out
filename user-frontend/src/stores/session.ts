@@ -10,9 +10,16 @@ export const useSessionStore = defineStore('session', () => {
   const token = ref(getToken())
   const user = ref<UserSummary | null>(null)
   const profile = ref<UserInfoVO | null>(null)
-  let profileRequest: Promise<void> | undefined
+  let profileRevision = 0
+  let profileRequest: { token: string; promise: Promise<void> } | undefined
+
+  function invalidateProfileRequest(): void {
+    profileRevision += 1
+    profileRequest = undefined
+  }
 
   function startSession(value: UserLoginVO): void {
+    invalidateProfileRequest()
     setToken(value.token)
     token.value = value.token
     user.value = { id: value.id, username: value.username, avatar: value.avatar }
@@ -20,6 +27,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function clearSession(): void {
+    invalidateProfileRequest()
     removeToken()
     token.value = ''
     user.value = null
@@ -27,18 +35,26 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function updateProfile(value: UserInfoVO): void {
+    invalidateProfileRequest()
     profile.value = value
     user.value = { id: value.id, username: value.username, avatar: value.avatar }
   }
 
   function restoreUser(): Promise<void> {
-    // 公共布局和个人资料页会同时请求当前资料，共用这一次请求。
-    profileRequest ??= getUserInfo()
-      .then(updateProfile)
-      .finally(() => {
-        profileRequest = undefined
+    const requestToken = getToken()
+    // 同一会话内共用请求；会话切换或资料保存后，旧响应不能写回。
+    if (profileRequest?.token === requestToken) return profileRequest.promise
+
+    const revision = profileRevision
+    const promise: Promise<void> = getUserInfo()
+      .then((value) => {
+        if (revision === profileRevision && requestToken === getToken()) updateProfile(value)
       })
-    return profileRequest
+      .finally(() => {
+        if (profileRequest?.promise === promise) profileRequest = undefined
+      })
+    profileRequest = { token: requestToken, promise }
+    return promise
   }
 
   return { token, user, profile, startSession, clearSession, updateProfile, restoreUser }
