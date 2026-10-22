@@ -7,6 +7,8 @@ import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 
+import java.util.List;
+
 public interface OrdersService {
 
     /**
@@ -25,6 +27,14 @@ public interface OrdersService {
      * 用户查询历史订单，可支持根据订单状态查询
      */
     PageResult historyOrdersPageQuery(Integer page, Integer pageSize, Integer status);
+
+    /**
+     * 用户查询历史订单，可支持根据订单状态列表查询
+     * @param pageNum       页号
+     * @param statusList    订单状态列表
+     * @return
+     */
+    PageResult historyOrdersPageQueryByStatusList(Integer pageNum, List<Integer> statusList);
 
     /**
      * 用户查询本人订单详情

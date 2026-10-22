@@ -23,15 +23,13 @@ export function createAppRouter(
           {
             path: 'orders',
             name: 'orders',
-            component: () => import('@/views/SectionPlaceholder.vue'),
-            props: { section: '我的订单' },
+            component: () => import('@/views/order/OrderPage.vue'),
             meta: { section: '我的订单' },
           },
           {
             path: 'addresses',
             name: 'addresses',
-            component: () => import('@/views/SectionPlaceholder.vue'),
-            props: { section: '收货地址' },
+            component: () => import('@/views/address/AddressPage.vue'),
             meta: { section: '收货地址' },
           },
           {

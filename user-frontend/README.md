@@ -2,9 +2,15 @@
 
 采用 Vue 3、TypeScript 严格模式、Vite、Element Plus、Vue Router 4、Pinia 和 Axios，版本与管理端保持一致。
 
-当前实现登录／注册页 `/login` 和登录后的公共布局。根路径 `/` 重定向到 `/menu`；路由守卫读取 Cookie 中的 `token`，未登录进入登录页。登录页桌面端左右分栏为 6:4，左侧铺满背景图，右侧表单顶部 logo 水平居中，窄屏仅展示表单。背景图位于 `src/assets/images/login/background.webp`，保留 1402×1122 分辨率并压缩为 WebP。
+当前已实现登录／注册、我的订单、收货地址、我的及登录后的公共布局。根路径 `/` 重定向到 `/menu`；路由守卫读取 Cookie 中的 `token`，未登录进入登录页。登录页桌面端左右分栏为 6:4，左侧铺满背景图，右侧表单顶部 logo 水平居中，窄屏仅展示表单。背景图位于 `src/assets/images/login/background.webp`，保留 1402×1122 分辨率并压缩为 WebP。
 
-登录后的公共布局包含始终显示的白色顶部导航栏和浅蓝色内容区。导航栏左侧复用登录 logo，点击返回 `/menu`；中间四个入口为“在线点餐” `/menu`、“我的订单” `/orders`、“收货地址” `/addresses` 和“我的” `/profile`，选中的板块显示蓝色下划线。右侧显示头像和“你好，用户昵称”，点击进入 `/profile`。点餐、订单和地址页面目前只显示“当前是 xx 板块”。小屏幕下导航栏分为两行，保留全部入口。
+登录后的公共布局包含始终显示的白色顶部导航栏和浅蓝色内容区。导航栏左侧复用登录 logo，点击返回 `/menu`；中间四个入口为“在线点餐” `/menu`、“我的订单” `/orders`、“收货地址” `/addresses` 和“我的” `/profile`，选中的板块显示蓝色下划线。右侧显示头像和“你好，用户昵称”，点击进入 `/profile`。点餐页面目前显示“当前是 在线点餐 板块”。小屏幕下导航栏分为两行，保留全部入口。
+
+“我的订单”页面包含全部订单、待付款、进行中、已完成、已取消五个选项卡，进行中查询状态 2、3、4。桌面三列两行，每页固定六条，仅总数超过六条时显示 Element Plus 分页，不提供每页条数切换。卡片显示下单时间、订单号、状态、菜品图片与名称、件数、总金额及地址；历史完整地址仅在与地址簿完整匹配时省略省市区，其余保留订单快照。详情弹窗显示进度、菜品及口味数量、每行小计、打包费、配送费、订单合计、收货及配送信息、餐具、备注、支付状态和取消原因／时间。
+
+列表与详情共用操作规则：待付款可支付／取消，待接单可催单／取消，其余状态可联系商家，所有状态可再来一单。支付使用当前后端的模拟支付流程，弹窗明确说明不会实际扣款；取消前要求确认，成功后重新读取列表与详情。联系商家显示 `138 0000 0000` 演示手机号。再来一单调用后端追加购物车，同步 Pinia 购物车后进入 `/menu`，保留原有商品；点餐页的完整商品和购物车界面待实现。购物车刷新失败不会重复调用再来一单接口。
+
+“收货地址”页面在桌面以双列卡片展示地址标签、默认标记、详细地址、省市区、收货人及手机号，小屏幕使用单列。支持新增、编辑回显、确认删除和设置默认地址；设置默认成功后立即选中。配送选择与默认标记独立，选择保存在 Pinia 中，切换页面保留，刷新后优先选择默认地址，退出或切换账号时清空。新增／编辑弹窗包含收货人、手机号、手工输入的省市区、详细地址及家／公司／学校／其它标签，校验必填项和手机号，背景虚化且小屏可滚动。弹窗不提供默认地址复选框，默认地址通过卡片设置。兼容旧小程序的数字标签；修改地区名称时清除不再匹配的旧地区编码。
 
 “我的”页面显示头像昵称、基本信息和账号安全三个白色板块。基本信息包含昵称、姓名、性别、手机号、身份证号和地址管理入口。编辑资料弹窗按头像、昵称、真实姓名、性别、手机号、身份证号的顺序回显，选填信息可以清空；保存后同步更新页面和导航栏。头像支持 PNG/JPEG，最大 1 MB，上传后需保存资料才会绑定到用户。修改密码弹窗校验旧密码、新密码格式与两次输入一致性；修改成功保持当前登录状态。两个弹窗均支持背景虚化和小屏滚动。退出登录会调用后端并清除 Cookie 和 Pinia 会话。
 
@@ -24,6 +30,10 @@ npm run dev
 登录请求为 `POST /api/user/login`，注册请求为 `POST /api/user/register`。登录成功后 Cookie 保存 `token`，有效期与后端 `user-ttl` 一致（2 小时），用户资料保存在 Pinia；刷新或直接打开已登录页面时，通过 `GET /api/user/info` 恢复昵称和头像。未设置头像或头像加载失败时显示默认头像。统一请求从 Cookie 读取凭证并设置 `authentication` 请求头；401 清除会话并返回登录页。Vite 同时将 `/images/*` 代理到后端，为相对地址的用户头像提供访问。
 
 个人资料相关接口：`GET /api/user/info` 返回当前用户的 `id`、`account` 及资料；`PUT /api/user/update` 保存头像、昵称等资料，账号不可编辑；`POST /api/common/upload` 使用 multipart `file` 上传头像；`PUT /api/user/editPassword` 提交旧密码和新密码；`POST /api/user/logout` 退出登录。
+
+地址相关接口：`GET /api/addressBook/list` 查询列表，`GET /api/addressBook/{id}` 读取详情，`POST /api/addressBook` 新增，`PUT /api/addressBook` 编辑，`PUT /api/addressBook/default` 以 `{ id }` 设置默认，`DELETE /api/addressBook?id=...` 删除。新增接口返回空数据，保存成功后重新查询列表；新增／编辑不提交 `isDefault`，保留后端现有的默认地址规则。
+
+订单相关接口：`GET /api/order/historyOrdersByStatusList?pageNum=1&statusList=2,3,4` 分页筛选，查询全部时省略 `statusList`；`GET /api/order/orderDetail/{id}` 读取详情，`PUT /api/order/payment` 以订单号及 `payMethod: 1` 模拟支付，`PUT /api/order/cancel/{id}` 取消，`GET /api/order/reminder/{id}` 催单，`POST /api/order/repetition/{id}` 再来一单。`GET /api/shoppingCart/list` 读取加入商品后的真实购物车。
 
 管理端和用户端使用相同的 Cookie 名称。在本地同时使用两端时，请分别通过 `127.0.0.1` 和 `localhost` 访问，以免浏览器在同一主机的不同端口间共享 Cookie。
 
@@ -52,6 +62,22 @@ E2E_BACKEND=1 npm run test:e2e -- e2e/profile.backend.spec.ts --project=chromium
 ```
 
 该测试会创建一个 `E2eProfile` 开头的独立测试用户及测试头像，不修改已有用户资料。
+
+验证收货地址的真实新增、编辑、设置默认、刷新回显和删除：
+
+```sh
+E2E_BACKEND=1 npm run test:e2e -- e2e/addresses.backend.spec.ts --project=chromium
+```
+
+该测试创建 `E2eAddress` 开头的独立测试用户，并在流程结束时删除本次新增的地址，不修改已有用户地址。
+
+验证订单分页、详情、模拟支付、催单、取消及购物车追加：
+
+```sh
+E2E_BACKEND=1 npm run test:e2e -- e2e/orders.backend.spec.ts --project=chromium
+```
+
+该测试创建 `E2eOrder` 开头的独立账号及七笔订单，使用现有在售菜品；结束时取消该账号尚未接单的测试订单并清空其购物车，不修改其他用户数据。
 
 使用已有账号只读验证公共布局、导航与刷新后的用户信息：
 

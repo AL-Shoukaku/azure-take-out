@@ -233,6 +233,32 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     /**
+     * 用户查询历史订单，可支持根据订单状态列表查询
+     * @param pageNum       页数
+     * @param statusList    订单状态列表
+     * @return
+     */
+    @Override
+    public PageResult historyOrdersPageQueryByStatusList(Integer pageNum, List<Integer> statusList) {
+        int pageSize = 6; // 每页显示6条订单
+
+        Long userId = getCurrentUserId();
+        PageHelper.startPage(pageNum, pageSize);
+
+        Page<Orders> page = ordersMapper.pageQueryByStatusList(userId, statusList);
+        List<Orders> ordersList = page.getResult();
+        List<OrderVO> orderVOList = new ArrayList<>();
+        for (Orders orders : ordersList) {
+            OrderVO orderVO = new OrderVO();
+            BeanUtils.copyProperties(orders, orderVO);
+            List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
+            orderVO.setOrderDetailList(orderDetailList);
+            orderVOList.add(orderVO);
+        }
+        return new PageResult(page.getTotal(), orderVOList);
+    }
+
+    /**
      * 用户查询本人订单详情
      */
     public OrderVO queryUserOrderDetail(Long id) {

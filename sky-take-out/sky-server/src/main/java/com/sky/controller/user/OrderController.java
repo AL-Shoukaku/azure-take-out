@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController("userOrderController")
 @RequestMapping("/user/order")
 @Slf4j
@@ -48,6 +50,14 @@ public class OrderController {
     public Result<PageResult> historyOrders(int page, int pageSize, Integer status) {
         log.info("用户查询历史订单，page：{}，pageSize：{}，status：{}", page, pageSize, status);
         PageResult pageResult = ordersService.historyOrdersPageQuery(page, pageSize, status);
+        return Result.success(pageResult);
+    }
+
+    @GetMapping("/historyOrdersByStatusList")
+    @Operation(summary = "用户查询历史订单（根据订单状态列表查询）")
+    public Result<PageResult> historyOrdersByStatusList(int pageNum, @RequestParam(required = false) List<Integer> statusList) {
+        log.info("用户查询历史订单（根据订单状态列表查询），pageNum：{},  statusList：{}", pageNum, statusList);
+        PageResult pageResult = ordersService.historyOrdersPageQueryByStatusList(pageNum, statusList);
         return Result.success(pageResult);
     }
 

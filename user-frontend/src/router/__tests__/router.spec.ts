@@ -6,6 +6,8 @@ import { removeToken, setToken } from '@/utils/auth'
 vi.mock('@/views/login/LoginPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/layouts/UserLayout.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/profile/ProfilePage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/address/AddressPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/order/OrderPage.vue', () => ({ default: { template: '<div />' } }))
 
 afterEach(removeToken)
 

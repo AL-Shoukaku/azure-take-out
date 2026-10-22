@@ -51,6 +51,11 @@ public interface OrdersMapper {
     Page<Orders> pageQuery(@Param("userId") Long userId, @Param("status") Integer status);
 
     /**
+     * 分页查询历史订单，支持传入状态的列表
+     */
+    Page<Orders> pageQueryByStatusList(Long userId, List<Integer> statusList);
+
+    /**
      * 分页查询商家的订单，支持条件查询
      */
     Page<Orders> adminPageSearch(OrdersPageQueryDTO ordersPageQueryDTO);

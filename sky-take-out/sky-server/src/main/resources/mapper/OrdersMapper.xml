@@ -62,6 +62,19 @@
         order by order_time desc
     </select>
 
+    <!--根据用户id和状态列表查询历史订单-->
+    <select id="pageQueryByStatusList" resultType="com.sky.entity.Orders">
+        select * from orders
+        where user_id = #{userId}
+        <if test="statusList != null and statusList.size() > 0">
+            and status in
+            <foreach collection="statusList" item="status" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        order by order_time desc
+    </select>
+
     <select id="adminPageSearch" resultType="com.sky.entity.Orders" parameterType="com.sky.dto.OrdersPageQueryDTO">
         select * from orders
         <where>

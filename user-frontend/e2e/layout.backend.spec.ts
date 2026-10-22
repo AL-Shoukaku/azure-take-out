@@ -21,7 +21,7 @@ test('真实后端：登录后显示昵称，导航切换和刷新后恢复用�
     .getByRole('navigation', { name: '主导航' })
     .getByRole('link', { name: '我的订单', exact: true })
     .click()
-  await expect(page.getByRole('main')).toHaveText('当前是 我的订单 板块')
+  await expect(page.getByRole('main')).toContainText('每一餐，都是日常的记录。')
   const info = page.waitForResponse('**/api/user/info')
   await page.reload()
   expect(await (await info).json()).toMatchObject({
