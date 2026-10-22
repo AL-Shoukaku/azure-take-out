@@ -41,6 +41,10 @@ public class DishServiceImpl implements DishService {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    /**
+     * 新增菜品，同时保存对应的口味数据，新增菜品不涉及购物车数据同步
+     * @param dishDTO   菜品信息
+     */
     @Override
     @Transactional  // 需要处理多个表，保证原子性
     public void saveWithFlavor(DishDTO dishDTO) {
@@ -64,8 +68,8 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 分页查询菜品
-     * @param dishPageQueryDTO
-     * @return
+     * @param dishPageQueryDTO  前端传来的分页查询参数
+     * @return                  分页查询结果
      */
     @Override
     public PageResult pageQuery(DishPageQueryDTO dishPageQueryDTO) {
@@ -78,6 +82,7 @@ public class DishServiceImpl implements DishService {
     /**
      * 批量删除菜品
      * 涉及多表操作，需要加 Transactional
+     * 删除时需要同步购物车中的数据
      */
     @Override
     @Transactional
@@ -106,6 +111,11 @@ public class DishServiceImpl implements DishService {
         clearCache("dish_*");
     }
 
+    /**
+     * 根据 id 查询菜品信息和对应的口味信息
+     * @param id    要查询的菜品 id
+     * @return      封装了菜品信息和口味信息的 DishVO 对象
+     */
     @Override
     public DishVO getByIdWithFlavor(Long id) {
         // 查询菜品信息
@@ -119,6 +129,11 @@ public class DishServiceImpl implements DishService {
         return dishVO;
     }
 
+    /**
+     * 更新菜品信息和对应的口味信息
+     * 需要同步更新购物车中的数据
+     * @param dishDTO   菜品信息和口味信息的 DTO 对象
+     */
     @Override
     @Transactional
     public void updateWithFlavor(DishDTO dishDTO) {
@@ -142,6 +157,9 @@ public class DishServiceImpl implements DishService {
 
     /**
      * 起售或停售菜品
+     * 需要同步更新购物车中的数据
+     * @param status    菜品状态，1表示起售，0表示停售
+     * @param id        菜品 id
      */
     @Override
     public void startOrStop(Integer status, Long id) {

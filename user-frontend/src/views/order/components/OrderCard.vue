@@ -34,7 +34,7 @@ import { computed } from 'vue'
 import { ElButton } from 'element-plus'
 import type { Order } from '@/api/orders'
 import { formatTime, itemCount, money, statusNames, type OrderAction } from '../orderDisplay'
-import DishImage from './DishImage.vue'
+import DishImage from '@/components/DishImage.vue'
 import OrderActions from './OrderActions.vue'
 const props = defineProps<{ order: Order; address: string; busy: boolean }>()
 const emit = defineEmits<{ detail: []; action: [action: OrderAction] }>()

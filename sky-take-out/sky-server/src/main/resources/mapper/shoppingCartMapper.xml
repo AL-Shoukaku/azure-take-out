@@ -9,7 +9,10 @@
             <if test="userId != null">and user_id = #{userId} </if>
             <if test="dishId != null">and dish_id = #{dishId} </if>
             <if test="setmealId != null">and setmeal_id = #{setmealId} </if>
-            <if test="dishFlavor != null">and dish_flavor = #{dishFlavor} </if>
+            <choose>
+                <when test="dishFlavor != null">and dish_flavor = #{dishFlavor}</when>
+                <when test="dishId != null or setmealId != null">and dish_flavor is null</when>
+            </choose>
         </where>
     </select>
 

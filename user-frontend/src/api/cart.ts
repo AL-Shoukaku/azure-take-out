@@ -15,3 +15,17 @@ export interface CartItem {
 export function getCart(): Promise<CartItem[]> {
   return request<CartItem[]>({ url: '/shoppingCart/list', method: 'GET' })
 }
+export interface CartProduct {
+  dishId?: number
+  setmealId?: number
+  dishFlavor: string | null
+}
+export function addCartItem(data: CartProduct): Promise<null> {
+  return request<null>({ url: '/shoppingCart/add', method: 'POST', data })
+}
+export function subtractCartItem(data: CartProduct): Promise<null> {
+  return request<null>({ url: '/shoppingCart/sub', method: 'POST', data })
+}
+export function cleanCart(): Promise<null> {
+  return request<null>({ url: '/shoppingCart/clean', method: 'DELETE' })
+}

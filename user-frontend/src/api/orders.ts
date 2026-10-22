@@ -51,6 +51,24 @@ export interface OrderPaymentResult {
   signType: string
   packageStr: string
 }
+export interface OrderSubmission {
+  addressBookId: number
+  payMethod: 1
+  remark: string
+  deliveryStatus: 0 | 1
+  estimatedDeliveryTime?: string
+  tablewareStatus: 0 | 1
+  tablewareNumber: number
+}
+export interface SubmittedOrder {
+  id: number
+  orderNumber: string
+  orderAmount: number
+  orderTime: string
+}
+export function submitOrder(data: OrderSubmission): Promise<SubmittedOrder> {
+  return request<SubmittedOrder>({ url: '/order/submit', method: 'POST', data })
+}
 
 export function getOrders(
   pageNum: number,

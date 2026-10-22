@@ -32,7 +32,7 @@ test('校验账号和密码，不请求接口', async ({ page }) => {
   expect(submissions).toBe(0)
 })
 
-test('登录后写入 Cookie，进入点餐占位页，刷新仍保留登录', async ({ page, context }) => {
+test('登录后写入 Cookie，进入点餐页，刷新仍保留登录', async ({ page, context }) => {
   await mockUserInfo(page)
   await page.route('**/api/user/login', async (route) => {
     expect(route.request().postDataJSON()).toEqual({ account: 'customer', password: 'abc123' })
@@ -49,11 +49,11 @@ test('登录后写入 Cookie，进入点餐占位页，刷新仍保留登录', a
   await page.getByLabel('密码', { exact: true }).fill('abc123')
   await page.getByLabel('密码', { exact: true }).press('Enter')
   await expect(page).toHaveURL('/menu')
-  await expect(page.getByRole('main')).toHaveText('当前是 在线点餐 板块')
+  await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
   const token = (await context.cookies()).find((cookie) => cookie.name === 'token')
   expect(token).toMatchObject({ value: 'e2e-user-token', path: '/', sameSite: 'Lax' })
   await page.reload()
-  await expect(page.getByRole('main')).toHaveText('当前是 在线点餐 板块')
+  await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
   await page.goto('/login')
   await expect(page).toHaveURL('/menu')
   await context.clearCookies()

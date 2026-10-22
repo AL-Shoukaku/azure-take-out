@@ -12,6 +12,16 @@ export const currentUser = {
 }
 
 export async function mockUserInfo(page: Page): Promise<void> {
+  await page.route('**/api/category/list', (route) =>
+    route.fulfill({ json: { code: 1, data: [] } }),
+  )
+  await page.route('**/api/shop/status', (route) => route.fulfill({ json: { code: 1, data: 1 } }))
+  await page.route('**/api/shoppingCart/list', (route) =>
+    route.fulfill({ json: { code: 1, data: [] } }),
+  )
+  await page.route('**/api/addressBook/list', (route) =>
+    route.fulfill({ json: { code: 1, data: [] } }),
+  )
   await page.route('**/api/user/info', (route) => {
     expect(route.request().headers().authentication).toBe('e2e-user-token')
     return route.fulfill({ json: { code: 1, msg: null, data: currentUser } })

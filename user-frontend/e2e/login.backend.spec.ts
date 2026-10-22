@@ -36,7 +36,7 @@ test('真实后端：注册、重复账号提示、密码错误提示、登录�
     data: { id: expect.any(Number), username: expect.any(String), token: expect.any(String) },
   })
   await expect(page).toHaveURL('/menu')
-  await expect(page.getByRole('main')).toHaveText('当前是 在线点餐 板块')
+  await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
 
   const info = await request.get('/api/user/info', {
     headers: { authentication: result.data.token },
@@ -44,5 +44,5 @@ test('真实后端：注册、重复账号提示、密码错误提示、登录�
   expect(info.status()).toBe(200)
   expect(await info.json()).toMatchObject({ code: 1, data: { username: result.data.username } })
   await page.reload()
-  await expect(page.getByRole('main')).toHaveText('当前是 在线点餐 板块')
+  await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
 })

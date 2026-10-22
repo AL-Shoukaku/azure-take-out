@@ -16,8 +16,7 @@ export function createAppRouter(
           {
             path: 'menu',
             name: 'menu',
-            component: () => import('@/views/SectionPlaceholder.vue'),
-            props: { section: '在线点餐' },
+            component: () => import('@/views/menu/MenuPage.vue'),
             meta: { section: '在线点餐' },
           },
           {

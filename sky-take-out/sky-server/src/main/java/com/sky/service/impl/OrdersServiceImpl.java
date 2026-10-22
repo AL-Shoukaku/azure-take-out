@@ -330,9 +330,37 @@ public class OrdersServiceImpl implements OrdersService {
         List<ShoppingCart> shoppingCartList = new ArrayList<>();
         for (OrderDetail orderDetail : orderDetailList) {
             ShoppingCart shoppingCart = new ShoppingCart();
-            BeanUtils.copyProperties(orderDetail, shoppingCart);
+            Long dishId = orderDetail.getDishId();
+            Long setmealId = orderDetail.getSetmealId();
+
+            // 这些与订单有关与菜品/套餐无关，可以直接从订单明细中获取
+            shoppingCart.setNumber(orderDetail.getNumber());
+            shoppingCart.setDishFlavor(orderDetail.getDishFlavor());  // 订单中口味用字符串存储，无法验证是否有效
             shoppingCart.setUserId(userId);
             shoppingCart.setCreateTime(LocalDateTime.now());
+            // 要根据 id 重新查询数据库中的菜品或套餐信息，防止菜品或套餐已经停售或信息被修改
+            if (dishId != null) {
+                Dish dish = dishMapper.getById(dishId);
+                if (dish == null || !StatusConstant.ENABLE.equals(dish.getStatus())) {
+                    throw new ShoppingCartBusinessException(MessageConstant.ORDER_HAS_UNAVAILABLE_ITEMS);
+                }
+
+                shoppingCart.setDishId(dishId);
+                shoppingCart.setName(dish.getName());
+                shoppingCart.setImage(dish.getImage());
+                shoppingCart.setAmount(dish.getPrice());
+            } else if (setmealId != null) {
+                Setmeal setmeal = setmealMapper.getById(setmealId);
+                if (setmeal == null || !StatusConstant.ENABLE.equals(setmeal.getStatus())) {
+                    throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
+                }
+                shoppingCart.setSetmealId(setmealId);
+                shoppingCart.setName(setmeal.getName());
+                shoppingCart.setImage(setmeal.getImage());
+                shoppingCart.setAmount(setmeal.getPrice());
+            } else {
+                throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_PRODUCT_UNAVAILABLE);
+            }
             shoppingCartList.add(shoppingCart);
         }
         shoppingCartMapper.batchInsert(shoppingCartList);

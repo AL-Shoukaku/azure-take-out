@@ -4,7 +4,7 @@ import { currentUser, restoreSession } from './helpers/session'
 test.beforeEach(async ({ page }) => restoreSession(page))
 
 const sections = [
-  ['/menu', '在线点餐', '当前是 在线点餐 板块'],
+  ['/menu', '在线点餐', '热腾腾的烟火气，是日常里最温柔的陪伴。'],
   ['/orders', '我的订单', '每一餐，都是日常的记录。'],
   ['/addresses', '收货地址', '把一份热乎，送到你身边。'],
   ['/profile', '我的', '个人资料与账号设置'],
