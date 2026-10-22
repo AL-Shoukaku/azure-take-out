@@ -12,6 +12,7 @@ import com.sky.exception.DeletionNotAllowedException;
 import com.sky.mapper.CategoryMapper;
 import com.sky.mapper.SetmealDishMapper;
 import com.sky.mapper.SetmealMapper;
+import com.sky.mapper.ShoppingCartMapper;
 import com.sky.result.PageResult;
 import com.sky.service.SetmealService;
 import com.sky.vo.DishItemVO;
@@ -35,8 +36,12 @@ public class SetmealServiceImpl implements SetmealService {
     @Autowired
     private CategoryMapper categoryMapper;
 
+    @Autowired
+    private ShoppingCartMapper shoppingCartMapper;
+
     /**
      * 保存套餐信息，同时保存套餐和菜品的关联关系
+     * 需要同步购物车中的数据
      * @param setmealDTO
      */
     @Override
@@ -55,6 +60,8 @@ public class SetmealServiceImpl implements SetmealService {
             }
         }
         setmealDishMapper.batchInsert(dishes);
+
+        updateShoppingCart(setmealId);
     }
 
     /**
@@ -62,6 +69,7 @@ public class SetmealServiceImpl implements SetmealService {
      * @param setmealPageQueryDTO
      * @return
      */
+    @Override
     public PageResult pageQuery(SetmealPageQueryDTO setmealPageQueryDTO) {
         PageHelper.startPage(setmealPageQueryDTO.getPage(), setmealPageQueryDTO.getPageSize());
         Page<SetmealVO> page = setmealMapper.pageQuery(setmealPageQueryDTO);
@@ -73,6 +81,7 @@ public class SetmealServiceImpl implements SetmealService {
      * @param dishId
      * @return
      */
+    @Override
     public SetmealVO getByIdWithDish(Long dishId) {
         SetmealVO setmealVO = new SetmealVO();
         // 获取套餐信息
@@ -87,6 +96,7 @@ public class SetmealServiceImpl implements SetmealService {
 
     /**
      * 修改套餐信息，同时修改套餐和菜品的关联关系
+     * 需要同步更新购物车中对应的套餐数据
      * @param setmealDTO
      */
     @Override
@@ -106,19 +116,29 @@ public class SetmealServiceImpl implements SetmealService {
             }
         }
         setmealDishMapper.batchInsert(dishes);
+
+        // 同步更新购物车中对应的套餐数据
+        updateShoppingCart(setmeal.getId());
     }
 
     /**
      * 起售或停售套餐
+     * 停售需要同步购物车数据
      * @param status
      * @param id
      */
     @Override
+    @Transactional
     public void startOrStop(Integer status, Long id) {
         Setmeal setmeal = new Setmeal();
         setmeal.setId(id);
         setmeal.setStatus(status);
         setmealMapper.update(setmeal);
+        if (StatusConstant.DISABLE.equals(status)) {
+            // 停售套餐时，需要同步更新购物车中对应的套餐数据
+            updateShoppingCart(id);
+        }
+
     }
 
     @Override
@@ -135,6 +155,10 @@ public class SetmealServiceImpl implements SetmealService {
         setmealMapper.batchDeleteByIds(ids);
         // 批量删除套餐对应的菜品关联关系
         setmealDishMapper.batchDeleteBySetmealIds(ids);
+
+        for (Long id : ids) {
+            updateShoppingCart(id);
+        }
     }
 
     /**
@@ -142,6 +166,7 @@ public class SetmealServiceImpl implements SetmealService {
      * @param setmeal
      * @return
      */
+    @Override
     public List<Setmeal> list(Setmeal setmeal) {
         List<Setmeal> list = setmealMapper.list(setmeal);
         return list;
@@ -152,7 +177,21 @@ public class SetmealServiceImpl implements SetmealService {
      * @param id
      * @return
      */
+    @Override
     public List<DishItemVO> getDishItemById(Long id) {
         return setmealMapper.getDishItemBySetmealId(id);
+    }
+
+    private void updateShoppingCart(Long setmealId) {
+        Setmeal setmeal = setmealMapper.getById(setmealId);
+
+        // 套餐被删除或被禁用，则删除购物车中对应的套餐数据
+        if (setmeal == null || StatusConstant.DISABLE.equals(setmeal.getStatus())) {
+            shoppingCartMapper.deleteBySetmealId(setmealId);
+            return;
+        }
+
+        // 同步更新购物车中对应的套餐数据
+        shoppingCartMapper.updateBySetmeal(setmeal);
     }
 }

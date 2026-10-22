@@ -374,18 +374,28 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         when(ordersMapper.adminPageSearch(dto)).thenReturn(page(0)); assertThat(service.adminPageQuery(dto).getRecords()).isEmpty();
         verifyNoInteractions(orderDetailMapper);
     }
-    @Test void repetitionCopiesDishAndSetmealToCurrentUsersCart() {
+    @Test void repetitionUsesCurrentProductDetailsAndPreservesHistoricalFlavorAndQuantity() {
         when(ordersMapper.getByIdAndUserId(9L,USER_ID)).thenReturn(existing(Orders.COMPLETED));
         when(orderDetailMapper.getByOrderId(9L)).thenReturn(Arrays.asList(
                 OrderDetail.builder().dishId(7L).name("鸡丁").dishFlavor("微辣").amount(new BigDecimal("12.50")).number(2).build(),
                 OrderDetail.builder().setmealId(8L).name("套餐").amount(new BigDecimal("29.90")).number(1).build()));
+        when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(1).name("新版鸡丁")
+                .image("new-dish.png").price(new BigDecimal("30.00")).build());
+        when(setmealMapper.getById(8L)).thenReturn(Setmeal.builder().id(8L).status(1).name("新版套餐")
+                .image("new-setmeal.png").price(new BigDecimal("60.00")).build());
         LocalDateTime before = LocalDateTime.now(); service.repetition(9L); verify(shoppingCartMapper).batchInsert(cart.capture());
         assertThat(cart.getValue()).extracting(ShoppingCart::getUserId).containsExactly(USER_ID,USER_ID);
         assertThat(cart.getValue().get(0)).extracting(ShoppingCart::getDishId,ShoppingCart::getDishFlavor,ShoppingCart::getNumber)
                 .containsExactly(7L,"微辣",2);
-        assertThat(cart.getValue().get(0).getAmount()).isEqualByComparingTo("12.50");
+        assertThat(cart.getValue().get(0).getAmount()).isEqualByComparingTo("30.00");
+        assertThat(cart.getValue().get(0)).extracting(ShoppingCart::getName,ShoppingCart::getImage)
+                .containsExactly("新版鸡丁","new-dish.png");
         assertThat(cart.getValue().get(1).getSetmealId()).isEqualTo(8L);
+        assertThat(cart.getValue().get(1).getAmount()).isEqualByComparingTo("60.00");
+        assertThat(cart.getValue().get(1)).extracting(ShoppingCart::getName,ShoppingCart::getImage,
+                ShoppingCart::getNumber,ShoppingCart::getDishFlavor).containsExactly("新版套餐","new-setmeal.png",1,null);
         assertThat(cart.getValue().get(0).getCreateTime()).isBetween(before,LocalDateTime.now());
+        verify(shoppingCartMapper,never()).insert(any());
     }
     @Test void statisticsMapsThreeActiveStatuses() {
         when(ordersMapper.countByStatus(2)).thenReturn(4); when(ordersMapper.countByStatus(3)).thenReturn(5); when(ordersMapper.countByStatus(4)).thenReturn(6);

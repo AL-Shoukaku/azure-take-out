@@ -33,6 +33,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     /**
      * 用户添加购物车
      */
+    @Override
     public void addShoppingCart(ShoppingCartDTO shoppingCartDTO) {
         // 先判断商品是否已经在购物车里了，
         ShoppingCart shoppingCart = new ShoppingCart();
@@ -70,6 +71,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     /**
      * 获取当前用户的购物车数据
      */
+    @Override
     public List<ShoppingCart> showShoppingCart() {
         ShoppingCart shoppingCart = new ShoppingCart();
         shoppingCart.setUserId(BaseContext.getCurrentId());
@@ -79,6 +81,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     /**
      * 清空当前用户的购物车
      */
+    @Override
     public void cleanShoppingCart() {
         shoppingCartMapper.cleanAllByUserId(BaseContext.getCurrentId());
     }
@@ -86,6 +89,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     /**
      * 用户减少购物车中的菜品数量
      */
+    @Override
     public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
         ShoppingCart shoppingCart = new ShoppingCart();
         BeanUtils.copyProperties(shoppingCartDTO, shoppingCart);

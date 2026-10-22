@@ -24,6 +24,7 @@ class DishServiceImplTest extends ServiceTestSupport {
     @Mock private DishMapper dishMapper;
     @Mock private DishFlavorMapper dishFlavorMapper;
     @Mock private SetmealDishMapper setMealDishMapper;
+    @Mock private ShoppingCartMapper shoppingCartMapper;
     @Mock private RedisTemplate redisTemplate;
     @Mock private ValueOperations values;
     @Captor private ArgumentCaptor<Dish> dish;
@@ -54,23 +55,26 @@ class DishServiceImplTest extends ServiceTestSupport {
         when(dishMapper.getById(8L)).thenReturn(Dish.builder().status(1).build());
         assertThatThrownBy(() -> service.batchDelete(Arrays.asList(7L,8L))).isInstanceOf(DeletionNotAllowedException.class)
                 .hasMessage(MessageConstant.DISH_ON_SALE);
-        verify(dishMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(dishFlavorMapper,setMealDishMapper,redisTemplate);
+        verify(dishMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(dishFlavorMapper,setMealDishMapper,redisTemplate,shoppingCartMapper);
     }
     @Test void associatedDishPreventsDeletion() {
         when(dishMapper.getById(7L)).thenReturn(Dish.builder().status(0).build());
         when(setMealDishMapper.getSetMealIdsByDishIds(Collections.singletonList(7L))).thenReturn(Collections.singletonList(9L));
         assertThatThrownBy(() -> service.batchDelete(Collections.singletonList(7L))).isInstanceOf(DeletionNotAllowedException.class)
                 .hasMessage(MessageConstant.DISH_BE_RELATED_BY_SETMEAL);
-        verify(dishMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(dishFlavorMapper,redisTemplate);
+        verify(dishMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(dishFlavorMapper,redisTemplate,shoppingCartMapper);
     }
     @ParameterizedTest @NullAndEmptySource
     void unassociatedStoppedDishesDeleteFlavorsAndInvalidateAllDishCaches(List<Long> associations) {
         List<Long> ids = Arrays.asList(7L,8L);
-        when(dishMapper.getById(anyLong())).thenReturn(Dish.builder().status(0).build());
+        for (Long id : ids) {
+            when(dishMapper.getById(id)).thenReturn(Dish.builder().id(id).status(0).build()).thenReturn(null);
+        }
         when(setMealDishMapper.getSetMealIdsByDishIds(ids)).thenReturn(associations);
         Set<String> keys = new HashSet<>(Arrays.asList("dish_3","dish_4")); when(redisTemplate.keys("dish_*")).thenReturn(keys);
         service.batchDelete(ids); verify(dishMapper).batchDeleteByIds(ids);
         verify(dishFlavorMapper).batchDeleteByDishIds(ids); verify(redisTemplate).delete(keys);
+        verify(shoppingCartMapper).deleteByDishId(7L); verify(shoppingCartMapper).deleteByDishId(8L);
     }
     @Test void detailContainsDishAndFlavors() {
         when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).name("宫保鸡丁").price(new BigDecimal("32.00")).build());
@@ -82,6 +86,7 @@ class DishServiceImplTest extends ServiceTestSupport {
     }
     @Test void updateReplacesFlavorsAndInvalidatesCaches() {
         DishDTO dto = request(); DishFlavor flavor = DishFlavor.builder().name("甜度").build();
+        when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(0).build());
         dto.setFlavors(Collections.singletonList(flavor)); service.updateWithFlavor(dto);
         InOrder sequence = inOrder(dishMapper,dishFlavorMapper);
         sequence.verify(dishMapper).update(any()); sequence.verify(dishFlavorMapper).deleteByDishId(7L);
@@ -90,14 +95,18 @@ class DishServiceImplTest extends ServiceTestSupport {
     }
     @ParameterizedTest @NullAndEmptySource
     void updateCanRemoveAllFlavors(List<DishFlavor> flavors) {
+        when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(0).build());
         DishDTO dto = request(); dto.setFlavors(flavors); service.updateWithFlavor(dto);
         verify(dishFlavorMapper).deleteByDishId(7L); verify(dishFlavorMapper,never()).insertBatch(any());
     }
     @ParameterizedTest @ValueSource(ints = {0,1})
     void statusChangeInvalidatesAllDishCaches(int status) {
+        if (status == 0) when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(0).build());
         service.startOrStop(status,7L); verify(dishMapper).update(dish.capture());
         assertThat(dish.getValue().getId()).isEqualTo(7L); assertThat(dish.getValue().getStatus()).isEqualTo(status);
         verify(redisTemplate).keys("dish_*"); verify(redisTemplate,never()).delete(anyCollection());
+        if (status == 0) verify(shoppingCartMapper).deleteByDishId(7L);
+        else verifyNoInteractions(shoppingCartMapper);
     }
     @Test void categoryListReturnsMapperResult() {
         Dish row = Dish.builder().id(7L).build();

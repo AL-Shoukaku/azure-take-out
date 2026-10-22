@@ -22,6 +22,7 @@ class SetmealServiceImplTest extends ServiceTestSupport {
     @Mock private SetmealMapper setmealMapper;
     @Mock private SetmealDishMapper setmealDishMapper;
     @Mock private CategoryMapper categoryMapper;
+    @Mock private ShoppingCartMapper shoppingCartMapper;
     @Captor private ArgumentCaptor<Setmeal> setmeal;
 
     private SetmealDTO request() {
@@ -33,6 +34,7 @@ class SetmealServiceImplTest extends ServiceTestSupport {
     @Test void savePropagatesGeneratedIdToAllAssociations() {
         SetmealDTO dto = request();
         doAnswer(i -> { ((Setmeal)i.getArgument(0)).setId(88L); return null; }).when(setmealMapper).save(any());
+        when(setmealMapper.getById(88L)).thenReturn(Setmeal.builder().id(88L).status(0).build());
         service.saveWithDish(dto); verify(setmealMapper).save(setmeal.capture());
         assertThat(setmeal.getValue().getName()).isEqualTo("午餐套餐");
         assertThat(setmeal.getValue().getPrice()).isEqualByComparingTo("29.90");
@@ -40,6 +42,7 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         verify(setmealDishMapper).batchInsert(dto.getSetmealDishes());
     }
     @Test void updateReplacesAssociations() {
+        when(setmealMapper.getById(7L)).thenReturn(Setmeal.builder().id(7L).status(0).build());
         SetmealDTO dto = request(); service.updateWithDishes(dto);
         InOrder sequence = inOrder(setmealMapper,setmealDishMapper);
         sequence.verify(setmealMapper).update(any()); sequence.verify(setmealDishMapper).deleteBySetmealId(7L);
@@ -60,18 +63,24 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         when(setmealMapper.getById(8L)).thenReturn(Setmeal.builder().status(1).build());
         assertThatThrownBy(() -> service.deleteWithDishes(Arrays.asList(7L,8L))).isInstanceOf(DeletionNotAllowedException.class)
                 .hasMessage(MessageConstant.SETMEAL_ON_SALE);
-        verify(setmealMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(setmealDishMapper);
+        verify(setmealMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(setmealDishMapper,shoppingCartMapper);
     }
     @Test void stoppedSetmealsDeleteWithAssociations() {
         List<Long> ids = Arrays.asList(7L,8L);
-        when(setmealMapper.getById(anyLong())).thenReturn(Setmeal.builder().status(0).build());
+        for (Long id : ids) {
+            when(setmealMapper.getById(id)).thenReturn(Setmeal.builder().id(id).status(0).build()).thenReturn(null);
+        }
         service.deleteWithDishes(ids); verify(setmealMapper).batchDeleteByIds(ids);
         verify(setmealDishMapper).batchDeleteBySetmealIds(ids);
+        verify(shoppingCartMapper).deleteBySetmealId(7L); verify(shoppingCartMapper).deleteBySetmealId(8L);
     }
     @ParameterizedTest @ValueSource(ints = {0,1})
     void statusChangeUpdatesTarget(int status) {
+        if (status == 0) when(setmealMapper.getById(7L)).thenReturn(Setmeal.builder().id(7L).status(0).build());
         service.startOrStop(status,7L); verify(setmealMapper).update(setmeal.capture());
         assertThat(setmeal.getValue().getId()).isEqualTo(7L); assertThat(setmeal.getValue().getStatus()).isEqualTo(status);
+        if (status == 0) verify(shoppingCartMapper).deleteBySetmealId(7L);
+        else verifyNoInteractions(shoppingCartMapper);
     }
     @Test void pagePreservesTotalAndRecords() {
         SetmealPageQueryDTO dto = new SetmealPageQueryDTO(); dto.setPage(1); dto.setPageSize(10);

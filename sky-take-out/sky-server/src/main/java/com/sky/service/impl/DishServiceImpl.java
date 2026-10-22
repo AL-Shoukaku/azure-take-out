@@ -3,16 +3,20 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.dto.DishDTO;
 import com.sky.dto.DishPageQueryDTO;
 import com.sky.entity.Dish;
 import com.sky.entity.DishFlavor;
+import com.sky.entity.ShoppingCart;
 import com.sky.exception.DeletionNotAllowedException;
 import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetmealDishMapper;
+import com.sky.mapper.ShoppingCartMapper;
 import com.sky.result.PageResult;
 import com.sky.service.DishService;
+import com.sky.service.ShoppingCartService;
 import com.sky.vo.DishVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -40,6 +44,9 @@ public class DishServiceImpl implements DishService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private ShoppingCartMapper shoppingCartMapper;
 
     /**
      * 新增菜品，同时保存对应的口味数据，新增菜品不涉及购物车数据同步
@@ -103,10 +110,12 @@ public class DishServiceImpl implements DishService {
         // 使用批量删除方法
         dishMapper.batchDeleteByIds(ids);
         dishFlavorMapper.batchDeleteByDishIds(ids);
-        /*for (Long id : ids) {
-            dishMapper.DeleteById(id);
-            dishFlavorMapper.deleteByDishId(id);
-        }*/
+
+        // 同步购物车中的菜品数据，删除购物车中对应的菜品
+        for (Long id : ids) {
+            updateShoppingCart(id);
+        }
+
         // 最后直接清空所有的菜品缓存，先用 keys 查询所有的键，然后再删除
         clearCache("dish_*");
     }
@@ -150,6 +159,8 @@ public class DishServiceImpl implements DishService {
             }
             dishFlavorMapper.insertBatch(flavors);
         }
+        // 更新购物车
+        updateShoppingCart(dish.getId());
 
         // 清空所有的菜品缓存
         clearCache("dish_*");
@@ -162,11 +173,16 @@ public class DishServiceImpl implements DishService {
      * @param id        菜品 id
      */
     @Override
+    @Transactional
     public void startOrStop(Integer status, Long id) {
         Dish dish = new Dish();
         dish.setId(id);
         dish.setStatus(status);
         dishMapper.update(dish);
+        if (StatusConstant.DISABLE.equals(status)) {
+            // 如果是停售，则需要删除购物车中对应的菜品
+            updateShoppingCart(id);
+        }
         clearCache("dish_*");
     }
 
@@ -217,5 +233,19 @@ public class DishServiceImpl implements DishService {
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);
         }
+    }
+
+    /**
+     * 根据菜品 id 更新购物车中的数据
+     * @param DishId
+     */
+    private void updateShoppingCart(Long DishId) {
+        Dish dish = dishMapper.getById(DishId);
+        // 菜品被删除或者停售
+        if (dish == null || StatusConstant.DISABLE.equals(dish.getStatus())) {
+            shoppingCartMapper.deleteByDishId(DishId);
+            return;
+        }
+        shoppingCartMapper.updateByDish(dish);
     }
 }
