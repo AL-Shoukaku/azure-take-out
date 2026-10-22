@@ -4,7 +4,7 @@ import { getToken, removeToken, setToken } from '@/utils/auth'
 import type { EmployeeLoginVO } from '@/api/auth'
 
 type EmployeeProfile = Omit<EmployeeLoginVO, 'token'>
-const employeeStorageKey = 'sky-admin-employee'
+const employeeStorageKey = 'azure-admin-employee'
 
 export const useSessionStore = defineStore('session', () => {
   const token = ref(getToken())

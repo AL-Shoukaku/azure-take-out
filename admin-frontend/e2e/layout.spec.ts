@@ -14,6 +14,7 @@ const pages = [
 test('按指定顺序展示七个管理入口，切换页面时保留顶部栏', async ({ page, context, baseURL }) => {
   const sockets = await mockAdminSession(page, context, baseURL!)
   await page.goto('/dashboard')
+  await expect(page).toHaveTitle('工作台 · 碧蓝外卖管理端')
   const navigation = page.getByRole('navigation', { name: '管理菜单' })
   await expect(navigation.getByRole('menuitem')).toHaveText(pages.map(([, title]) => title))
   await expect(page.getByRole('button', { name: employee.name, exact: true })).toBeVisible()
@@ -187,7 +188,7 @@ for (const scenario of logoutResponses) {
     expect((await context.cookies()).find((cookie) => cookie.name === 'user_token')?.value).toBe(
       'existing-user-token',
     )
-    expect(await page.evaluate(() => localStorage.getItem('sky-admin-employee'))).toBeNull()
+    expect(await page.evaluate(() => localStorage.getItem('azure-admin-employee'))).toBeNull()
     await expect.poll(() => closed).toBe(true)
   })
 }

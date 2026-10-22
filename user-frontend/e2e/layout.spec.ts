@@ -113,3 +113,41 @@ test('Cookie 失效时清除会话并返回登录页', async ({ page, context, b
   )
   await expect(page.getByRole('banner')).toHaveCount(0)
 })
+
+test('重建库后旧 Cookie 对应用户不存在时返回登录，并可重新登录', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await context.addCookies([{ name: 'admin_token', value: 'existing-admin-token', url: baseURL! }])
+  let loggedIn = false
+  await page.route('**/api/user/info', (route) =>
+    route.fulfill({
+      json: loggedIn ? { code: 1, data: currentUser } : { code: 0, msg: '用户不存在', data: null },
+    }),
+  )
+  await page.route('**/api/user/login', (route) => {
+    loggedIn = true
+    return route.fulfill({ json: { code: 1, data: { ...currentUser, token: 'new-user-token' } } })
+  })
+  await page.goto('/menu')
+  await expect(page).toHaveURL('/login')
+  expect((await context.cookies()).some((cookie) => cookie.name === 'user_token')).toBe(false)
+  await page.getByLabel('账号', { exact: true }).fill('customer')
+  await page.getByLabel('密码', { exact: true }).fill('password123')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page).toHaveURL('/menu')
+  await expect(
+    page.getByRole('link', { name: `你好，${currentUser.username}`, exact: true }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(
+    page.getByRole('link', { name: `你好，${currentUser.username}`, exact: true }),
+  ).toBeVisible()
+  expect((await context.cookies()).find((cookie) => cookie.name === 'user_token')?.value).toBe(
+    'new-user-token',
+  )
+  expect((await context.cookies()).find((cookie) => cookie.name === 'admin_token')?.value).toBe(
+    'existing-admin-token',
+  )
+})

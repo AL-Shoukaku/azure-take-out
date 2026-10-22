@@ -52,8 +52,8 @@ export async function mockAdminSession(page: Page, context: BrowserContext, base
   await context.addCookies([{ name: 'admin_token', value: employee.token, url: baseURL }])
   await page.addInitScript(
     (profile) => {
-      if (!localStorage.getItem('sky-admin-employee')) {
-        localStorage.setItem('sky-admin-employee', JSON.stringify(profile))
+      if (!localStorage.getItem('azure-admin-employee')) {
+        localStorage.setItem('azure-admin-employee', JSON.stringify(profile))
       }
     },
     { id: employee.id, userName: employee.userName, name: employee.name },

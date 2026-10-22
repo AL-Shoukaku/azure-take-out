@@ -115,4 +115,56 @@ describe('用户登录、注册和统一请求', () => {
     expect(replace).toHaveBeenCalledWith('/login')
     expect(document.cookie).toContain('admin_token=other-admin-token')
   })
+
+  it('接口返回当前用户不存在时，清除残留登录态并回到登录页', async () => {
+    document.cookie = 'admin_token=other-admin-token; Path=/'
+    const session = useSessionStore()
+    session.startSession(user)
+    const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
+    http.defaults.adapter = respondWith({ code: 0, msg: '用户不存在', data: null })
+    await expect(getUserInfo()).rejects.toThrow('登录已过期，请重新登录')
+    expect(getToken()).toBe('')
+    expect(session.user).toBeNull()
+    expect(replace).toHaveBeenCalledWith('/login')
+    expect(document.cookie).toContain('admin_token=other-admin-token')
+  })
+
+  it('用户信息的临时业务错误不会清除登录态', async () => {
+    useSessionStore().startSession(user)
+    const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
+    http.defaults.adapter = respondWith({ code: 0, msg: '资料暂时不可用', data: null })
+    await expect(getUserInfo()).rejects.toThrow('资料暂时不可用')
+    expect(getToken()).toBe(user.token)
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it.each([401, 200])('旧会话迟到的失效响应（HTTP %s）不能退出新登录的账号', async (status) => {
+    const session = useSessionStore()
+    session.startSession(user)
+    const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
+    let complete!: () => void
+    http.defaults.adapter = (config) =>
+      new Promise((resolve, reject) => {
+        complete = () => {
+          const response: AxiosResponse = {
+            data: { code: 0, msg: '用户不存在', data: null },
+            status,
+            statusText: 'OK',
+            headers: {},
+            config,
+          }
+          if (status === 401)
+            reject(new AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, undefined, response))
+          else resolve(response)
+        }
+      })
+    const rejected = expect(getUserInfo()).rejects.toThrow('登录已过期，请重新登录')
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'))
+    session.startSession({ id: 8, username: '新用户', avatar: null, token: 'new-user-token' })
+    complete()
+    await rejected
+    expect(getToken()).toBe('new-user-token')
+    expect(session.user?.id).toBe(8)
+    expect(replace).not.toHaveBeenCalled()
+  })
 })

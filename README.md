@@ -1,4 +1,4 @@
-# 碧蓝外卖(azure take out) —— 基于《苍穹外卖》二次开发的外卖演示平台
+# 碧蓝外卖(azure-take-out) —— 基于《苍穹外卖》二次开发的外卖演示平台
 
 ![Version](https://img.shields.io/badge/version-v0.4.1-blue)
 
@@ -25,12 +25,12 @@
 
 ## 🚀 功能介绍
 
-项目包含管理端后台和微信小程序用户端，覆盖店铺运营、在线点餐和订单处理。
+项目包含管理端和用户端，覆盖店铺运营、在线点餐和订单处理等外卖平台功能。
 
 ### 管理端
 
 - **登录与退出**：使用员工账号登录管理后台，支持退出登录。
-- **员工管理**：新增、编辑和查询员工信息，启用或禁用员工账号。
+- **员工管理**：编辑和查询员工信息；仅 `admin` 可新增、启用或禁用员工，且不能禁用自己。
 - **分类管理**：管理菜品与套餐分类，支持新增、修改、删除、查询及启用、禁用。
 - **菜品管理**：维护菜品名称、价格、图片和口味，支持新增、修改、查询、批量删除及起售、停售。
 - **套餐管理**：组合菜品创建套餐，维护套餐信息，支持新增、修改、查询、删除及起售、停售。
@@ -57,8 +57,8 @@
 | --- | --- | --- |
 | 后端 | JDK21、Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
 | 管理端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5173（dev server） |
-| 微信小程序 | uni-app | — |
-| 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
+| 用户端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5174（dev server） |
+| 数据库 | MySQL 8，库名 `azure_take_out` | 3306 |
 | 缓存 | Redis，`database` 为 **0** | 6379 |
 
 
@@ -77,10 +77,12 @@
 ### 1. 初始化数据库
 
 ```bash
-mysql -u用户名 -p < db/sky.sql
+mysql -u用户名 -p < db/azure.sql
 ```
 
 建 11 张表，并写入初始数据。
+
+项目改名后使用 `azure_take_out` 数据库，直接执行此脚本重新创建演示数据即可，无需迁移旧库。
 
 ### 2. 启动 Redis
 
@@ -90,21 +92,22 @@ sudo systemctl start redis
 
 后端连接的 `database` 是 **0**，确认本地 Redis 已启动且该库可用。
 
+从旧版本升级时，需要删除本项目的商品缓存 `dish_*`、`setmealCache::*`、`setmealDishCache::*`，避免旧缓存中的 Java 包名导致反序列化失败；保留 `SHOP_STATUS` 等非商品数据。
+
 ### 3. 启动后端
 
-先把 `sky-take-out/sky-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`，只在本机保存，不要提交。
+先把 `azure-take-out/azure-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`，只在本机保存，不要提交。
 
 在 `application-local.yml` 中填写：
 
 | 配置项 | 说明 |
 | --- | --- |
-| `sky.datasource.host / port / database / username / password` | 本机 MySQL 地址、端口、库名（默认 `sky_take_out`）、用户名和密码 |
-| `sky.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
-| `sky.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
-| `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
-| `sky.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
+| `azure.datasource.host / port / database / username / password` | 本机 MySQL 地址、端口、库名（默认 `azure_take_out`）、用户名和密码 |
+| `azure.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
+| `azure.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
+| `azure.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
-上传目录以 `sky.upload-path` 为根目录，管理端图片保存到 `admin/`，用户头像保存到 `user/`；上传时会自动创建对应子目录。
+上传目录以 `azure.upload-path` 为根目录，管理端图片保存到 `admin/`，用户头像保存到 `user/`；上传时会自动创建对应子目录。
 
 - 管理端：`POST /admin/common/upload`，请求头使用员工 `token`。
 - 用户端：`POST /user/common/upload`，请求头使用用户 `authentication`。
@@ -113,9 +116,9 @@ sudo systemctl start redis
 - 用户端上传只保存文件并返回地址，保存个人资料时将该地址放入 `avatar`，调用现有 `PUT /user/user/update`。
 - 旧上传文件归入 `admin/` 后，原 `/images/文件名` 地址仍可访问，已有菜品和套餐图片地址无需修改。
 
-这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
+用户端使用账号密码登录。项目当前支付流程使用模拟支付成功，无需配置第三方支付商户号或证书。
 
-然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。
+然后运行 `azure-take-out/azure-server` 下的 `com.azure.AzureApplication`，服务端口 **8080**。
 
 可以从 http://localhost:8080/doc.html 查看后端接口文档
 
@@ -155,12 +158,12 @@ npm run dev
 以下展示主要源码、资源与测试目录。
 
 ```text
-sky-delivery-plus/
-├── sky-take-out/                              # 后端（Maven 多模块）
+azure-take-out/
+├── azure-take-out/                            # 后端（Maven 多模块）
 ├── admin-frontend/                            # 管理端前端(Vue3)
 ├── user-frontend/                             # 用户端前端(Vue3)
 ├── db/
-│   ├── sky.sql                                # 建库建表与初始数据，默认密码使用 Argon2id 哈希
+│   ├── azure.sql                              # 建库建表与初始数据，默认密码使用 Argon2id 哈希
 │   └── 数据库设计文档.md
 ├── .gitignore                                 # 构建产物、本地配置等忽略规则
 └── README.md                                  # 项目说明与运行指南
@@ -168,7 +171,7 @@ sky-delivery-plus/
 
 模块文档：
 
-- [后端 README](sky-take-out/README.md)：主要技术栈、模块划分与目录职责。
+- [后端 README](azure-take-out/README.md)：主要技术栈、模块划分与目录职责。
 - [管理端前端 README](admin-frontend/README.md)：主要技术栈、目录结构及运行、测试与部署说明。
 - [用户端前端 README](user-frontend/README.md)：主要技术栈、目录结构及运行、测试与部署说明。
 

@@ -1,4 +1,4 @@
-# 苍穹外卖管理端
+# 碧蓝外卖管理端
 
 管理端采用 Vue 3、Composition API 和 TypeScript 严格模式，提供登录、公共后台布局及七个管理页面。项目整体功能与后端启动步骤见 [项目 README](../README.md)。
 

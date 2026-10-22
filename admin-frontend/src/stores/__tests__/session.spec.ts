@@ -38,7 +38,7 @@ describe('登录会话', () => {
     setActivePinia(createPinia())
     expect(useSessionStore().token).toBe('new-token')
     expect(useSessionStore().employee).toEqual({ id: 7, userName: 'admin', name: '店长' })
-    expect(localStorage.getItem('sky-admin-employee')).not.toContain('new-token')
+    expect(localStorage.getItem('azure-admin-employee')).not.toContain('new-token')
   })
 
   it('清除会话时同步清除 Cookie 和共享状态', () => {
@@ -48,12 +48,12 @@ describe('登录会话', () => {
     expect(session.token).toBe('')
     expect(getToken()).toBe('')
     expect(session.employee).toBeNull()
-    expect(localStorage.getItem('sky-admin-employee')).toBeNull()
+    expect(localStorage.getItem('azure-admin-employee')).toBeNull()
   })
 
   it('token 已失效时，不恢复上次员工资料', () => {
     localStorage.setItem(
-      'sky-admin-employee',
+      'azure-admin-employee',
       JSON.stringify({ id: 7, userName: 'admin', name: '店长' }),
     )
     expect(useSessionStore().employee).toBeNull()

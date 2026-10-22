@@ -1,0 +1,98 @@
+package com.azure.controller.user;
+
+import com.azure.dto.OrdersPaymentDTO;
+import com.azure.dto.OrdersSubmitDTO;
+import com.azure.result.PageResult;
+import com.azure.result.Result;
+import com.azure.service.OrdersService;
+import com.azure.vo.OrderPaymentVO;
+import com.azure.vo.OrderSubmitVO;
+import com.azure.vo.OrderVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController("userOrderController")
+@RequestMapping("/user/order")
+@Slf4j
+@Tag(name = "用户端订单相关接口")
+public class OrderController {
+
+    @Autowired
+    private OrdersService ordersService;
+
+    @PostMapping("/submit")
+    @Operation(summary = "用户下单")
+    public Result<OrderSubmitVO> submit(@RequestBody OrdersSubmitDTO ordersSubmitDTO) {
+        log.info("用户下单，订单信息：{}", ordersSubmitDTO);
+        OrderSubmitVO orderSubmitVO = ordersService.submitOrder(ordersSubmitDTO);
+        return Result.success(orderSubmitVO);
+    }
+
+    /**
+     * 订单支付
+     */
+    @PutMapping("/payment")
+    @Operation(summary = "订单支付")
+    public Result<OrderPaymentVO> payment(@RequestBody OrdersPaymentDTO ordersPaymentDTO) throws Exception {
+        log.info("订单支付：{}", ordersPaymentDTO);
+        OrderPaymentVO orderPaymentVO = ordersService.payment(ordersPaymentDTO);
+        log.info("生成预支付交易单：{}", orderPaymentVO);
+        return Result.success(orderPaymentVO);
+    }
+
+    @GetMapping("/historyOrders")
+    @Operation(summary = "用户查询历史订单")
+    public Result<PageResult> historyOrders(int page, int pageSize, Integer status) {
+        log.info("用户查询历史订单，page：{}，pageSize：{}，status：{}", page, pageSize, status);
+        PageResult pageResult = ordersService.historyOrdersPageQuery(page, pageSize, status);
+        return Result.success(pageResult);
+    }
+
+    @GetMapping("/historyOrdersByStatusList")
+    @Operation(summary = "用户查询历史订单（根据订单状态列表查询）")
+    public Result<PageResult> historyOrdersByStatusList(int pageNum, @RequestParam(required = false) List<Integer> statusList) {
+        log.info("用户查询历史订单（根据订单状态列表查询），pageNum：{},  statusList：{}", pageNum, statusList);
+        PageResult pageResult = ordersService.historyOrdersPageQueryByStatusList(pageNum, statusList);
+        return Result.success(pageResult);
+    }
+
+    @GetMapping("/orderDetail/{id}")
+    @Operation(summary = "用户查询订单详情")
+    public Result<OrderVO> orderDetail(@PathVariable Long id) {
+        log.info("用户查询订单详情，订单id：{}", id);
+        OrderVO orderVO = ordersService.queryUserOrderDetail(id);
+        return Result.success(orderVO);
+    }
+
+    @PutMapping("/cancel/{id}")
+    @Operation(summary = "用户取消订单")
+    public Result cancelOrder(@PathVariable Long id) {
+        log.info("用户取消订单，订单id：{}", id);
+        ordersService.userCancelOrder(id);
+        return Result.success();
+    }
+
+    @PostMapping("/repetition/{id}")
+    @Operation(summary = "再来一单")
+    public Result repetition(@PathVariable Long id) {
+        log.info("用户再来一单，订单id：{}", id);
+        ordersService.repetition(id);
+        return Result.success();
+    }
+
+    /**
+     * 客户催单
+     */
+    @GetMapping("/reminder/{id}")
+    @Operation(summary = "客户催单")
+    public Result reminder(@PathVariable Long id) {
+        log.info("客户催单，订单id：{}", id);
+        ordersService.remindOrder(id);
+        return Result.success();
+    }
+}

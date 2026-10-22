@@ -9,7 +9,7 @@ test.beforeEach(async ({ page, context, baseURL }) => {
 async function useAdminAccount(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem(
-      'sky-admin-employee',
+      'azure-admin-employee',
       JSON.stringify({ id: 1, userName: 'admin', name: '管理员' }),
     )
   })
@@ -183,7 +183,7 @@ test('员工保存遇到登录过期时清除会话并进入登录页', async ({
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(page).toHaveURL('/login')
   expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(false)
-  expect(await page.evaluate(() => localStorage.getItem('sky-admin-employee'))).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem('azure-admin-employee'))).toBeNull()
 })
 
 test('修改回显详情及性别，只保存资料；刷新仍可回显，取消不提交', async ({ page }) => {
@@ -258,7 +258,7 @@ test('列表加载错误可重试，修改自己的资料同步顶部姓名并�
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(page.getByRole('button', { name: '新的店长姓名', exact: true })).toBeVisible()
   expect(
-    await page.evaluate(() => JSON.parse(localStorage.getItem('sky-admin-employee')!)),
+    await page.evaluate(() => JSON.parse(localStorage.getItem('azure-admin-employee')!)),
   ).toEqual({
     id: 7,
     userName: 'manager7',
