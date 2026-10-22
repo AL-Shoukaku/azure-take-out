@@ -31,7 +31,7 @@ export async function mockUserInfo(page: Page): Promise<void> {
 export async function restoreSession(page: Page): Promise<void> {
   await page
     .context()
-    .addCookies([{ name: 'token', value: 'e2e-user-token', url: 'http://localhost:5174' }])
+    .addCookies([{ name: 'user_token', value: 'e2e-user-token', url: 'http://localhost:5174' }])
   await mockUserInfo(page)
   await page.route('**/api/order/historyOrdersByStatusList**', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),

@@ -25,6 +25,7 @@ beforeEach(() => setActivePinia(createPinia()))
 afterEach(() => {
   http.defaults.adapter = originalAdapter
   removeToken()
+  document.cookie = 'admin_token=; Path=/; Max-Age=0'
   vi.restoreAllMocks()
 })
 
@@ -64,6 +65,7 @@ describe('用户登录、注册和统一请求', () => {
   )
 
   it('从 Cookie 读取凭证并使用用户端 authentication 请求头', async () => {
+    document.cookie = 'admin_token=other-admin-token; Path=/'
     setToken('saved-user-token')
     const adapter = vi.fn<AxiosAdapter>(respondWith({ code: 1, msg: null, data: null }))
     http.defaults.adapter = adapter
@@ -101,6 +103,7 @@ describe('用户登录、注册和统一请求', () => {
   })
 
   it('401 时清除 Cookie 和 Pinia 会话并进入登录页', async () => {
+    document.cookie = 'admin_token=other-admin-token; Path=/'
     const session = useSessionStore()
     session.startSession(user)
     const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
@@ -110,5 +113,6 @@ describe('用户登录、注册和统一请求', () => {
     expect(session.token).toBe('')
     expect(session.user).toBeNull()
     expect(replace).toHaveBeenCalledWith('/login')
+    expect(document.cookie).toContain('admin_token=other-admin-token')
   })
 })

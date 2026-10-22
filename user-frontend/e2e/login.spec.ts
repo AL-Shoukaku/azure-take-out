@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { mockUserInfo } from './helpers/session'
 
-test('未登录进入登录页，桌面分栏为 6:4，背景正常加载且 logo 居中', async ({ page }) => {
+test('未登录进入登录页，桌面分栏为 6:4，背景正常加载且 logo 居中', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await context.addCookies([{ name: 'admin_token', value: 'existing-admin-token', url: baseURL! }])
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await expect(page).toHaveURL('/login')
@@ -32,7 +37,8 @@ test('校验账号和密码，不请求接口', async ({ page }) => {
   expect(submissions).toBe(0)
 })
 
-test('登录后写入 Cookie，进入点餐页，刷新仍保留登录', async ({ page, context }) => {
+test('登录后写入 Cookie，进入点餐页，刷新仍保留登录', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'admin_token', value: 'existing-admin-token', url: baseURL! }])
   await mockUserInfo(page)
   await page.route('**/api/user/login', async (route) => {
     expect(route.request().postDataJSON()).toEqual({ account: 'customer', password: 'abc123' })
@@ -50,15 +56,21 @@ test('登录后写入 Cookie，进入点餐页，刷新仍保留登录', async (
   await page.getByLabel('密码', { exact: true }).press('Enter')
   await expect(page).toHaveURL('/menu')
   await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
-  const token = (await context.cookies()).find((cookie) => cookie.name === 'token')
+  const token = (await context.cookies()).find((cookie) => cookie.name === 'user_token')
   expect(token).toMatchObject({ value: 'e2e-user-token', path: '/', sameSite: 'Lax' })
+  expect((await context.cookies()).find((cookie) => cookie.name === 'admin_token')?.value).toBe(
+    'existing-admin-token',
+  )
   await page.reload()
   await expect(page.getByRole('main')).toContainText('热腾腾的烟火气，是日常里最温柔的陪伴。')
   await page.goto('/login')
   await expect(page).toHaveURL('/menu')
-  await context.clearCookies()
+  await context.clearCookies({ name: 'user_token' })
   await page.reload()
   await expect(page).toHaveURL('/login')
+  expect((await context.cookies()).find((cookie) => cookie.name === 'admin_token')?.value).toBe(
+    'existing-admin-token',
+  )
 })
 
 test('注册时校验确认密码，成功后回到登录并保留账号', async ({ page, context }) => {
@@ -86,7 +98,7 @@ test('注册时校验确认密码，成功后回到登录并保留账号', async
   )
   await expect(page.getByLabel('账号', { exact: true })).toHaveValue('newcustomer')
   await expect(page.getByLabel('密码', { exact: true })).toHaveValue('')
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+  expect((await context.cookies()).some((cookie) => cookie.name === 'user_token')).toBe(false)
 })
 
 test('登录错误和注册重复账号错误显示后可重试', async ({ page }) => {

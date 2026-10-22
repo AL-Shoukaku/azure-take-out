@@ -69,11 +69,13 @@ npm ci
 npm run dev
 ```
 
-访问终端显示的地址，默认 `http://localhost:5173`。Vite 将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一个后端。默认后端地址为 `http://localhost:8080`；需要调整时，在 `.env.development.local` 中设置后重启：
+开发服务固定使用 `http://localhost:5173`，端口被占用时直接报错。Vite 将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一个后端。默认后端地址为 `http://localhost:8080`；需要调整时，在 `.env.development.local` 中设置后重启：
 
 ```dotenv
 VITE_API_PROXY_TARGET=http://localhost:8080
 ```
+
+登录凭证保存在 `admin_token` Cookie 中，请求头使用 `token`；用户端使用独立的 `user_token` Cookie，两端登录和退出互不覆盖。原有登录状态需重新登录一次。
 
 ## 验证
 

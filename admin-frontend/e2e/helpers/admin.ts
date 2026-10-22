@@ -49,7 +49,7 @@ export async function mockLayoutAPIs(page: Page) {
 }
 
 export async function mockAdminSession(page: Page, context: BrowserContext, baseURL: string) {
-  await context.addCookies([{ name: 'token', value: employee.token, url: baseURL }])
+  await context.addCookies([{ name: 'admin_token', value: employee.token, url: baseURL }])
   await page.addInitScript(
     (profile) => {
       if (!localStorage.getItem('sky-admin-employee')) {

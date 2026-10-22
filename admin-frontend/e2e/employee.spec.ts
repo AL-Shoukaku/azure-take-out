@@ -150,7 +150,7 @@ test('员工保存遇到登录过期时清除会话并进入登录页', async ({
   await page.route(/\/api\/employee$/, (route) => route.fulfill({ status: 401 }))
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(page).toHaveURL('/login')
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+  expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(false)
   expect(await page.evaluate(() => localStorage.getItem('sky-admin-employee'))).toBeNull()
 })
 

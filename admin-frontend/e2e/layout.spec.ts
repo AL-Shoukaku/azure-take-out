@@ -171,6 +171,7 @@ for (const scenario of logoutResponses) {
     context,
     baseURL,
   }) => {
+    await context.addCookies([{ name: 'user_token', value: 'existing-user-token', url: baseURL! }])
     const sockets = await mockAdminSession(page, context, baseURL!)
     await page.route('**/api/employee/logout', scenario.respond)
     await page.goto('/dashboard')
@@ -182,7 +183,10 @@ for (const scenario of logoutResponses) {
     await page.getByRole('button', { name: employee.name, exact: true }).hover()
     await page.getByRole('menuitem', { name: '退出登录', exact: true }).click()
     await expect(page).toHaveURL('/login')
-    expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+    expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(false)
+    expect((await context.cookies()).find((cookie) => cookie.name === 'user_token')?.value).toBe(
+      'existing-user-token',
+    )
     expect(await page.evaluate(() => localStorage.getItem('sky-admin-employee'))).toBeNull()
     await expect.poll(() => closed).toBe(true)
   })

@@ -14,7 +14,7 @@ test('真实后端：口味隔离、空口味增减、确认下单和模拟支�
   await page.getByLabel('密码', { exact: true }).fill('TestPass123')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page).toHaveURL('/menu')
-  const token = (await page.context().cookies()).find((cookie) => cookie.name === 'token')!.value
+  const token = (await page.context().cookies()).find((cookie) => cookie.name === 'user_token')!.value
   const headers = { authentication: token }
   let orderId: number | undefined
   let addressId: number | undefined

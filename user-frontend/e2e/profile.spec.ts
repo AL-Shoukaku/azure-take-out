@@ -218,14 +218,18 @@ test('修改密码校验格式和确认输入，后端错误保留弹窗，成�
   await expect(dialog.getByLabel('确认新密码', { exact: true })).toHaveValue('')
 })
 
-test('退出登录调用接口并清除 Cookie，无法返回已登录页面', async ({ page, context }) => {
+test('退出登录调用接口并清除 Cookie，无法返回已登录页面', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'admin_token', value: 'existing-admin-token', url: baseURL! }])
   await page.route('**/api/user/logout', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: null } }),
   )
   await page.goto('/profile')
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await expect(page).toHaveURL('/login')
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+  expect((await context.cookies()).some((cookie) => cookie.name === 'user_token')).toBe(false)
+  expect((await context.cookies()).find((cookie) => cookie.name === 'admin_token')?.value).toBe(
+    'existing-admin-token',
+  )
   await page.goto('/profile')
   await expect(page).toHaveURL('/login')
 })

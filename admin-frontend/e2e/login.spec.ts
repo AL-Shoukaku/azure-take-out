@@ -7,7 +7,8 @@ test.beforeEach(async ({ page }) => {
   await mockLayoutAPIs(page)
 })
 
-test('未登录访问首页和工作台，都会进入登录页', async ({ page }) => {
+test('未登录访问首页和工作台，都会进入登录页', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'user_token', value: 'existing-user-token', url: baseURL! }])
   await page.goto('/')
   await expect(page).toHaveURL('/login')
   await expect(page.getByPlaceholder('账号')).toBeEmpty()
@@ -34,7 +35,8 @@ test('账号和密码校验不通过时不发送请求', async ({ page }) => {
   expect(requests).toHaveLength(0)
 })
 
-test('提交期间显示登录中，禁止重复提交，成功后保持登录', async ({ page, context }) => {
+test('提交期间显示登录中，禁止重复提交，成功后保持登录', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'user_token', value: 'existing-user-token', url: baseURL! }])
   let finishLogin!: () => void
   const responseReady = new Promise<void>((resolve) => {
     finishLogin = resolve
@@ -60,8 +62,11 @@ test('提交期间显示登录中，禁止重复提交，成功后保持登录',
   await expect(page).toHaveURL('/dashboard')
   await expect(page.getByRole('region', { name: '今日数据', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: employee.name, exact: true })).toBeVisible()
-  const token = (await context.cookies()).find((cookie) => cookie.name === 'token')
+  const token = (await context.cookies()).find((cookie) => cookie.name === 'admin_token')
   expect(token).toMatchObject({ value: employee.token, path: '/', sameSite: 'Lax' })
+  expect((await context.cookies()).find((cookie) => cookie.name === 'user_token')?.value).toBe(
+    'existing-user-token',
+  )
   await page.reload()
   await expect(page).toHaveURL('/dashboard')
   await expect(page.getByRole('region', { name: '今日数据', exact: true })).toBeVisible()
@@ -70,9 +75,12 @@ test('提交期间显示登录中，禁止重复提交，成功后保持登录',
   await expect(page).toHaveURL('/dashboard')
   await page.goto('/login')
   await expect(page).toHaveURL('/dashboard')
-  await context.clearCookies()
+  await context.clearCookies({ name: 'admin_token' })
   await page.reload()
   await expect(page).toHaveURL('/login')
+  expect((await context.cookies()).find((cookie) => cookie.name === 'user_token')?.value).toBe(
+    'existing-user-token',
+  )
 })
 
 for (const message of ['账号不存在', '密码错误', '账号被锁定']) {
@@ -87,7 +95,7 @@ for (const message of ['账号不存在', '密码错误', '账号被锁定']) {
     await expect(page.getByRole('alert')).toContainText(message)
     await expect(page).toHaveURL('/login')
     await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled()
-    expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+    expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(false)
 
     await page.route('**/api/employee/login', (route) =>
       route.fulfill({ json: { code: 1, msg: null, data: employee } }),

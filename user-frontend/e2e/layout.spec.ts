@@ -102,10 +102,14 @@ test('请求头像并显示服务端提供的头像图片', async ({ page }) => 
   await expect(page.getByRole('img', { name: '用户头像' })).toHaveJSProperty('naturalWidth', 40)
 })
 
-test('Cookie 失效时清除会话并返回登录页', async ({ page, context }) => {
+test('Cookie 失效时清除会话并返回登录页', async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: 'admin_token', value: 'existing-admin-token', url: baseURL! }])
   await page.route('**/api/user/info', (route) => route.fulfill({ status: 401 }))
   await page.goto('/orders')
   await expect(page).toHaveURL('/login')
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
+  expect((await context.cookies()).some((cookie) => cookie.name === 'user_token')).toBe(false)
+  expect((await context.cookies()).find((cookie) => cookie.name === 'admin_token')?.value).toBe(
+    'existing-admin-token',
+  )
   await expect(page.getByRole('banner')).toHaveCount(0)
 })
