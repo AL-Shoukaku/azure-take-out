@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
+import { useSessionStore } from '@/stores/session'
 import { adminMenu } from './menu'
 
 export function createAppRouter(
@@ -39,8 +40,6 @@ export function createAppRouter(
             component: () => import('@/views/employee/EmployeeFormPage.vue'),
             props: (route) => ({ employeeId: route.query.id ? Number(route.query.id) : undefined }),
             meta: { title: '员工资料 · 苍穹外卖管理端', activeMenu: '/employee' },
-            beforeEnter: (to) =>
-              to.query.id && !/^[1-9]\d*$/.test(String(to.query.id)) ? '/employee' : true,
           },
           ...(['dish', 'setmeal'] as const).map((kind) => ({
             path: `${kind}/add`,
@@ -73,6 +72,10 @@ export function createAppRouter(
     const token = getToken()
     if (!token && to.name !== 'login') return '/login'
     if (token && to.name === 'login') return '/dashboard'
+    if (to.name === 'employee-form') {
+      if (to.query.id && !/^[1-9]\d*$/.test(String(to.query.id))) return '/employee'
+      if (!to.query.id && !useSessionStore().isAdmin) return '/employee'
+    }
   })
 
   router.afterEach((to) => {

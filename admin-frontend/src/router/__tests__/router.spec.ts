@@ -1,11 +1,49 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '..'
 import { removeToken, setToken } from '@/utils/auth'
+import { useSessionStore } from '@/stores/session'
 
-afterEach(removeToken)
+beforeEach(() => {
+  localStorage.clear()
+  setActivePinia(createPinia())
+})
+afterEach(() => {
+  removeToken()
+  localStorage.clear()
+})
 
 describe('登录路由守卫', () => {
+  it('普通员工不能直接进入新增页面，也不能从修改页面移除 id 后进入新增', async () => {
+    useSessionStore().startSession({
+      id: 2,
+      userName: 'staff2',
+      name: '店员',
+      token: 'staff-token',
+    })
+    const router = createAppRouter(createMemoryHistory())
+    await router.push('/employee/add')
+    expect(router.currentRoute.value.path).toBe('/employee')
+    await router.push('/employee/add?id=2')
+    expect(router.currentRoute.value.query.id).toBe('2')
+    await router.push('/employee/add')
+    expect(router.currentRoute.value.path).toBe('/employee')
+  })
+
+  it('admin 可以直接访问新增页面', async () => {
+    useSessionStore().startSession({
+      id: 1,
+      userName: 'admin',
+      name: '管理员',
+      token: 'admin-token',
+    })
+    const router = createAppRouter(createMemoryHistory())
+    await router.push('/employee/add')
+    expect(router.currentRoute.value.path).toBe('/employee/add')
+    expect(router.currentRoute.value.query.id).toBeUndefined()
+  })
+
   it('根路径重定向到工作台', () => {
     const router = createAppRouter(createMemoryHistory())
     expect(router.getRoutes().find((route) => route.path === '/')?.redirect).toBe('/dashboard')

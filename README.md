@@ -1,4 +1,4 @@
-`# sky-delivery-plus
+# 碧蓝外卖(azure take out) —— 基于《苍穹外卖》二次开发的外卖演示平台
 
 ![Version](https://img.shields.io/badge/version-v0.4.1-blue)
 
@@ -11,7 +11,7 @@
 - [原始代码](https://github.com/smith-gala/2026-source-code)
 - [b站课程视频](https://www.bilibili.com/video/BV1TP411v7v6/?spm_id_from=333.337.search-card.all.click)
 
-本项目在原项目的基础上进行了整理，升级与二次开发，目前仍在开发中
+本项目在原项目的基础上进行了整理，升级与二次开发。
 
 ## ✨ 项目亮点
 
@@ -178,7 +178,7 @@ sky-delivery-plus/
 
 ## 🗺 后续计划
 
-考虑将黑马点评中的部分业务功能整合进本项目，待定
+- 考虑将黑马点评中的部分业务功能整合进本项目，待定
 
 ## 🖼 项目截图
 

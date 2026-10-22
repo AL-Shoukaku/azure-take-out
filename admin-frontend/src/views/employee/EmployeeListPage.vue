@@ -13,7 +13,12 @@
         />
         <ElButton class="management-dark-button" native-type="submit">查询</ElButton>
       </form>
-      <ElButton type="primary" class="employee-add" @click="router.push('/employee/add')">
+      <ElButton
+        type="primary"
+        class="employee-add"
+        :disabled="!session.isAdmin"
+        @click="router.push('/employee/add')"
+      >
         + 添加员工
       </ElButton>
     </div>
@@ -63,6 +68,7 @@
               link
               :class="row.status === 1 ? 'management-action-red' : 'management-action-blue'"
               :disabled="
+                !session.isAdmin ||
                 row.username === 'admin' ||
                 (row.id === session.employee?.id && row.status === 1) ||
                 changingId !== null
@@ -143,6 +149,7 @@ function search() {
 
 async function changeStatus(employee: Employee) {
   if (
+    !session.isAdmin ||
     employee.username === 'admin' ||
     changingId.value !== null ||
     (employee.id === session.employee?.id && employee.status === 1)

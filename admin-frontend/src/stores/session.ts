@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getToken, removeToken, setToken } from '@/utils/auth'
 import type { EmployeeLoginVO } from '@/api/auth'
@@ -13,6 +13,7 @@ export const useSessionStore = defineStore('session', () => {
       ? (JSON.parse(localStorage.getItem(employeeStorageKey) || 'null') as EmployeeProfile | null)
       : null,
   )
+  const isAdmin = computed(() => employee.value?.userName === 'admin')
 
   function startSession(value: EmployeeLoginVO): void {
     setToken(value.token)
@@ -33,5 +34,5 @@ export const useSessionStore = defineStore('session', () => {
     localStorage.setItem(employeeStorageKey, JSON.stringify(profile))
   }
 
-  return { token, employee, startSession, clearSession, updateEmployeeProfile }
+  return { token, employee, isAdmin, startSession, clearSession, updateEmployeeProfile }
 })

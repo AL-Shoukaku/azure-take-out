@@ -15,6 +15,18 @@ afterEach(() => {
 })
 
 describe('登录会话', () => {
+  it('仅 admin 账号具有员工管理权限，会随会话和账号变化更新', () => {
+    const session = useSessionStore()
+    expect(session.isAdmin).toBe(false)
+    session.startSession(employee)
+    expect(session.isAdmin).toBe(true)
+    session.updateEmployeeProfile({ id: 7, userName: 'store-admin', name: '店员' })
+    expect(session.isAdmin).toBe(false)
+    session.startSession(employee)
+    session.clearSession()
+    expect(session.isAdmin).toBe(false)
+  })
+
   it('初始化时恢复 Cookie 中的登录凭证', () => {
     setToken('saved-token')
     expect(useSessionStore().token).toBe('saved-token')

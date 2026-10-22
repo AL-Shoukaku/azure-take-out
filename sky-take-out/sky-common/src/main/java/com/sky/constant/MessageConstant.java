@@ -34,4 +34,5 @@ public class MessageConstant {
     public static final String USER_NOT_FOUND = "用户不存在";
     public static final String INPUT_CAN_NOT_BE_EMPTY = "输入不能为空";
     public static final String ORDER_HAS_UNAVAILABLE_ITEMS = "订单中的商品已经停售或不存在，不能加入购物车";
+    public static final String ONLY_ADMIN_CAN_OPERATE = "只有管理员可以操作";
 }

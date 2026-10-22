@@ -83,7 +83,12 @@ public class EmployeeServiceImpl implements EmployeeService {
      * @param employeeDTO
      */
     public void save(EmployeeDTO employeeDTO) {
-        Employee employee = new Employee();
+        // 只有管理员可以新增员工
+        Employee employee = employeeMapper.getById(BaseContext.getCurrentId());
+        if (employee == null || !employee.getUsername().equals("admin")) {
+            throw new AccountLockedException(MessageConstant.ONLY_ADMIN_CAN_OPERATE);
+        }
+        employee = new Employee();
         // 使用对象属性拷贝，属性名需要一致
         BeanUtils.copyProperties(employeeDTO, employee);
         // 设置 DTO 中没有的属性
@@ -121,7 +126,10 @@ public class EmployeeServiceImpl implements EmployeeService {
      * @param id
      */
     public void startOrStop(Integer status, long id) {
-        Employee employee = new Employee();
+        Employee employee = employeeMapper.getById(BaseContext.getCurrentId());
+        if (employee == null || !employee.getUsername().equals("admin")) {
+            throw new AccountLockedException(MessageConstant.ONLY_ADMIN_CAN_OPERATE);
+        }
         employee.setStatus(status);
         employee.setId(id);
         employeeMapper.update(employee);
