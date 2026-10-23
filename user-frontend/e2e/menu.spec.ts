@@ -43,6 +43,10 @@ test('空餐袋、口味组合加减、费用计算和清空', async ({ page }) 
   await page.goto('/menu')
   const cart = page.getByRole('complementary', { name: '我的餐袋' })
   await expect(cart).toContainText('餐袋还在等一份心动')
+  await expect(cart.getByRole('img', { name: '空购物车插画' })).toHaveJSProperty(
+    'naturalWidth',
+    640,
+  )
   await expect(cart.getByRole('button', { name: '去结算' })).toBeDisabled()
   await page
     .getByRole('article', { name: '宫保鸡丁', exact: true })
@@ -54,6 +58,7 @@ test('空餐袋、口味组合加减、费用计算和清空', async ({ page }) 
   await detail.getByRole('button', { name: '确认加入' }).click()
   await expect(detail).toBeHidden()
   await expect(cart).toContainText('中辣,不要蒜')
+  await expect(cart.getByRole('img', { name: '空购物车插画' })).toHaveCount(0)
   expect(fixture.mutations[0]!.data).toEqual({ dishId: 1, dishFlavor: '中辣,不要蒜' })
   await cart.getByRole('button', { name: '增加宫保鸡丁' }).click()
   await expect(cart.locator('.cart-total')).toContainText('¥52.00')
@@ -94,6 +99,10 @@ test('套餐明细和下单模拟支付成功，使用后端金额并清空购�
   await payment.getByRole('button', { name: '确认支付' }).click()
   const success = page.getByRole('dialog', { name: '支付成功', exact: true })
   await expect(success).toContainText('TEST-99')
+  await expect(success.getByRole('img', { name: '支付成功插画' })).toHaveJSProperty(
+    'naturalWidth',
+    640,
+  )
   await success.getByRole('button', { name: '继续点餐' }).click()
   await expect(page.getByRole('complementary', { name: '我的餐袋' })).toContainText(
     '餐袋还在等一份心动',

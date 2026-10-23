@@ -60,16 +60,14 @@
       />
     </div>
     <div v-else-if="store.loaded && !store.loadError" class="empty-state">
-      <div class="empty-icon" aria-hidden="true">
-        <svg viewBox="0 0 48 48" fill="none">
-          <path
-            d="M38 20c0 11-14 23-14 23S10 31 10 20a14 14 0 1 1 28 0Z"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <circle cx="24" cy="20" r="5" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </div>
+      <img
+        :src="emptyAddressImage"
+        class="empty-address-image"
+        alt="暂无收货地址插画"
+        width="200"
+        height="200"
+        decoding="async"
+      />
       <h2>还没有收货地址</h2>
       <p>点击右上角“新增地址”，让美味准时送达。</p>
     </div>
@@ -85,6 +83,7 @@ import type { Address } from '@/api/addresses'
 import { useAddressesStore } from '@/stores/addresses'
 import { getToken } from '@/utils/auth'
 import AddressFormDialog from '@/components/AddressFormDialog.vue'
+import emptyAddressImage from '@/assets/images/status/address-empty.webp'
 import AddressCard from './components/AddressCard.vue'
 
 const store = useAddressesStore()
@@ -189,20 +188,13 @@ h1 {
   text-align: center;
 }
 
-.empty-icon {
-  display: grid;
-  width: 80px;
-  height: 80px;
+.empty-address-image {
+  display: block;
+  width: 200px;
+  max-width: 100%;
+  height: auto;
   margin: 0 auto 24px;
-  place-items: center;
-  border-radius: 50%;
-  background: #eff5ff;
-  color: #7ea5ee;
-}
-
-.empty-icon svg {
-  width: 42px;
-  height: 42px;
+  object-fit: contain;
 }
 
 .empty-state h2 {
@@ -241,6 +233,10 @@ h1 {
 
   .empty-state {
     padding: 48px 20px;
+  }
+
+  .empty-address-image {
+    width: 160px;
   }
 }
 </style>

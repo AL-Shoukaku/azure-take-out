@@ -151,3 +151,26 @@ test('重建库后旧 Cookie 对应用户不存在时返回登录，并可重新
     'existing-admin-token',
   )
 })
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 375, height: 667 },
+]) {
+  test(`${viewport.width}px 下不存在的路由显示 404 插画，可以返回点餐`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await page.goto('/menu/missing/item')
+    await expect(page.getByRole('heading', { name: '页面走丢啦' })).toBeVisible()
+    await expect(page.getByRole('img', { name: '页面未找到插画' })).toHaveJSProperty(
+      'naturalWidth',
+      640,
+    )
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: '页面走丢啦' })).toBeVisible()
+    await page.getByRole('button', { name: '返回点餐' }).click()
+    await expect(page).toHaveURL('/menu')
+    await expect(
+      page.getByRole('heading', { name: '今天的好心情，从好好吃饭开始。' }),
+    ).toBeVisible()
+  })
+}

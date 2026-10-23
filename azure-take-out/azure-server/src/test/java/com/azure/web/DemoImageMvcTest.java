@@ -15,8 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DemoImageMvcTest extends WebTestSupport {
     @Test
     void bundledDemoPhotosAreReadableWithoutLoginOrLocalUploads() throws Exception {
-        var resources = new PathMatchingResourcePatternResolver().getResources("classpath:/menu-images/*.jpg");
-        assertThat(resources).hasSizeGreaterThanOrEqualTo(40);
+        var resources = new PathMatchingResourcePatternResolver().getResources("classpath*:menu-images/*.jpg");
+        assertThat(resources).hasSize(52);
         for (var resource : resources) {
             byte[] bytes = resource.getContentAsByteArray();
             var image = ImageIO.read(new ByteArrayInputStream(bytes));

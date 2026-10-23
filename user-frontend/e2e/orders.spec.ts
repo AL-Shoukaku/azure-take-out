@@ -120,6 +120,13 @@ test('模拟支付确认成功后刷新列表和详情状态，待付款筛选�
   await expect(payment).toContainText('模拟支付')
   await payment.getByRole('button', { name: '确认支付', exact: true }).click()
   await expect(payment).toBeHidden()
+  const success = page.getByRole('dialog', { name: '支付成功', exact: true })
+  await expect(success).toContainText('ORDER-0001')
+  await expect(success.getByRole('img', { name: '支付成功插画' })).toHaveJSProperty(
+    'naturalWidth',
+    640,
+  )
+  await success.getByRole('button', { name: '查看订单', exact: true }).click()
   await expect(detail.getByRole('heading', { name: '待接单', exact: true })).toBeVisible()
   await detail.getByRole('button', { name: 'Close this dialog' }).click()
   await expect(page.getByRole('article')).toHaveCount(0)
@@ -209,6 +216,7 @@ test('详情失败可重试，支付失败保持弹窗且不显示成功', async
   await payment.getByRole('button', { name: '确认支付', exact: true }).click()
   await expect(payment).toBeVisible()
   await expect(page.getByText('订单状态错误，请刷新', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '支付成功', exact: true })).toHaveCount(0)
   await payment.getByRole('button', { name: '确认支付', exact: true }).click()
   await expect(payment).toBeHidden()
 })

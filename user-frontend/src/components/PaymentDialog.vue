@@ -56,7 +56,6 @@ async function pay(): Promise<void> {
     if (!active || token !== getToken()) return
     emit('paid', props.order.id)
     visible.value = false
-    ElMessage.success('支付成功，正在等待商家接单')
   } catch (error) {
     if (active && token === getToken())
       ElMessage.error(error instanceof Error ? error.message : '支付失败，请稍后重试')

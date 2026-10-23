@@ -21,6 +21,16 @@
 - 将管理端前端升级为 Vue 3、Vite、Element Plus 和 Pinia，制作了新的 logo 和背景图
 - 将用户端前端用 Vue3 重写为网页，解决原版必须注册微信小程序账号才能使用的痛点
 
+## 🖼 图片展示
+
+### 管理端工作台
+
+![管理端工作台](assets/images/admin-display.webp)
+
+### 用户端在线点餐
+
+![用户端在线点餐](assets/images/user-display.webp)
+
 ## 🚀 功能介绍
 
 项目包含管理端和用户端，覆盖店铺运营、在线点餐和订单处理等外卖平台功能。
@@ -78,8 +88,6 @@
 mysql -u用户名 -p < db/azure.sql
 ```
 
-建 11 张表，并写入初始数据。
-
 项目改名后使用 `azure_take_out` 数据库，直接执行此脚本重新创建演示数据即可，无需迁移旧库。
 
 ### 2. 启动 Redis
@@ -90,7 +98,9 @@ sudo systemctl start redis
 
 后端连接的 `database` 是 **0**，确认本地 Redis 已启动且该库可用。
 
-从旧版本升级时，需要删除本项目的商品缓存 `dish_*`、`setmealCache::*`、`setmealDishCache::*`，避免旧缓存中的 Java 包名导致反序列化失败；保留 `SHOP_STATUS` 等非商品数据。
+全新 Redis 中店铺默认打烊；需要演示下单时，启动两端后先在管理端将店铺切换为营业中。
+
+重新导入演示数据或从旧版本升级时，需要删除本项目的商品缓存 `dish_*`、`setmealCache::*`、`setmealDishCache::*`，避免展示旧商品或旧缓存中的 Java 包名导致反序列化失败；保留 `SHOP_STATUS` 等非商品数据。
 
 ### 3. 启动后端
 
@@ -181,7 +191,3 @@ azure-take-out/
 ## 🗺 后续计划
 
 - 考虑将黑马点评中的部分业务功能整合进本项目，包括缓存优化，优惠券秒杀等。
-
-## 🖼 项目截图
-
-开发中，暂无

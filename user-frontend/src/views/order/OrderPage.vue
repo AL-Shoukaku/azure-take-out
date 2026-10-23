@@ -81,8 +81,9 @@
       v-model="paymentOpen"
       v-model:busy="paymentBusy"
       :order="paymentOrder"
-      @paid="refresh"
+      @paid="paymentSucceeded"
     />
+    <PaymentSuccessDialog v-if="paymentOrder" v-model="successOpen" :order="paymentOrder" />
     <ElDialog
       v-model="contactOpen"
       title="联系商家"
@@ -125,6 +126,7 @@ import { useCartStore } from '@/stores/cart'
 import { useAddressesStore } from '@/stores/addresses'
 import { getToken } from '@/utils/auth'
 import PaymentDialog from '@/components/PaymentDialog.vue'
+import PaymentSuccessDialog from '@/components/PaymentSuccessDialog.vue'
 import OrderCard from './components/OrderCard.vue'
 import OrderDetailDialog from './components/OrderDetailDialog.vue'
 import {
@@ -160,6 +162,7 @@ const actionBusy = ref(false)
 const paymentOpen = ref(false)
 const paymentOrder = ref<Order | null>(null)
 const paymentBusy = ref(false)
+const successOpen = ref(false)
 const contactOpen = ref(false)
 const busy = computed(() => actionBusy.value || paymentBusy.value)
 let active = true
@@ -169,6 +172,11 @@ onScopeDispose(() => {
 onMounted(() => {
   if (!addresses.loaded) void addresses.load()
 })
+
+function paymentSucceeded(): void {
+  successOpen.value = true
+  void refresh()
+}
 
 async function handleAction(order: Order, action: OrderAction): Promise<void> {
   if (busy.value) return

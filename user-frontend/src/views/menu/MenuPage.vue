@@ -154,38 +154,17 @@
         :order="pendingOrder"
         @paid="paymentSucceeded"
       />
-      <ElDialog
-        v-model="successOpen"
-        title="支付成功"
-        width="480px"
-        class="user-dialog success-dialog"
-        modal-class="user-dialog-overlay"
-        align-center
-        append-to-body
-        destroy-on-close
-        ><div class="payment-success">
-          <span class="success-check" aria-hidden="true">✓</span>
-          <h2>支付成功</h2>
-          <p>一份热乎正在准备中，<br />请耐心等待商家接单。</p>
-          <strong v-if="pendingOrder">{{ money(pendingOrder.amount) }}</strong>
-          <p class="success-order">订单号：{{ pendingOrder?.number }}</p>
-        </div>
-        <template #footer
-          ><ElButton @click="successOpen = false">继续点餐</ElButton
-          ><ElButton type="primary" @click="router.push('/orders')">查看订单</ElButton></template
-        ></ElDialog
-      >
+      <PaymentSuccessDialog v-if="pendingOrder" v-model="successOpen" :order="pendingOrder" />
     </section>
   </ElConfigProvider>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import {
   ElAlert,
   ElButton,
   ElConfigProvider,
-  ElDialog,
   ElEmpty,
   ElMessage,
   ElMessageBox,
@@ -200,11 +179,11 @@ import { submitOrder, type OrderSubmission, type Order } from '@/api/orders'
 import { useCartStore } from '@/stores/cart'
 import { useAddressesStore } from '@/stores/addresses'
 import { getToken } from '@/utils/auth'
-import { money } from '@/utils/pricing'
 import logo from '@/assets/images/brand/logo.webp'
 import heroBackground from '@/assets/images/menu/background.webp'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import PaymentDialog from '@/components/PaymentDialog.vue'
+import PaymentSuccessDialog from '@/components/PaymentSuccessDialog.vue'
 import CartPanel from './components/CartPanel.vue'
 import ProductCard from './components/ProductCard.vue'
 import ProductDialog from './components/ProductDialog.vue'
@@ -212,7 +191,6 @@ import CheckoutDialog from './components/CheckoutDialog.vue'
 import { useMenu } from './useMenu'
 import { cartProduct, menuPageSize } from './menuDisplay'
 
-const router = useRouter()
 const cart = useCartStore()
 const addresses = useAddressesStore()
 const {
@@ -657,42 +635,6 @@ h1 span {
   margin-left: 12px;
   color: var(--user-primary);
   text-decoration: none;
-}
-.payment-success {
-  padding: 12px 0;
-  text-align: center;
-}
-.success-check {
-  display: grid;
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 20px;
-  place-items: center;
-  border-radius: 50%;
-  background: #edf7f1;
-  color: #5caa7d;
-  font-size: 34px;
-}
-.payment-success h2 {
-  color: #354661;
-  font-size: 23px;
-}
-.payment-success p {
-  color: #91a0b6;
-  font-size: 14px;
-  line-height: 1.9;
-}
-.payment-success strong {
-  display: block;
-  margin-top: 22px;
-  color: var(--user-primary);
-  font-size: 30px;
-  font-weight: 500;
-}
-.payment-success .success-order {
-  margin-bottom: 0;
-  overflow-wrap: anywhere;
-  font-size: 12px;
 }
 @media (max-width: 1200px) {
   .menu-workspace {

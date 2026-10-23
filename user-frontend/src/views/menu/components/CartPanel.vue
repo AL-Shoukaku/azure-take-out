@@ -26,20 +26,14 @@
     >
     <ElSkeleton v-else-if="cart.loading && !cart.count" :rows="5" animated class="cart-skeleton" />
     <div v-else-if="!cart.count" class="empty-cart">
-      <span class="empty-icon"
-        ><svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-          <path
-            d="m17 22 31-4 8 36-39 5V22Zm10-1v-8a8 8 0 0 1 16 0v6"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M29 35c-5-7-12 4 7 12 14-13 3-20-1-11"
-            stroke="currentColor"
-            stroke-width="1.5"
-          /></svg
-      ></span>
+      <img
+        :src="emptyCartImage"
+        class="empty-cart-image"
+        alt="空购物车插画"
+        width="144"
+        height="144"
+        decoding="async"
+      />
       <h3>餐袋还在等一份心动</h3>
       <p>选一点喜欢的，<br />把今天照顾好。</p>
     </div>
@@ -100,6 +94,7 @@ import { ElAlert, ElButton, ElSkeleton } from 'element-plus'
 import { useCartStore } from '@/stores/cart'
 import type { CartItem } from '@/api/cart'
 import DishImage from '@/components/DishImage.vue'
+import emptyCartImage from '@/assets/images/status/cart-empty.webp'
 import { money, lineTotal } from '@/utils/pricing'
 import { groupCartItems } from '../menuDisplay'
 const props = defineProps<{ closed: boolean; checking: boolean }>()
@@ -166,23 +161,18 @@ h2 span {
 }
 .empty-cart {
   flex: 1;
-  padding: 32px 0 28px;
+  padding: 24px 0;
   text-align: center;
   color: #9eafc6;
 }
-.empty-icon {
-  display: grid;
-  width: 86px;
-  height: 86px;
-  margin: 0 auto 20px;
-  place-items: center;
+.empty-cart-image {
+  display: block;
+  width: 144px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  background: #f0f5ff;
-  color: #adc3e9;
-}
-.empty-icon svg {
-  width: 43px;
-  height: 43px;
+  object-fit: contain;
 }
 h3 {
   margin: 0 0 12px;
@@ -327,14 +317,9 @@ h3 {
   .empty-cart {
     padding: 15px 0;
   }
-  .empty-icon {
-    width: 50px;
-    height: 50px;
+  .empty-cart-image {
+    width: 88px;
     margin-bottom: 10px;
-  }
-  .empty-icon svg {
-    width: 30px;
-    height: 30px;
   }
   .cart-note {
     display: none;

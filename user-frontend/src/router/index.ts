@@ -37,6 +37,11 @@ export function createAppRouter(
             component: () => import('@/views/profile/ProfilePage.vue'),
             meta: { section: '我的' },
           },
+          {
+            path: ':pathMatch(.*)*',
+            name: 'not-found',
+            component: () => import('@/views/error/NotFoundPage.vue'),
+          },
         ],
       },
     ],

@@ -9,6 +9,7 @@ vi.mock('@/views/profile/ProfilePage.vue', () => ({ default: { template: '<div /
 vi.mock('@/views/address/AddressPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/order/OrderPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/menu/MenuPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/error/NotFoundPage.vue', () => ({ default: { template: '<div />' } }))
 
 afterEach(removeToken)
 
@@ -18,7 +19,7 @@ describe('用户端登录守卫', () => {
     expect(router.getRoutes().find((route) => route.path === '/')?.redirect).toBe('/menu')
   })
 
-  it.each(['/', '/menu', '/orders', '/addresses', '/profile'])(
+  it.each(['/', '/menu', '/orders', '/addresses', '/profile', '/unknown-page'])(
     '没有 Cookie 凭证时，访问 %s 进入登录页',
     async (path) => {
       const router = createAppRouter(createMemoryHistory())
@@ -62,4 +63,16 @@ describe('用户端登录守卫', () => {
     await router.push('/menu?check=session')
     expect(router.currentRoute.value.path).toBe('/login')
   })
+
+  it.each(['/unknown-page', '/menu/missing/item'])(
+    '已登录访问不存在的 %s 显示 404',
+    async (path) => {
+      setToken('saved-user-token')
+      const router = createAppRouter(createMemoryHistory())
+      await router.push(path)
+      expect(router.currentRoute.value.name).toBe('not-found')
+      expect(router.currentRoute.value.path).toBe(path)
+      expect(router.currentRoute.value.matched).toHaveLength(2)
+    },
+  )
 })

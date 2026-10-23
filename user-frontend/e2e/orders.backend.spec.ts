@@ -14,7 +14,9 @@ test('真实后端：独立账号分页、详情、模拟支付、催单、取�
   await page.getByLabel('密码', { exact: true }).fill('TestPass123')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page).toHaveURL('/menu')
-  const token = (await page.context().cookies()).find((cookie) => cookie.name === 'user_token')!.value
+  const token = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'user_token',
+  )!.value
   const headers = { authentication: token }
   const orders: { id: number; orderNumber: string }[] = []
   try {
@@ -91,6 +93,12 @@ test('真实后端：独立账号分页、详情、模拟支付、催单、取�
       .getByRole('dialog', { name: '订单支付', exact: true })
       .getByRole('button', { name: '确认支付', exact: true })
       .click()
+    const success = page.getByRole('dialog', { name: '支付成功', exact: true })
+    await expect(success.getByRole('img', { name: '支付成功插画' })).toHaveJSProperty(
+      'naturalWidth',
+      640,
+    )
+    await success.getByRole('button', { name: '查看订单', exact: true }).click()
     await expect(detail.getByRole('heading', { name: '待接单', exact: true })).toBeVisible()
     const reminder = page.waitForResponse((response) => response.url().includes('/order/reminder/'))
     await detail.getByRole('button', { name: '催单', exact: true }).click()
