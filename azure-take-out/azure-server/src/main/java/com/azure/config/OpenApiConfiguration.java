@@ -16,7 +16,7 @@ public class OpenApiConfiguration {
     public OpenAPI azureOpenApi() {
         return new OpenAPI().info(new Info()
                 .title("碧蓝外卖项目接口文档")
-                .version("0.4.1")
+                .version("1.0.0")
                 .description("管理端与用户端接口"));
     }
 

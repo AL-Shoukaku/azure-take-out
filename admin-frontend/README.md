@@ -75,7 +75,7 @@ npm run dev
 VITE_API_PROXY_TARGET=http://localhost:8080
 ```
 
-登录凭证保存在 `admin_token` Cookie 中，请求头使用 `token`；用户端使用独立的 `user_token` Cookie，两端登录和退出互不覆盖。原有登录状态需重新登录一次。
+登录凭证保存在 `admin_token` Cookie 中，请求头使用 `token`；用户端使用独立的 `user_token` Cookie，两端登录和退出互不覆盖。
 
 ## 验证
 

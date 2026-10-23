@@ -158,11 +158,11 @@ describe('用户登录、注册和统一请求', () => {
           else resolve(response)
         }
       })
-    const rejected = expect(getUserInfo()).rejects.toThrow('登录已过期，请重新登录')
+    const pending = getUserInfo()
     await vi.waitFor(() => expect(complete).toBeTypeOf('function'))
     session.startSession({ id: 8, username: '新用户', avatar: null, token: 'new-user-token' })
     complete()
-    await rejected
+    await expect(pending).rejects.toThrow('登录已过期，请重新登录')
     expect(getToken()).toBe('new-user-token')
     expect(session.user?.id).toBe(8)
     expect(replace).not.toHaveBeenCalled()

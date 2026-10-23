@@ -1,6 +1,6 @@
 # 碧蓝外卖(azure-take-out) —— 基于《苍穹外卖》二次开发的外卖演示平台
 
-![Version](https://img.shields.io/badge/version-v0.4.1-blue)
+![Version](https://img.shields.io/badge/version-v1.0.0-blue)
 
 ## 📖 项目简介
 
@@ -15,7 +15,7 @@
 
 ## ✨ 项目亮点
 
-- 修复了园项目中的若干 bug，如缺少事务注解，购物车与菜品/套餐信息不同步等
+- 修复了原项目中的若干 bug，如缺少事务注解，购物车与菜品/套餐信息不同步等
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
 - 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
 - 将管理端前端升级为 Vue 3、Vite、Element Plus 和 Pinia，制作了新的 logo 和背景图
@@ -69,7 +69,6 @@
 | 数据库 | MySQL 8，库名 `azure_take_out` | 3306 |
 | 缓存 | Redis，`database` 为 **0** | 6379 |
 
-
 ## ⚡ 快速开始
 
 ### 环境信息
@@ -88,7 +87,9 @@
 mysql -u用户名 -p < db/azure.sql
 ```
 
-项目改名后使用 `azure_take_out` 数据库，直接执行此脚本重新创建演示数据即可，无需迁移旧库。
+脚本使用 `azure_take_out` 数据库，会重建 11 张业务表并写入演示数据。项目改名后无需迁移旧库。
+
+菜品与套餐的 52 张演示图片位于 [`assets/initImage`](assets/initImage/)，Maven 构建时自动打包到 `classpath:/menu-images/`，无需手动复制。SQL 中的图片地址默认使用 `http://localhost:8080/menu-images/`；调整后端访问地址时，需同步修改 SQL 中的图片 URL。
 
 ### 2. 启动 Redis
 
@@ -104,7 +105,7 @@ sudo systemctl start redis
 
 ### 3. 启动后端
 
-先把 `azure-take-out/azure-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`，只在本机保存，不要提交。
+先把 `azure-take-out/azure-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`。
 
 在 `application-local.yml` 中填写：
 
@@ -116,13 +117,6 @@ sudo systemctl start redis
 | `azure.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
 上传目录以 `azure.upload-path` 为根目录，管理端图片保存到 `admin/`，用户头像保存到 `user/`；上传时会自动创建对应子目录。
-
-- 管理端：`POST /admin/common/upload`，请求头使用员工 `token`。
-- 用户端：`POST /user/common/upload`，请求头使用用户 `authentication`。
-- 两个接口均使用 `multipart/form-data`，文件字段名为 `file`；支持 JPG、JPEG、PNG 图片，单文件最大 1MB，并检查实际图片内容。
-- 成功时返回 `Result<String>`，`data` 为完整图片 URL，分别使用 `/images/admin/文件名` 和 `/images/user/文件名` 路径。
-- 用户端上传只保存文件并返回地址，保存个人资料时将该地址放入 `avatar`，调用现有 `PUT /user/user/update`。
-- 旧上传文件归入 `admin/` 后，原 `/images/文件名` 地址仍可访问，已有菜品和套餐图片地址无需修改。
 
 用户端使用账号密码登录。项目当前支付流程使用模拟支付成功，无需配置第三方支付商户号或证书。
 
@@ -140,7 +134,7 @@ npm ci
 npm run dev
 ```
 
-访问终端显示的地址，默认 http://localhost:5173。
+开发服务固定使用 http://localhost:5173，端口被占用时直接报错。
 
 ### 5. 启动用户端前端
 
@@ -152,7 +146,7 @@ npm ci
 npm run dev
 ```
 
-访问终端显示的地址，默认 http://localhost:5174。
+开发服务固定使用 http://localhost:5174，端口被占用时直接报错。
 
 ### 默认账号
 
@@ -167,7 +161,9 @@ npm run dev
 
 ```text
 azure-take-out/
-├── assets/                                    # 项目演示图片等静态资源
+├── assets/
+│   ├── images/                                # README 中的管理端与用户端演示截图
+│   └── initImage/                             # 随后端构建打包的菜品与套餐图片
 ├── azure-take-out/                            # 后端（Maven 多模块）
 ├── admin-frontend/                            # 管理端前端(Vue3)
 ├── user-frontend/                             # 用户端前端(Vue3)

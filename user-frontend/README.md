@@ -1,6 +1,6 @@
 # 碧蓝外卖用户端
 
-用户端采用 Vue 3、Composition API 和 TypeScript 严格模式，提供登录／注册、在线点餐、我的订单、收货地址和个人资料五个页面。支付目前使用模拟流程。项目整体功能与后端启动步骤见 [项目 README](../README.md)。
+用户端采用 Vue 3、Composition API 和 TypeScript 严格模式，提供登录／注册、在线点餐、我的订单、收货地址和个人资料五个主要页面，以及 404 页面。支付目前使用模拟流程。项目整体功能与后端启动步骤见 [项目 README](../README.md)。
 
 ## 主要技术栈及版本
 
@@ -23,9 +23,9 @@ user-frontend/
 ├── src/
 │   ├── api/                                  # 按业务封装接口与请求、响应类型
 │   ├── assets/
-│   │   ├── images/                           # 品牌、登录页及点餐宣传图片
+│   │   ├── images/                           # 品牌、背景与支付成功、空状态等插画
 │   │   └── styles/                           # 全局主题及共用弹窗样式
-│   ├── components/                           # 地址表单、支付弹窗、头像及图片共用组件
+│   ├── components/                           # 地址表单、支付及成功弹窗、头像等共用组件
 │   ├── layouts/
 │   │   ├── components/                       # 顶部导航与用户入口
 │   │   └── UserLayout.vue                    # 用户端公共布局
@@ -41,8 +41,9 @@ user-frontend/
 │   │   │   └── components/                   # 订单卡片、操作按钮与详情弹窗
 │   │   ├── address/                          # 收货地址管理与默认地址设置
 │   │   │   └── components/                   # 地址卡片与配送地址选择入口
-│   │   └── profile/                          # 个人资料与账号安全
-│   │       └── components/                   # 头像上传、资料编辑与密码修改弹窗
+│   │   ├── profile/                          # 个人资料与账号安全
+│   │   │   └── components/                   # 头像上传、资料编辑与密码修改弹窗
+│   │   └── error/                            # 404 页面与返回点餐入口
 │   ├── App.vue                               # 根组件
 │   └── main.ts                               # 应用入口
 ├── e2e/                                      # 浏览器流程测试
@@ -72,7 +73,7 @@ npm run dev
 VITE_API_PROXY_TARGET=http://localhost:8080
 ```
 
-登录凭证保存在 `user_token` Cookie 中，请求头使用 `authentication`；管理端使用独立的 `admin_token` Cookie，两端可在同一主机名的不同端口下独立登录和退出。原有登录状态需重新登录一次。
+登录凭证保存在 `user_token` Cookie 中，请求头使用 `authentication`；管理端使用独立的 `admin_token` Cookie，两端可在同一主机名的不同端口下独立登录和退出。
 
 ## 验证
 
@@ -84,7 +85,9 @@ npx playwright install chromium
 npm run test:e2e -- --project=chromium
 ```
 
-默认浏览器测试模拟后端接口。设置 `E2E_BACKEND=1` 可启用真实后端联调，会创建独立测试账号及相关数据；点餐测试需要店铺处于营业状态。使用本机 Chrome 时可设置 `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome`。
+默认浏览器测试模拟后端接口。设置 `E2E_BACKEND=1` 可启用注册、资料、地址、点餐和订单的真实后端联调；测试会创建独立账号、订单及上传文件，部分测试数据会保留，点餐与订单测试需要店铺处于营业状态。
+
+设置 `E2E_USER_ACCOUNT` 和 `E2E_USER_PASSWORD` 可额外启用已有账号的登录、导航与刷新检查。使用本机 Chrome 时可设置 `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome`。
 
 ## 构建部署
 

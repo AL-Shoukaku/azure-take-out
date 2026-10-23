@@ -27,6 +27,8 @@ azure-take-out/
 └── azure-server/                              # 应用启动、接口、业务、数据访问与测试
 ```
 
+演示商品图片位于仓库根目录的 [`assets/initImage`](../assets/initImage/)。Maven 构建时自动将图片复制到 `classpath:/menu-images/`，由后端通过 `/menu-images/**` 提供访问。
+
 ## 目录结构
 
 ### azure-common
@@ -86,9 +88,18 @@ azure-server/
     │       ├── application-local.example.yml  # 本地配置示例
     │       ├── application-local.yml          # 本机配置（不提交 Git）
     │       ├── mapper/                        # MyBatis SQL 映射文件
-    │       ├── menu-images/                   # 本机演示菜品与套餐图片（不提交 Git）
     │       └── template/                      # 运营数据报表模板
     └── test/
         ├── java/com/azure/                    # 公共模块、接口、业务、数据访问及集成测试
         └── resources/                        # 测试配置与 SQL 数据
 ```
+
+## 验证
+
+在本目录执行：
+
+```sh
+mvn clean verify
+```
+
+测试使用 H2 和项目内的测试配置，覆盖接口、业务、SQL 映射及演示图片访问，不依赖本机业务数据库。覆盖率报告生成在 `azure-server/target/site/jacoco/index.html`。

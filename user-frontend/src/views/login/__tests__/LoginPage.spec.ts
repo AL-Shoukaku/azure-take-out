@@ -9,6 +9,8 @@ import { createAppRouter } from '@/router'
 import { getToken, removeToken } from '@/utils/auth'
 
 vi.mock('@/api/auth', () => ({ login: vi.fn<typeof login>(), register: vi.fn<typeof register>() }))
+vi.mock('@/layouts/UserLayout.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/menu/MenuPage.vue', () => ({ default: { template: '<div />' } }))
 
 let wrapper: VueWrapper
 beforeEach(() => {
