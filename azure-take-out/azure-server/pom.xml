@@ -125,6 +125,22 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>menu-images/**</exclude>
+                </excludes>
+            </resource>
+            <!-- 将仓库内的演示图片打包到 classpath，不依赖本地上传目录或启动位置。 -->
+            <resource>
+                <directory>${project.basedir}/../../assets/initImage</directory>
+                <targetPath>menu-images</targetPath>
+                <includes>
+                    <include>*.jpg</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

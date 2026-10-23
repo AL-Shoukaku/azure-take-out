@@ -94,7 +94,3 @@ npm run test:e2e -- --project=chromium
 `npm run build` 输出到 `dist/`。生产环境使用 HTTPS，并将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一后端并支持 WebSocket Upgrade。
 
 新版使用 History 路由，Nginx 静态页面的 `location /` 中需设置 `try_files $uri $uri/ /index.html;`，支持直接访问和刷新管理页面。
-
-## 资源许可
-
-菜单及工作台图标、订单提醒音的许可说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。旧版源码可从 Git 历史查阅。
