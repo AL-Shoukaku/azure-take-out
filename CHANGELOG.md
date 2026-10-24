@@ -2,7 +2,7 @@
 
 记录碧蓝外卖基于《苍穹外卖》的主要功能扩展、问题修复和技术升级，按版本从新到旧排列。点击版本号可查看对应阶段的代码变更。
 
-## [v1.0.0] - 2026-10-23
+## [v1.0.0] - 2026-10-24
 
 ### 用户端网页重写
 
@@ -113,10 +113,10 @@
 - 修复地址修改字段不完整、取消订单未记录取消时间，以及完成配送未记录实际送达时间等问题。
 - 修复管理端实时提醒，移除定时发送的 WebSocket 演示广播，并完善微信登录失败与 HTTP 请求异常处理。
 
-[v1.0.0]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/00bd1d1bdf1080d3347416385a6a25e12bf2d05c...a090c6fb8328ad0a7fb383ecffea5da68c1ffb20
-[v0.4.1]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/0cd1d5147c6970a7079b730b5da98732232a1f9a...00bd1d1bdf1080d3347416385a6a25e12bf2d05c
-[v0.4.0]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/085ede2ab8a3965d922f4d502cbac5821c1c0924...0cd1d5147c6970a7079b730b5da98732232a1f9a
-[v0.3.0]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/7dba4ff4550b0504a61c2b68269d7b68e7d705ea...085ede2ab8a3965d922f4d502cbac5821c1c0924
-[v0.2.0]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/33c1c5fbed942e81f0469b019239b890c40bf0cf...7dba4ff4550b0504a61c2b68269d7b68e7d705ea
-[v0.1.1]: https://github.com/AL-Shoukaku/sky-takeout-plus/compare/0de7a493c3c419e766354c6a38eec8bfa0ff1a9d...33c1c5fbed942e81f0469b019239b890c40bf0cf
-[v0.1.0]: https://github.com/AL-Shoukaku/sky-takeout-plus/tree/0de7a493c3c419e766354c6a38eec8bfa0ff1a9d
+[v1.0.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/00bd1d1bdf1080d3347416385a6a25e12bf2d05c...a090c6fb8328ad0a7fb383ecffea5da68c1ffb20
+[v0.4.1]: https://github.com/AL-Shoukaku/azure-take-out/compare/0cd1d5147c6970a7079b730b5da98732232a1f9a...00bd1d1bdf1080d3347416385a6a25e12bf2d05c
+[v0.4.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/085ede2ab8a3965d922f4d502cbac5821c1c0924...0cd1d5147c6970a7079b730b5da98732232a1f9a
+[v0.3.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/7dba4ff4550b0504a61c2b68269d7b68e7d705ea...085ede2ab8a3965d922f4d502cbac5821c1c0924
+[v0.2.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/33c1c5fbed942e81f0469b019239b890c40bf0cf...7dba4ff4550b0504a61c2b68269d7b68e7d705ea
+[v0.1.1]: https://github.com/AL-Shoukaku/azure-take-out/compare/0de7a493c3c419e766354c6a38eec8bfa0ff1a9d...33c1c5fbed942e81f0469b019239b890c40bf0cf
+[v0.1.0]: https://github.com/AL-Shoukaku/azure-take-out/tree/0de7a493c3c419e766354c6a38eec8bfa0ff1a9d
