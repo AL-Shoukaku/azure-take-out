@@ -1,4 +1,4 @@
-# 苍穹外卖管理端
+# 碧蓝外卖管理端
 
 管理端采用 Vue 3、Composition API 和 TypeScript 严格模式，提供登录、公共后台布局及七个管理页面。项目整体功能与后端启动步骤见 [项目 README](../README.md)。
 
@@ -69,11 +69,13 @@ npm ci
 npm run dev
 ```
 
-访问终端显示的地址，默认 `http://localhost:5173`。Vite 将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一个后端。默认后端地址为 `http://localhost:8080`；需要调整时，在 `.env.development.local` 中设置后重启：
+开发服务固定使用 `http://localhost:5173`，端口被占用时直接报错。Vite 将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一个后端。默认后端地址为 `http://localhost:8080`；需要调整时，在 `.env.development.local` 中设置后重启：
 
 ```dotenv
 VITE_API_PROXY_TARGET=http://localhost:8080
 ```
+
+登录凭证保存在 `admin_token` Cookie 中，请求头使用 `token`；用户端使用独立的 `user_token` Cookie，两端登录和退出互不覆盖。
 
 ## 验证
 
@@ -92,7 +94,3 @@ npm run test:e2e -- --project=chromium
 `npm run build` 输出到 `dist/`。生产环境使用 HTTPS，并将 `/api/*` 代理到后端 `/admin/*`，将 `/ws/*` 代理到同一后端并支持 WebSocket Upgrade。
 
 新版使用 History 路由，Nginx 静态页面的 `location /` 中需设置 `try_files $uri $uri/ /index.html;`，支持直接访问和刷新管理页面。
-
-## 资源许可
-
-菜单及工作台图标、订单提醒音的许可说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。旧版源码可从 Git 历史查阅。

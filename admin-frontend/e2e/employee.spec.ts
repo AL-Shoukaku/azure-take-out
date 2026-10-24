@@ -1,10 +1,19 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { mockAdminSession } from './helpers/admin.js'
 import { employeeForm, fillEmployee, mockEmployees } from './helpers/employees.js'
 
 test.beforeEach(async ({ page, context, baseURL }) => {
   await mockAdminSession(page, context, baseURL!)
 })
+
+async function useAdminAccount(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'azure-admin-employee',
+      JSON.stringify({ id: 1, userName: 'admin', name: '管理员' }),
+    )
+  })
+}
 
 test('员工表格、权限、时间格式、分页、姓名查询和清空查询', async ({ page }) => {
   const api = await mockEmployees(page)
@@ -23,6 +32,13 @@ test('员工表格、权限、时间格式、分页、姓名查询和清空查�
   const self = page.getByRole('row').filter({ hasText: '测试店长' })
   await expect(self.getByRole('button', { name: '禁用' })).toBeDisabled()
   await expect(self.getByRole('button', { name: '修改' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: '+ 添加员工', exact: true })).toBeDisabled()
+  await expect(
+    page.getByRole('row').filter({ hasText: '演示店员' }).getByRole('button', { name: '禁用' }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('row').filter({ hasText: '已禁用店员' }).getByRole('button', { name: '启用' }),
+  ).toBeDisabled()
   await expect(admin.getByRole('cell', { name: '2026-10-18 12:34', exact: true })).toBeVisible()
   await expect(page.getByText('共 45 条', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '下一页' }).click()
@@ -52,9 +68,22 @@ test('员工表格、权限、时间格式、分页、姓名查询和清空查�
   expect(api.queries.at(-1)?.get('page')).toBe('3')
 })
 
+test('普通员工直接打开新增页面时返回列表，仍可进入修改页面', async ({ page }) => {
+  const api = await mockEmployees(page)
+  await page.goto('/employee/add')
+  await expect(page).toHaveURL('/employee')
+  await page.goto('/employee/add?id=2')
+  await expect(page.getByRole('heading', { name: '修改员工信息' })).toBeVisible()
+  expect(api.writes).toHaveLength(0)
+})
+
 test('禁用与启用均需确认，取消不提交，失败保留原状态并支持重试', async ({ page }) => {
+  await useAdminAccount(page)
   const api = await mockEmployees(page)
   await page.goto('/employee')
+  await expect(
+    page.getByRole('row').filter({ hasText: '管理员' }).getByRole('button', { name: '禁用' }),
+  ).toBeDisabled()
   const row = page.getByRole('row').filter({ hasText: '演示店员' })
   await row.getByRole('button', { name: '禁用' }).click()
   const dialog = page.getByRole('dialog', { name: '提示' })
@@ -81,6 +110,7 @@ test('禁用与启用均需确认，取消不提交，失败保留原状态并�
 })
 
 test('新增表单校验账号、手机号及身份证，支持 19 开头手机号并在继续添加时清空', async ({ page }) => {
+  await useAdminAccount(page)
   const api = await mockEmployees(page)
   await page.goto('/employee')
   await page.getByRole('button', { name: '+ 添加员工', exact: true }).click()
@@ -123,6 +153,7 @@ test('新增表单校验账号、手机号及身份证，支持 19 开头手机�
 })
 
 test('保存失败保留输入，再次保存期间禁止重复提交和离开', async ({ page }) => {
+  await useAdminAccount(page)
   const api = await mockEmployees(page)
   await page.goto('/employee/add')
   await fillEmployee(page)
@@ -144,17 +175,19 @@ test('保存失败保留输入，再次保存期间禁止重复提交和离开',
 })
 
 test('员工保存遇到登录过期时清除会话并进入登录页', async ({ page, context }) => {
+  await useAdminAccount(page)
   await mockEmployees(page)
   await page.goto('/employee/add')
   await fillEmployee(page)
   await page.route(/\/api\/employee$/, (route) => route.fulfill({ status: 401 }))
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(page).toHaveURL('/login')
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(false)
-  expect(await page.evaluate(() => localStorage.getItem('sky-admin-employee'))).toBeNull()
+  expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(false)
+  expect(await page.evaluate(() => localStorage.getItem('azure-admin-employee'))).toBeNull()
 })
 
 test('修改回显详情及性别，只保存资料；刷新仍可回显，取消不提交', async ({ page }) => {
+  await useAdminAccount(page)
   const api = await mockEmployees(page)
   await page.goto('/employee')
   await page
@@ -225,7 +258,7 @@ test('列表加载错误可重试，修改自己的资料同步顶部姓名并�
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(page.getByRole('button', { name: '新的店长姓名', exact: true })).toBeVisible()
   expect(
-    await page.evaluate(() => JSON.parse(localStorage.getItem('sky-admin-employee')!)),
+    await page.evaluate(() => JSON.parse(localStorage.getItem('azure-admin-employee')!)),
   ).toEqual({
     id: 7,
     userName: 'manager7',

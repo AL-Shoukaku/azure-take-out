@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
+import { useSessionStore } from '@/stores/session'
 import { adminMenu } from './menu'
 
 export function createAppRouter(
@@ -31,16 +32,14 @@ export function createAppRouter(
             props: ['/dish', '/setmeal'].includes(item.path)
               ? { kind: item.path.slice(1) }
               : undefined,
-            meta: { title: `${item.title} · 苍穹外卖管理端`, pageTitle: item.title },
+            meta: { title: `${item.title} · 碧蓝外卖管理端`, pageTitle: item.title },
           })),
           {
             path: 'employee/add',
             name: 'employee-form',
             component: () => import('@/views/employee/EmployeeFormPage.vue'),
             props: (route) => ({ employeeId: route.query.id ? Number(route.query.id) : undefined }),
-            meta: { title: '员工资料 · 苍穹外卖管理端', activeMenu: '/employee' },
-            beforeEnter: (to) =>
-              to.query.id && !/^[1-9]\d*$/.test(String(to.query.id)) ? '/employee' : true,
+            meta: { title: '员工资料 · 碧蓝外卖管理端', activeMenu: '/employee' },
           },
           ...(['dish', 'setmeal'] as const).map((kind) => ({
             path: `${kind}/add`,
@@ -51,7 +50,7 @@ export function createAppRouter(
               productId: route.query.id ? Number(route.query.id) : undefined,
             }),
             meta: {
-              title: `${kind === 'dish' ? '菜品' : '套餐'}资料 · 苍穹外卖管理端`,
+              title: `${kind === 'dish' ? '菜品' : '套餐'}资料 · 碧蓝外卖管理端`,
               activeMenu: `/${kind}`,
             },
             beforeEnter: (to: import('vue-router').RouteLocationNormalized) =>
@@ -63,7 +62,7 @@ export function createAppRouter(
         path: '/login',
         name: 'login',
         component: () => import('@/views/login/LoginPage.vue'),
-        meta: { title: '登录 · 苍穹外卖管理端' },
+        meta: { title: '登录 · 碧蓝外卖管理端' },
       },
       { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
     ],
@@ -73,6 +72,10 @@ export function createAppRouter(
     const token = getToken()
     if (!token && to.name !== 'login') return '/login'
     if (token && to.name === 'login') return '/dashboard'
+    if (to.name === 'employee-form') {
+      if (to.query.id && !/^[1-9]\d*$/.test(String(to.query.id))) return '/employee'
+      if (!to.query.id && !useSessionStore().isAdmin) return '/employee'
+    }
   })
 
   router.afterEach((to) => {

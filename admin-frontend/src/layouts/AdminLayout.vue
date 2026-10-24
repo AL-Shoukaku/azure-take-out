@@ -21,8 +21,8 @@ import AdminSidebar from './components/AdminSidebar.vue'
 import AdminHeader from './components/AdminHeader.vue'
 import '@/assets/styles/admin.css'
 
-const collapsed = ref(localStorage.getItem('sky-admin-sidebar-collapsed') === 'true')
-watch(collapsed, (value) => localStorage.setItem('sky-admin-sidebar-collapsed', String(value)))
+const collapsed = ref(localStorage.getItem('azure-admin-sidebar-collapsed') === 'true')
+watch(collapsed, (value) => localStorage.setItem('azure-admin-sidebar-collapsed', String(value)))
 </script>
 
 <style scoped>

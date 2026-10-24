@@ -27,6 +27,7 @@ beforeEach(() => {
 afterEach(() => {
   http.defaults.adapter = originalAdapter
   removeToken()
+  document.cookie = 'user_token=; Path=/; Max-Age=0'
   vi.restoreAllMocks()
 })
 
@@ -52,11 +53,13 @@ describe('登录接口和统一请求', () => {
   })
 
   it('后续请求从 Cookie 读取 token 请求头', async () => {
+    document.cookie = 'user_token=other-user-token; Path=/'
     setToken('existing-token')
     const adapter = vi.fn<AxiosAdapter>(respondWith({ code: 1, msg: null, data: null }))
     http.defaults.adapter = adapter
     await request({ url: '/employee/page' })
     expect(adapter.mock.calls[0]![0].headers.get('token')).toBe('existing-token')
+    expect(adapter.mock.calls[0]![0].headers.has('authentication')).toBe(false)
   })
 
   it('网络断开时给出可读提示', async () => {
@@ -78,6 +81,7 @@ describe('登录接口和统一请求', () => {
   })
 
   it('401 时清除登录态并返回登录页', async () => {
+    document.cookie = 'user_token=other-user-token; Path=/'
     const session = useSessionStore()
     session.startSession({ ...employee, token: 'expired-token' })
     const replace = vi.spyOn(router, 'replace').mockResolvedValue(undefined)
@@ -88,5 +92,6 @@ describe('登录接口和统一请求', () => {
     expect(session.token).toBe('')
     expect(session.employee).toBeNull()
     expect(replace).toHaveBeenCalledWith('/login')
+    expect(document.cookie).toContain('user_token=other-user-token')
   })
 })

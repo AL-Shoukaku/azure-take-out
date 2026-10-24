@@ -1,0 +1,40 @@
+:root {
+  font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+  color: #354661;
+  background: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --user-primary: #2563eb;
+  --user-primary-hover: #1d4ed8;
+  --user-surface: #f7faff;
+  --user-canvas: #f3f7fd;
+  --user-border: #dce5f2;
+  --el-color-primary: var(--user-primary);
+  --el-color-primary-dark-2: var(--user-primary-hover);
+  --el-color-primary-light-3: #5b8af0;
+  --el-color-primary-light-5: #93b4f7;
+  --el-color-primary-light-7: #bfd2fb;
+  --el-color-primary-light-8: #d5e3fd;
+  --el-color-primary-light-9: #eff6ff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}

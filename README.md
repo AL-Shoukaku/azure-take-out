@@ -1,6 +1,6 @@
-# sky-delivery-plus
+# 碧蓝外卖(azure-take-out) —— 基于《苍穹外卖》二次开发的外卖演示平台
 
-![Version](https://img.shields.io/badge/version-v0.4.1-blue)
+![Version](https://img.shields.io/badge/version-v1.0.0-blue)
 
 ## 📖 项目简介
 
@@ -11,24 +11,34 @@
 - [原始代码](https://github.com/smith-gala/2026-source-code)
 - [b站课程视频](https://www.bilibili.com/video/BV1TP411v7v6/?spm_id_from=333.337.search-card.all.click)
 
-本项目在原项目的基础上进行了整理，升级与二次开发，目前仍在开发中
+本项目在原项目的基础上进行了整理，升级与二次开发。
 
 ## ✨ 项目亮点
 
+- 修复了原项目中的若干 bug，如缺少事务注解，购物车与菜品/套餐信息不同步等
 - 将原项目的 SpringBoot 从 2.7.3 升级到了 3.5.16，JDK 从 8 升级到了 21,相关依赖版本做了配套升级
 - 将 JJWT,FastJson,POI,MD5 等过于老旧的组件或不安全的算法进行了升级或替换
 - 将管理端前端升级为 Vue 3、Vite、Element Plus 和 Pinia，制作了新的 logo 和背景图
+- 将用户端前端用 Vue3 重写为网页，解决原版必须注册微信小程序账号才能使用的痛点
 
-开发中，待补充
+## 🖼 图片展示
+
+### 管理端工作台
+
+![管理端工作台](assets/images/admin-display.webp)
+
+### 用户端在线点餐
+
+![用户端在线点餐](assets/images/user-display.webp)
 
 ## 🚀 功能介绍
 
-项目包含管理端后台和微信小程序用户端，覆盖店铺运营、在线点餐和订单处理。
+项目包含管理端和用户端，覆盖店铺运营、在线点餐和订单处理等外卖平台功能。
 
 ### 管理端
 
 - **登录与退出**：使用员工账号登录管理后台，支持退出登录。
-- **员工管理**：新增、编辑和查询员工信息，启用或禁用员工账号。
+- **员工管理**：编辑和查询员工信息；仅 `admin` 可新增、启用或禁用员工，且不能禁用自己。
 - **分类管理**：管理菜品与套餐分类，支持新增、修改、删除、查询及启用、禁用。
 - **菜品管理**：维护菜品名称、价格、图片和口味，支持新增、修改、查询、批量删除及起售、停售。
 - **套餐管理**：组合菜品创建套餐，维护套餐信息，支持新增、修改、查询、删除及起售、停售。
@@ -40,13 +50,14 @@
 
 ### 用户端
 
-- **微信登录**：通过微信小程序登录，首次登录时自动创建用户记录。
-- **浏览商品**：查看店铺营业状态，按分类浏览菜品和套餐，查看价格、菜品口味及套餐包含的菜品。
-- **购物车**：将菜品或套餐加入购物车，选择口味、调整数量，查看或清空购物车。
+- **登录，注册与退出**：用户可以注册账号，使用账号密码登录，支持退出登录。
+- **个人资料管理**：支持用户编辑头像，昵称，性别，手机号等个人资料，支持修改密码。
 - **地址管理**：新增、修改、删除和查询收货地址，设置默认地址。
-- **下单与支付**：选择收货地址、配送时间和餐具数量，填写订单备注，提交订单并完成支付（当前使用模拟支付）。
 - **订单查询**：查看历史订单，按订单状态筛选，查看订单明细和处理状态。
 - **订单操作**：取消尚未接单的订单、向商家催单，或通过“再来一单”将原订单商品加入购物车。
+- **浏览商品**：查看店铺营业状态，按分类浏览菜品和套餐，查看价格、菜品口味及套餐包含的菜品。
+- **购物车**：将菜品或套餐加入购物车，选择口味、调整数量，查看或清空购物车。
+- **下单与支付**：选择收货地址、配送时间和餐具数量，填写订单备注，提交订单并完成支付（当前使用模拟支付）。
 
 ## 🛠 技术栈
 
@@ -54,10 +65,9 @@
 | --- | --- | --- |
 | 后端 | JDK21、Spring Boot 3.5.16、MyBatis、Druid、Redis、WebSocket、JWT、POI、Knife4j | 8080 |
 | 管理端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5173（dev server） |
-| 微信小程序 | uni-app | — |
-| 数据库 | MySQL 8，库名 `sky_take_out` | 3306 |
+| 用户端前端 | Vue 3 + TypeScript + Vite + Element Plus + Pinia | 5174（dev server） |
+| 数据库 | MySQL 8，库名 `azure_take_out` | 3306 |
 | 缓存 | Redis，`database` 为 **0** | 6379 |
-
 
 ## ⚡ 快速开始
 
@@ -74,10 +84,12 @@
 ### 1. 初始化数据库
 
 ```bash
-mysql -u用户名 -p < db/sky.sql
+mysql -u用户名 -p < db/azure.sql
 ```
 
-建 11 张表，并写入初始数据。
+脚本使用 `azure_take_out` 数据库，会重建 11 张业务表并写入演示数据。项目改名后无需迁移旧库。
+
+菜品与套餐的 52 张演示图片位于 [`assets/initImage`](assets/initImage/)，Maven 构建时自动打包到 `classpath:/menu-images/`，无需手动复制。SQL 中的图片地址默认使用 `http://localhost:8080/menu-images/`；调整后端访问地址时，需同步修改 SQL 中的图片 URL。
 
 ### 2. 启动 Redis
 
@@ -87,23 +99,28 @@ sudo systemctl start redis
 
 后端连接的 `database` 是 **0**，确认本地 Redis 已启动且该库可用。
 
+全新 Redis 中店铺默认打烊；需要演示下单时，启动两端后先在管理端将店铺切换为营业中。
+
+重新导入演示数据或从旧版本升级时，需要删除本项目的商品缓存 `dish_*`、`setmealCache::*`、`setmealDishCache::*`，避免展示旧商品或旧缓存中的 Java 包名导致反序列化失败；保留 `SHOP_STATUS` 等非商品数据。
+
 ### 3. 启动后端
 
-先把 `sky-take-out/sky-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`，只在本机保存，不要提交。
+先把 `azure-take-out/azure-server/src/main/resources/application-local.example.yml` 复制为同目录的 `application-local.yml`。后端默认启用 `local` 配置；`application-local.yml` 已加入 `.gitignore`。
 
 在 `application-local.yml` 中填写：
 
 | 配置项 | 说明 |
 | --- | --- |
-| `sky.datasource.host / port / database / username / password` | 本机 MySQL 地址、端口、库名（默认 `sky_take_out`）、用户名和密码 |
-| `sky.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
-| `sky.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
-| `sky.wechat.appid / secret` | 运行小程序用户登录时，填写微信公众平台中的小程序 AppID 和 AppSecret；只运行管理端可留空 |
-| `sky.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
+| `azure.datasource.host / port / database / username / password` | 本机 MySQL 地址、端口、库名（默认 `azure_take_out`）、用户名和密码 |
+| `azure.redis.host / port / database` | Redis 地址、端口和库编号（默认 `0`） |
+| `azure.upload-path` | 上传图片的保存目录，确保后端进程可写；相对路径以启动后端时的工作目录为准 |
+| `azure.jwt` | 服务器密钥，可以用 `openssl rand -base64 32` 生成 |
 
-这里的微信配置用于**小程序登录**。项目当前支付流程使用模拟支付成功，不需要微信支付商户号或证书。小程序中的 AppID 与后端填写的 AppID 应为同一个。
+上传目录以 `azure.upload-path` 为根目录，管理端图片保存到 `admin/`，用户头像保存到 `user/`；上传时会自动创建对应子目录。
 
-然后运行 `sky-take-out/sky-server` 下的 `com.sky.SkyApplication`，服务端口 **8080**。
+用户端使用账号密码登录。项目当前支付流程使用模拟支付成功，无需配置第三方支付商户号或证书。
+
+然后运行 `azure-take-out/azure-server` 下的 `com.azure.AzureApplication`，服务端口 **8080**。
 
 可以从 http://localhost:8080/doc.html 查看后端接口文档
 
@@ -117,37 +134,41 @@ npm ci
 npm run dev
 ```
 
-访问终端显示的地址，默认 http://localhost:5173。
+开发服务固定使用 http://localhost:5173，端口被占用时直接报错。
 
-### 5. 启动微信小程序（可选）
+### 5. 启动用户端前端
 
-用微信开发者工具打开 `mp-weixin/` 目录。项目内的 `project.config.json` 将 AppID 留空；在本地创建 `mp-weixin/project.private.config.json`，填写自己的 `appid`，例如：
+需要 Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`。
 
-```json
-{
-  "appid": "你的小程序 AppID"
-}
+```bash
+cd user-frontend
+npm ci
+npm run dev
 ```
 
-`project.private.config.json` 已加入 `.gitignore`。微信开发者工具也可能自动生成它；确认其中的 AppID 与后端 `application-local.yml` 一致。若需要使用微信用户登录，还要填写后端的 `sky.wechat.secret`。
+开发服务固定使用 http://localhost:5174，端口被占用时直接报错。
 
 ### 默认账号
 
 | 端 | 账号 | 密码 |
 | --- | --- | --- |
 | 管理端 | `admin` | `123456` |
+| 用户端 | `demo01` | `123456` |
 
 ## 📂 项目结构
 
 以下展示主要源码、资源与测试目录。
 
 ```text
-sky-delivery-plus/
-├── sky-take-out/                              # 后端（Maven 多模块）
-├── admin-frontend/                            # 管理端前端（Vue 3 + TypeScript + Vite）
-├── mp-weixin/                                 # 微信小程序用户端（uni-app 编译产物）
+azure-take-out/
+├── assets/
+│   ├── images/                                # README 中的管理端与用户端演示截图
+│   └── initImage/                             # 随后端构建打包的菜品与套餐图片
+├── azure-take-out/                            # 后端（Maven 多模块）
+├── admin-frontend/                            # 管理端前端(Vue3)
+├── user-frontend/                             # 用户端前端(Vue3)
 ├── db/
-│   ├── sky.sql                                # 建库建表与初始数据，默认密码使用 Argon2id 哈希
+│   ├── azure.sql                              # 建库建表与初始数据，默认密码使用 Argon2id 哈希
 │   └── 数据库设计文档.md
 ├── .gitignore                                 # 构建产物、本地配置等忽略规则
 └── README.md                                  # 项目说明与运行指南
@@ -155,8 +176,9 @@ sky-delivery-plus/
 
 模块文档：
 
-- [后端 README](sky-take-out/README.md)：主要技术栈、模块划分与目录职责。
+- [后端 README](azure-take-out/README.md)：主要技术栈、模块划分与目录职责。
 - [管理端前端 README](admin-frontend/README.md)：主要技术栈、目录结构及运行、测试与部署说明。
+- [用户端前端 README](user-frontend/README.md)：主要技术栈、目录结构及运行、测试与部署说明。
 
 ## 🗄 数据库设计
 
@@ -164,9 +186,4 @@ sky-delivery-plus/
 
 ## 🗺 后续计划
 
-1. 将用户端重写为与管理端同样的网页模式，不再使用微信小程序。
-2. to be continued...
-
-## 🖼 项目截图
-
-开发中，暂无
+- 考虑将黑马点评中的部分业务功能整合进本项目，包括缓存优化，优惠券秒杀等。

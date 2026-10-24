@@ -1,0 +1,98 @@
+package com.azure.service.impl;
+
+import com.azure.constant.MessageConstant;
+import com.azure.context.BaseContext;
+import com.azure.dto.PasswordEditDTO;
+import com.azure.entity.Employee;
+import com.azure.exception.*;
+import com.azure.mapper.EmployeeMapper;
+import com.azure.security.PasswordHasher;
+import com.azure.support.ServiceTestSupport;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.*;
+import org.mockito.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class EmployeePasswordServiceTest extends ServiceTestSupport {
+    private static final String OLD_HASH="e10adc3949ba59abbe56e057f20f883e";
+    @InjectMocks private EmployeeServiceImpl service;
+    @Mock private EmployeeMapper mapper;
+    @Spy private PasswordHasher passwordHasher = new PasswordHasher();
+    @Captor private ArgumentCaptor<Employee> update;
+
+    private PasswordEditDTO request() {
+        PasswordEditDTO dto=new PasswordEditDTO(); dto.setOldPassword("123456"); dto.setNewPassword("New123"); return dto;
+    }
+    private Employee current(Integer status) {
+        return Employee.builder().id(BaseContext.getCurrentId()).username("admin").status(status).password(OLD_HASH).build();
+    }
+    @ParameterizedTest @ValueSource(strings={"New123","123456","abcdef","Ab123456789012345678"})
+    void validPasswordUpdatesOnlyCurrentEmployeesPassword(String password) {
+        when(mapper.getById(USER_ID)).thenReturn(current(1)); when(mapper.update(any())).thenReturn(1);
+        PasswordEditDTO dto=request(); dto.setNewPassword(password); service.editPassword(dto);
+        verify(mapper).update(update.capture());
+        assertThat(update.getValue().getId()).isEqualTo(USER_ID);
+        assertThat(update.getValue().getPassword()).startsWith("$argon2id$");
+        assertThat(passwordHasher.matches(password, update.getValue().getPassword())).isTrue();
+        assertThat(update.getValue().getPassword()).isNotEqualTo(password);
+        assertThat(update.getValue()).extracting(Employee::getName,Employee::getUsername,Employee::getPhone,Employee::getStatus)
+                .containsOnlyNulls();
+    }
+    @ParameterizedTest @ValueSource(longs={42L,4294967338L})
+    void passwordChangeUsesEntireAuthenticatedLongId(long empId) {
+        BaseContext.setCurrentId(empId);
+        when(mapper.getById(empId)).thenReturn(current(1)); when(mapper.update(any())).thenReturn(1);
+        service.editPassword(request());
+        verify(mapper).update(argThat(e -> e.getId().equals(empId)));
+    }
+    @Test void absentLoginFailsBeforeDatabaseAccess() {
+        BaseContext.removeCurrentId();
+        assertThatThrownBy(() -> service.editPassword(request())).isInstanceOf(UserNotLoginException.class);
+        verifyNoInteractions(mapper);
+    }
+    @ParameterizedTest @ValueSource(strings={"dto","old","new","blankOld","blankNew"})
+    void missingFieldsFailBeforeDatabaseAccess(String field) {
+        PasswordEditDTO dto=request();
+        switch(field) {
+            case "dto": dto=null; break;
+            case "old": dto.setOldPassword(null); break;
+            case "new": dto.setNewPassword(null); break;
+            case "blankOld": dto.setOldPassword(" "); break;
+            case "blankNew": dto.setNewPassword(" "); break;
+            default: throw new IllegalArgumentException(field);
+        }
+        final PasswordEditDTO invalid=dto;
+        assertThatThrownBy(() -> service.editPassword(invalid)).isInstanceOf(PasswordEditFailedException.class);
+        verifyNoInteractions(mapper);
+    }
+    @ParameterizedTest @ValueSource(strings={"abc12","A123456789012345678901","abc 123","abc$123","中文密码123"})
+    void newPasswordMustMatchTheExistingFrontendFormat(String password) {
+        PasswordEditDTO dto=request(); dto.setNewPassword(password);
+        assertThatThrownBy(() -> service.editPassword(dto)).isInstanceOf(PasswordEditFailedException.class)
+                .hasMessage(MessageConstant.PASSWORD_FORMAT_ERROR);
+        verifyNoInteractions(mapper);
+    }
+    @Test void wrongOldPasswordDoesNotUpdate() {
+        when(mapper.getById(USER_ID)).thenReturn(current(1)); PasswordEditDTO dto=request(); dto.setOldPassword("654321");
+        assertThatThrownBy(() -> service.editPassword(dto)).isInstanceOf(PasswordErrorException.class).hasMessage(MessageConstant.PASSWORD_ERROR);
+        verify(mapper,never()).update(any());
+    }
+    @Test void unknownEmployeeDoesNotUpdate() {
+        assertThatThrownBy(() -> service.editPassword(request())).isInstanceOf(AccountNotFoundException.class);
+        verify(mapper,never()).update(any());
+    }
+    @ParameterizedTest @NullSource @ValueSource(ints={0})
+    void disabledOrInvalidAccountCannotChangePassword(Integer status) {
+        when(mapper.getById(USER_ID)).thenReturn(current(status));
+        assertThatThrownBy(() -> service.editPassword(request())).isInstanceOf(AccountLockedException.class);
+        verify(mapper,never()).update(any());
+    }
+    @Test void missingEmployeeAtUpdateTimeDoesNotReportSuccess() {
+        when(mapper.getById(USER_ID)).thenReturn(current(1));
+        assertThatThrownBy(() -> service.editPassword(request())).isInstanceOf(PasswordEditFailedException.class)
+                .hasMessage(MessageConstant.PASSWORD_EDIT_FAILED);
+        verify(mapper).update(any());
+    }
+}

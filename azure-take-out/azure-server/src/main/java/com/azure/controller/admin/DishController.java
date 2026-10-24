@@ -1,0 +1,85 @@
+package com.azure.controller.admin;
+
+import com.azure.dto.DishDTO;
+import com.azure.dto.DishPageQueryDTO;
+import com.azure.entity.Dish;
+import com.azure.result.PageResult;
+import com.azure.result.Result;
+import com.azure.service.DishService;
+import com.azure.vo.DishVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 菜品相关controller
+ */
+@RestController
+@RequestMapping("/admin/dish")
+@Tag(name = "菜品相关接口")
+@Slf4j
+public class DishController {
+
+    @Autowired
+    private DishService dishService;
+
+    @Operation(summary = "新增菜品")
+    @PostMapping
+    public Result save(@RequestBody DishDTO dishDTO) {
+        log.info("新增菜品：{}", dishDTO);
+        dishService.saveWithFlavor(dishDTO);
+        return Result.success();
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "分页查询菜品")
+    public Result<PageResult> page(DishPageQueryDTO dishPageQueryDTO) {
+        log.info("分页查询菜品：{}", dishPageQueryDTO);
+        PageResult pageResult =  dishService.pageQuery(dishPageQueryDTO);
+        return Result.success(pageResult);
+    }
+
+    @Operation(summary = "菜品批量删除")
+    @DeleteMapping
+    public Result delete(@RequestParam List<Long> ids) {
+        log.info("菜品批量删除：{}", ids);
+        dishService.batchDelete(ids);
+        return Result.success();
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "根据id查询菜品信息和对应的口味信息")
+    public Result<DishVO> getById(@PathVariable Long id) {
+        log.info("根据id查询菜品信息和对应的口味信息：{}", id);
+        DishVO dishVO = dishService.getByIdWithFlavor(id);
+        return Result.success(dishVO);
+    }
+
+    @PutMapping
+    @Operation(summary = "更新菜品信息")
+    public Result update(@RequestBody DishDTO dishDTO) {
+        log.info("更新菜品：{}", dishDTO);
+        dishService.updateWithFlavor(dishDTO);
+        return Result.success();
+    }
+
+    @PostMapping("/status/{status}")
+    @Operation(summary = "起售/停售菜品")
+    public Result startOrStop(@PathVariable Integer status, @RequestParam Long id) {
+        log.info("起售/停售菜品：{},{}", status, id);
+        dishService.startOrStop(status, id);
+        return Result.success();
+    }
+
+    @GetMapping("/list")
+    @Operation(summary = "根据条件查询菜品")
+    public Result<List<Dish>> list(@RequestParam Long categoryId) {
+        log.info("根据条件查询菜品：{}", categoryId);
+        List<Dish> dishes = dishService.queryWithCategoryId(categoryId);
+        return Result.success(dishes);
+    }
+}

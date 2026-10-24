@@ -40,7 +40,7 @@ mp-weixin/project.private.config.json
 
 # ---------- 本地存储 ----------
 uploads
-sky-take-out/sky-server/src/main/resources/menu-images/
+azure-take-out/azure-server/src/main/resources/menu-images/
 
 plans
 

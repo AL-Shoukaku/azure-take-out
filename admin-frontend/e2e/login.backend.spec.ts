@@ -30,7 +30,7 @@ test('连接真实后端登录，读取工作台、管理列表和统计并下�
   ).toHaveText(/^\d+$/)
   await expect(page.getByRole('region', { name: '订单信息', exact: true })).toBeVisible()
   await expect(page.getByRole('status', { name: '店铺营业状态' })).toHaveText(/营业中|打烊中/)
-  expect((await context.cookies()).some((cookie) => cookie.name === 'token')).toBe(true)
+  expect((await context.cookies()).some((cookie) => cookie.name === 'admin_token')).toBe(true)
 
   await page.reload()
   await expect(page.getByRole('region', { name: '今日数据', exact: true })).toBeVisible()
