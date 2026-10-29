@@ -115,7 +115,7 @@ class CacheClientTest {
         Dish result = cacheClient.getOrLoad(KEY, dishType, () -> null, 300);
 
         assertThat(result).isNull();
-        verify(valueOps).set(KEY, "", 30L, TimeUnit.SECONDS);
+        verify(valueOps).set(KEY, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.SECONDS);
         verify(lock).unlock();
     }
 

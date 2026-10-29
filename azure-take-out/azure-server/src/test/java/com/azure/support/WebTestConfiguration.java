@@ -44,6 +44,7 @@ public class WebTestConfiguration {
     @Bean public UserService userService() { return mock(UserService.class); }
     @Bean public ReportService reportService() { return mock(ReportService.class); }
     @Bean public WorkspaceService workspaceService() { return mock(WorkspaceService.class); }
+    @Bean public ShopService shopService() { return mock(ShopService.class); }
     @Bean public RedisTemplate redisTemplate() { return mock(RedisTemplate.class); }
     @Bean public ValueOperations valueOperations() { return mock(ValueOperations.class); }
     @Bean public CacheManager cacheManager() { return new ConcurrentMapCacheManager("setmealCache","setmealDishCache"); }

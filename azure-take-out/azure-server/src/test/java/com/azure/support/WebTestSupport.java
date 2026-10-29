@@ -38,6 +38,7 @@ public abstract class WebTestSupport {
     @Autowired protected UserService userService;
     @Autowired protected ReportService reportService;
     @Autowired protected WorkspaceService workspaceService;
+    @Autowired protected ShopService shopService;
     @Autowired protected RedisTemplate redisTemplate;
     @Autowired protected ValueOperations values;
     @Autowired protected CacheManager cacheManager;
@@ -50,7 +51,7 @@ public abstract class WebTestSupport {
     @DynamicPropertySource static void uploadProperties(DynamicPropertyRegistry registry) { registry.add("azure.upload-path",UPLOADS::toString); }
     @BeforeEach void initializeMvc() {
         reset(employeeService,categoryService,dishService,setmealService,addressBookService,shoppingCartService,
-                ordersService,userService,reportService,workspaceService,redisTemplate,values);
+                ordersService,userService,reportService,workspaceService,shopService,redisTemplate,values);
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
         when(redisTemplate.opsForValue()).thenReturn(values); when(values.get("SHOP_STATUS")).thenReturn(1);
         BaseContext.removeCurrentId(); mvc = MockMvcBuilders.webAppContextSetup(context).build();

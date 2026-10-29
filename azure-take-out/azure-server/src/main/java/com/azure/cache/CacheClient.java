@@ -80,10 +80,10 @@ public class CacheClient {
             if (value != null) {
                 return (value.isEmpty()) ? null : deSerialize(value, type);
             }
-            // 加载数据，如果为 null，则缓存空串，避免缓存穿透，过期时间写死为 30 秒
+            // 加载数据，如果为 null，则缓存空串，避免缓存穿透，过期时间为无效数据的统一 TTL
             result = loader.get();
             if (result == null) {
-                stringRedisTemplate.opsForValue().set(key, "", 30, TimeUnit.SECONDS);
+                stringRedisTemplate.opsForValue().set(key, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.SECONDS);
             } else {
                 set(key, result, ttl);
             }

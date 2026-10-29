@@ -1,5 +1,6 @@
 package com.azure.performance;
 
+import com.azure.cache.RedisConstants;
 import com.azure.service.DishService;
 import com.azure.vo.DishVO;
 import org.junit.jupiter.api.AfterAll;
@@ -20,8 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 手动基准测试：测量 DishServiceImpl#listWithFlavorByCategoryId 的缓存在未命中时单次重建的代价。
- * 当前测的是手写 RedisTemplate 缓存；改造为 CacheClient 后本测试无需修改即可复用，
- * 用于对比改造前后的重建/命中/并发表现（Redisson 是真实连接，互斥锁逻辑会真实生效）。
+ * 当前实现为 CacheClient（互斥锁 + Jackson 序列化 + TTL 抖动），本测试保留与原手写
+ * RedisTemplate 缓存的对比能力（原版基线数据：重建 p50≈45ms、命中 p50≈4ms、无锁并发
+ * 20 线程打库 1020 条），改造后重跑即可对比。
  *
  * <p>隔离措施：基准数据只写入 ID ≥ 900000 的独立行（分类 9001、菜品 900001~900050 及其
  * 口味），测试结束后自动删除；Redis 使用隔离的 15 号库，结束后由基类清空。
@@ -34,8 +36,8 @@ public class DishCacheRebuildBenchmarkTest extends PerformanceBenchmarkSupport {
 
     private static final long BENCH_CATEGORY_ID = 9001L;
     private static final long FIRST_DISH_ID = 900001L;
-    /** 必须与服务的实际缓存 key 一致；缓存改造后若 key 格式变化，这里必须同步修改，否则"重建"阶段实际测的是命中 */
-    private static final String BENCH_KEY = "dish_" + BENCH_CATEGORY_ID;
+    /** 直接引用服务的 key 前缀常量，服务端改 key 格式时自动跟随 */
+    private static final String BENCH_KEY = RedisConstants.DISH_KEY_PREFIX + BENCH_CATEGORY_ID;
     /** 分类内菜品数，可用环境变量覆盖：BENCH_DISHES=7 测真实演示数据的规模 */
     private static final int DISH_COUNT =
             Integer.parseInt(System.getenv().getOrDefault("BENCH_DISHES", "50"));

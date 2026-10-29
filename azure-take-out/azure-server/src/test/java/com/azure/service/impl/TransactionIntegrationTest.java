@@ -8,7 +8,6 @@ import com.azure.support.TransactionTestSupport;
 import com.azure.vo.OrderSubmitVO;
 import com.azure.websocket.WebSocketServer;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
@@ -87,7 +86,7 @@ class TransactionIntegrationTest extends TransactionTestSupport {
     @Test void failedFlavorInsertRollsBackNewDish() {
         DishFlavorMapper flavors = spy(transactionalMapper(DishFlavorMapper.class)); doThrow(new IllegalStateException("injected flavor failure")).when(flavors).insertBatch(any());
         DishServiceImpl target = new DishServiceImpl(); inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"dishFlavorMapper",flavors);
-        inject(target,"redisTemplate",mock(RedisTemplate.class));
+        inject(target,"cacheClient",mockedCacheClient());
         DishDTO dto = new DishDTO(); dto.setName("回滚菜品"); dto.setCategoryId(1L); dto.setPrice(BigDecimal.TEN);
         dto.setFlavors(Collections.singletonList(DishFlavor.builder().name("辣度").value("[]").build()));
         assertThatThrownBy(() -> transactionalService(target,DishServiceImpl.class).saveWithFlavor(dto)).hasMessage("injected flavor failure");

@@ -1,5 +1,8 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.azure.constant.MessageConstant;
@@ -8,7 +11,6 @@ import com.azure.dto.DishDTO;
 import com.azure.dto.DishPageQueryDTO;
 import com.azure.entity.Dish;
 import com.azure.entity.DishFlavor;
-import com.azure.entity.ShoppingCart;
 import com.azure.exception.DeletionNotAllowedException;
 import com.azure.mapper.DishFlavorMapper;
 import com.azure.mapper.DishMapper;
@@ -16,18 +18,17 @@ import com.azure.mapper.SetmealDishMapper;
 import com.azure.mapper.ShoppingCartMapper;
 import com.azure.result.PageResult;
 import com.azure.service.DishService;
-import com.azure.service.ShoppingCartService;
 import com.azure.vo.DishVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Slf4j
@@ -43,7 +44,7 @@ public class DishServiceImpl implements DishService {
     private SetmealDishMapper setMealDishMapper;
 
     @Autowired
-    private RedisTemplate redisTemplate;
+    private CacheClient cacheClient;
 
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
@@ -70,7 +71,7 @@ public class DishServiceImpl implements DishService {
             dishFlavorMapper.insertBatch(flavors);
         }
         // 清空对应类型的菜品缓存数据
-        clearCache("dish_" + dish.getCategoryId());
+        evictDishCacheByCategoryId(dish.getCategoryId());
     }
 
     /**
@@ -117,7 +118,7 @@ public class DishServiceImpl implements DishService {
         }
 
         // 最后直接清空所有的菜品缓存，先用 keys 查询所有的键，然后再删除
-        clearCache("dish_*");
+        evictDishCache();
     }
 
     /**
@@ -163,7 +164,7 @@ public class DishServiceImpl implements DishService {
         updateShoppingCart(dish.getId());
 
         // 清空所有的菜品缓存
-        clearCache("dish_*");
+        evictDishCache();
     }
 
     /**
@@ -183,7 +184,7 @@ public class DishServiceImpl implements DishService {
             // 如果是停售，则需要删除购物车中对应的菜品
             updateShoppingCart(id);
         }
-        clearCache("dish_*");
+        evictDishCache();
     }
 
     /**
@@ -200,39 +201,23 @@ public class DishServiceImpl implements DishService {
     @Override
     public List<DishVO> listWithFlavorByCategoryId(Long categoryId) {
         // 首先查询是否在缓存中有数据
-        String key = "dish_" + categoryId;
-        List<DishVO> dishVOList = (List<DishVO>) redisTemplate.opsForValue().get(key);
-        if (dishVOList != null && !dishVOList.isEmpty()) {
-            // 缓存命中，直接返回缓存中的数据
-            return dishVOList;
-        }
+        String key = RedisConstants.DISH_KEY_PREFIX + categoryId;
+        return cacheClient.getOrLoad(key, new TypeReference<List<DishVO>>() {},
+                () -> loadDishVOListByCategoryId(categoryId), RedisConstants.CACHE_DISH_TTL);
+    }
 
-        // 缓存未命中，查询数据库并将结果存入缓存
-        dishVOList = new ArrayList<>();
+    private List<DishVO> loadDishVOListByCategoryId(Long categoryId) {
+        List<DishVO> dishVOList = new ArrayList<>();
         List<Dish> dishList = dishMapper.queryWithCategoryId(categoryId);
         for (Dish d : dishList) {
             DishVO dishVO = new DishVO();
             BeanUtils.copyProperties(d,dishVO);
-
             //根据菜品id查询对应的口味
             List<DishFlavor> flavors = dishFlavorMapper.getByDishId(d.getId());
-
             dishVO.setFlavors(flavors);
             dishVOList.add(dishVO);
         }
-        redisTemplate.opsForValue().set(key,dishVOList);
         return dishVOList;
-    }
-
-    /**
-     * 根据指定 pattern 清空缓存
-     */
-    private void clearCache(String pattern) {
-        // 清空所有的菜品缓存
-        Set keys = redisTemplate.keys(pattern);
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
     }
 
     /**
@@ -247,5 +232,39 @@ public class DishServiceImpl implements DishService {
             return;
         }
         shoppingCartMapper.updateByDish(dish);
+    }
+
+    /**
+     * 清理菜品的缓存，使用事务同步机制，确保在事务提交后再清理缓存，避免并发读到未提交的旧数据。
+     */
+    private void evictDishCache() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cacheClient.deleteByPrefix(RedisConstants.DISH_KEY_PREFIX);
+                }
+            });
+        } else {
+            cacheClient.deleteByPrefix(RedisConstants.DISH_KEY_PREFIX); // 无事务上下文的兜底
+        }
+    }
+
+    /**
+     * 根据分类 id 清理菜品的缓存，使用事务同步机制，确保在事务提交后再清理缓存，避免并发读到未提交的旧数据。
+     * @param categoryId 分类 id
+     */
+    private void evictDishCacheByCategoryId(long categoryId) {
+        String key = RedisConstants.DISH_KEY_PREFIX + categoryId;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cacheClient.deleteByKey(key);
+                }
+            });
+        } else {
+            cacheClient.deleteByKey(key); // 无事务上下文的兜底（deleteByPrefix 会误伤 id 前缀相同的其他分类）
+        }
     }
 }

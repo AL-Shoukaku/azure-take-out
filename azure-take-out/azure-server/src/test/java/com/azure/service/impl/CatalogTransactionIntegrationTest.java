@@ -5,7 +5,6 @@ import com.azure.entity.*;
 import com.azure.mapper.*;
 import com.azure.support.TransactionTestSupport;
 import org.junit.jupiter.api.*;
-import org.springframework.data.redis.core.RedisTemplate;
 import java.math.BigDecimal;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
@@ -14,7 +13,7 @@ import static org.mockito.Mockito.*;
 class CatalogTransactionIntegrationTest extends TransactionTestSupport {
     @Test void dishUpdateFailureMustRollBackDishAndOriginalFlavors() {
         DishFlavorMapper flavors=spy(transactionalMapper(DishFlavorMapper.class)); doThrow(new IllegalStateException("flavor failure")).when(flavors).insertBatch(any());
-        DishServiceImpl target=new DishServiceImpl(); inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"dishFlavorMapper",flavors); inject(target,"redisTemplate",mock(RedisTemplate.class));
+        DishServiceImpl target=new DishServiceImpl(); inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"dishFlavorMapper",flavors); inject(target,"cacheClient",mockedCacheClient());
         DishDTO dto=new DishDTO(); dto.setId(1L); dto.setName("不应保存的改名"); dto.setFlavors(Collections.singletonList(DishFlavor.builder().name("新口味").value("[]").build()));
         assertThatThrownBy(() -> transactionalService(target,DishServiceImpl.class).updateWithFlavor(dto)).hasMessage("flavor failure");
         assertThat(mapper(DishMapper.class).getById(1L).getName()).isEqualTo("鸡丁");
@@ -24,7 +23,7 @@ class CatalogTransactionIntegrationTest extends TransactionTestSupport {
         DishFlavorMapper flavors=spy(transactionalMapper(DishFlavorMapper.class)); doThrow(new IllegalStateException("flavor failure")).when(flavors).batchDeleteByDishIds(any());
         SetmealDishMapper associations=mock(SetmealDishMapper.class); when(associations.getSetMealIdsByDishIds(any())).thenReturn(Collections.emptyList());
         DishServiceImpl target=new DishServiceImpl(); inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"dishFlavorMapper",flavors);
-        inject(target,"setMealDishMapper",associations); inject(target,"redisTemplate",mock(RedisTemplate.class));
+        inject(target,"setMealDishMapper",associations); inject(target,"cacheClient",mockedCacheClient());
         assertThatThrownBy(() -> transactionalService(target,DishServiceImpl.class).batchDelete(Collections.singletonList(3L))).hasMessage("flavor failure");
         assertThat(mapper(DishMapper.class).getById(3L)).isNotNull();
     }

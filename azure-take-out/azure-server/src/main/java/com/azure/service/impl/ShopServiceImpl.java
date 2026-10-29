@@ -7,9 +7,6 @@ import com.azure.service.ShopService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.lang.reflect.Type;
-
 @Service
 public class ShopServiceImpl implements ShopService {
 
