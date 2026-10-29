@@ -1,5 +1,7 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.constant.MessageConstant;
 import com.azure.dto.*;
 import com.azure.entity.*;
@@ -14,15 +16,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings({"rawtypes","unchecked"})
 class SetmealServiceImplTest extends ServiceTestSupport {
     @InjectMocks private SetmealServiceImpl service;
     @Mock private SetmealMapper setmealMapper;
     @Mock private SetmealDishMapper setmealDishMapper;
     @Mock private CategoryMapper categoryMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
+    @Mock private CacheClient cacheClient;
     @Captor private ArgumentCaptor<Setmeal> setmeal;
 
     private SetmealDTO request() {
@@ -40,6 +45,7 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         assertThat(setmeal.getValue().getPrice()).isEqualByComparingTo("29.90");
         assertThat(dto.getSetmealDishes()).extracting(SetmealDish::getSetmealId).containsExactly(88L,88L);
         verify(setmealDishMapper).batchInsert(dto.getSetmealDishes());
+        verify(cacheClient).deleteByKeyAfterCommit("setmeal:3");
     }
     @Test void updateReplacesAssociations() {
         when(setmealMapper.getById(7L)).thenReturn(Setmeal.builder().id(7L).status(0).build());
@@ -48,6 +54,8 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         sequence.verify(setmealMapper).update(any()); sequence.verify(setmealDishMapper).deleteBySetmealId(7L);
         sequence.verify(setmealDishMapper).batchInsert(dto.getSetmealDishes());
         assertThat(dto.getSetmealDishes()).extracting(SetmealDish::getSetmealId).containsExactly(7L,7L);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
     @Test void detailCombinesCategoryAndDishRelations() {
         Setmeal row = Setmeal.builder().id(7L).categoryId(3L).name("午餐套餐").build();
@@ -63,7 +71,7 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         when(setmealMapper.getById(8L)).thenReturn(Setmeal.builder().status(1).build());
         assertThatThrownBy(() -> service.deleteWithDishes(Arrays.asList(7L,8L))).isInstanceOf(DeletionNotAllowedException.class)
                 .hasMessage(MessageConstant.SETMEAL_ON_SALE);
-        verify(setmealMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(setmealDishMapper,shoppingCartMapper);
+        verify(setmealMapper,never()).batchDeleteByIds(any()); verifyNoInteractions(setmealDishMapper,shoppingCartMapper,cacheClient);
     }
     @Test void stoppedSetmealsDeleteWithAssociations() {
         List<Long> ids = Arrays.asList(7L,8L);
@@ -73,12 +81,16 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         service.deleteWithDishes(ids); verify(setmealMapper).batchDeleteByIds(ids);
         verify(setmealDishMapper).batchDeleteBySetmealIds(ids);
         verify(shoppingCartMapper).deleteBySetmealId(7L); verify(shoppingCartMapper).deleteBySetmealId(8L);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
     @ParameterizedTest @ValueSource(ints = {0,1})
     void statusChangeUpdatesTarget(int status) {
         if (status == 0) when(setmealMapper.getById(7L)).thenReturn(Setmeal.builder().id(7L).status(0).build());
         service.startOrStop(status,7L); verify(setmealMapper).update(setmeal.capture());
         assertThat(setmeal.getValue().getId()).isEqualTo(7L); assertThat(setmeal.getValue().getStatus()).isEqualTo(status);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
         if (status == 0) verify(shoppingCartMapper).deleteBySetmealId(7L);
         else verifyNoInteractions(shoppingCartMapper);
     }
@@ -89,14 +101,18 @@ class SetmealServiceImplTest extends ServiceTestSupport {
         PageResult result = service.pageQuery(dto);
         assertThat(result.getTotal()).isEqualTo(21); assertThat(result.getRecords()).containsExactly(row);
     }
-    @Test void listForwardsCategoryAndStatusFilter() {
+    @Test void listForwardsCategoryAndStatusFilterThroughCacheLoader() {
         Setmeal filter = Setmeal.builder().categoryId(3L).status(1).build();
         Setmeal row = Setmeal.builder().id(7L).build(); when(setmealMapper.list(filter)).thenReturn(Collections.singletonList(row));
+        when(cacheClient.getOrLoad(eq("setmeal:3"), any(), any(), eq(RedisConstants.CACHE_SETMEAL_TTL)))
+                .thenAnswer(inv -> ((Supplier<List<Setmeal>>)inv.getArgument(2)).get());
         assertThat(service.list(filter)).containsExactly(row);
     }
     @Test void dishItemsIncludeCopiesImageAndDescription() {
         DishItemVO item = new DishItemVO(); item.setName("鸡丁"); item.setCopies(2); item.setImage("dish.png");
         when(setmealMapper.getDishItemBySetmealId(7L)).thenReturn(Collections.singletonList(item));
+        when(cacheClient.getOrLoad(eq("setmealDish:7"), any(), any(), eq(RedisConstants.CACHE_SETMEALDISH_TTL)))
+                .thenAnswer(inv -> ((Supplier<List<DishItemVO>>)inv.getArgument(2)).get());
         assertThat(service.getDishItemById(7L)).containsExactly(item);
     }
 }

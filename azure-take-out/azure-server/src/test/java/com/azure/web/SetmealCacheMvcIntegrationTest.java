@@ -1,11 +1,13 @@
 package com.azure.web;
 
 import com.azure.AzureApplication;
+import com.azure.cache.CacheClient;
 import com.azure.context.BaseContext;
 import com.azure.properties.JwtProperties;
 import com.azure.task.OrderTask;
 import com.azure.utils.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,7 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -41,8 +46,15 @@ class SetmealCacheMvcIntegrationTest {
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
     @MockitoBean private RedissonClient redissonClient;
+    // 套餐读写已走 CacheClient（真实 Redis），本测试环境没有 Redis：mock 成透传 loader，
+    // 让测试聚焦"改套餐后列表与详情正确重载"的服务与数据库行为，清缓存调用由 mock 吸收。
+    @MockitoBean private CacheClient cacheClient;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
     @MockitoBean private OrderTask orderTask;
+    @BeforeEach @SuppressWarnings({"rawtypes","unchecked"}) void bypassCache() {
+        when(cacheClient.getOrLoad(anyString(), any(), any(), anyLong()))
+                .thenAnswer(inv -> ((Supplier)inv.getArgument(2)).get());
+    }
     @AfterEach void clearState() {
         BaseContext.removeCurrentId();
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());

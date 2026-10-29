@@ -46,11 +46,11 @@ class DishServiceImplTest extends ServiceTestSupport {
         assertThat(dish.getValue().getPrice()).isEqualByComparingTo("32.00");
         assertThat(flavor.getDishId()).isEqualTo(88L);
         verify(dishFlavorMapper).insertBatch(dto.getFlavors());
-        verify(cacheClient).deleteByKey("dish:3");
+        verify(cacheClient).deleteByKeyAfterCommit("dish:3");
     }
     @Test void saveWithoutFlavorsSkipsFlavorInsert() {
         service.saveWithFlavor(request()); verify(dishFlavorMapper,never()).insertBatch(any());
-        verify(cacheClient).deleteByKey("dish:3");
+        verify(cacheClient).deleteByKeyAfterCommit("dish:3");
     }
     @Test void onSaleDishPreventsEntireBatchDeletion() {
         when(dishMapper.getById(7L)).thenReturn(Dish.builder().status(0).build());
@@ -75,7 +75,7 @@ class DishServiceImplTest extends ServiceTestSupport {
         when(setMealDishMapper.getSetMealIdsByDishIds(ids)).thenReturn(associations);
         service.batchDelete(ids); verify(dishMapper).batchDeleteByIds(ids);
         verify(dishFlavorMapper).batchDeleteByDishIds(ids);
-        verify(cacheClient).deleteByPrefix(RedisConstants.DISH_KEY_PREFIX);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
         verify(shoppingCartMapper).deleteByDishId(7L); verify(shoppingCartMapper).deleteByDishId(8L);
     }
     @Test void detailContainsDishAndFlavors() {
@@ -93,7 +93,7 @@ class DishServiceImplTest extends ServiceTestSupport {
         InOrder sequence = inOrder(dishMapper,dishFlavorMapper);
         sequence.verify(dishMapper).update(any()); sequence.verify(dishFlavorMapper).deleteByDishId(7L);
         sequence.verify(dishFlavorMapper).insertBatch(dto.getFlavors());
-        assertThat(flavor.getDishId()).isEqualTo(7L); verify(cacheClient).deleteByPrefix(RedisConstants.DISH_KEY_PREFIX);
+        assertThat(flavor.getDishId()).isEqualTo(7L); verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
     }
     @ParameterizedTest @NullAndEmptySource
     void updateCanRemoveAllFlavors(List<DishFlavor> flavors) {
@@ -106,7 +106,7 @@ class DishServiceImplTest extends ServiceTestSupport {
         if (status == 0) when(dishMapper.getById(7L)).thenReturn(Dish.builder().id(7L).status(0).build());
         service.startOrStop(status,7L); verify(dishMapper).update(dish.capture());
         assertThat(dish.getValue().getId()).isEqualTo(7L); assertThat(dish.getValue().getStatus()).isEqualTo(status);
-        verify(cacheClient).deleteByPrefix(RedisConstants.DISH_KEY_PREFIX);
+        verify(cacheClient).deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
         if (status == 0) verify(shoppingCartMapper).deleteByDishId(7L);
         else verifyNoInteractions(shoppingCartMapper);
     }

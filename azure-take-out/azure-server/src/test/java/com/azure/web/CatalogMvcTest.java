@@ -61,52 +61,27 @@ class CatalogMvcTest extends WebTestSupport {
         successful(admin(delete("/admin/setmeal").param("ids","7,8"))); verify(setmealService).deleteWithDishes(Arrays.asList(7L,8L));
         successful(admin(post("/admin/setmeal/status/1").param("id","7"))); verify(setmealService).startOrStop(1,7L);
     }
-    @Test void setmealListForcesOnSaleAndRepeatedReadsUseCache() throws Exception {
+    @Test void setmealListForcesOnSaleFilter() throws Exception {
         when(setmealService.list(any())).thenReturn(Collections.singletonList(Setmeal.builder().id(7L).status(1).build()));
         successful(user(get("/user/setmeal/list").param("categoryId","3"))).andExpect(jsonPath("$.data[0].id").value(7));
-        successful(user(get("/user/setmeal/list").param("categoryId","3")));
-        verify(setmealService,times(1)).list(argThat(row -> row.getCategoryId()==3L && row.getStatus()==1));
+        verify(setmealService).list(argThat(row -> row.getCategoryId()==3L && row.getStatus()==1));
     }
-    @Test void setmealUpdateEvictsListCacheAndSubsequentReadReloads() throws Exception {
+    @Test void setmealListReflectsUpdatedDataOnSubsequentRead() throws Exception {
         when(setmealService.list(any())).thenReturn(Collections.singletonList(Setmeal.builder().name("旧名").build()),Collections.singletonList(Setmeal.builder().name("新名").build()));
         successful(user(get("/user/setmeal/list").param("categoryId","3"))).andExpect(jsonPath("$.data[0].name").value("旧名"));
         successful(admin(put("/admin/setmeal").contentType("application/json").content("{\"id\":7}")));
         successful(user(get("/user/setmeal/list").param("categoryId","3"))).andExpect(jsonPath("$.data[0].name").value("新名"));
         verify(setmealService,times(2)).list(any());
     }
-    @Test void setmealDishItemsAreCachedBySetmealId() throws Exception {
+    @Test void setmealDishItemsDelegateToService() throws Exception {
         DishItemVO row = new DishItemVO(); row.setName("鸡丁"); row.setCopies(2);
         when(setmealService.getDishItemById(7L)).thenReturn(Collections.singletonList(row));
         successful(user(get("/user/setmeal/dish/7"))).andExpect(jsonPath("$.data[0].copies").value(2));
-        successful(user(get("/user/setmeal/dish/7"))); verify(setmealService,times(1)).getDishItemById(7L);
+        verify(setmealService).getDishItemById(7L);
     }
-    @Test void setmealUpdateReloadsItsDetailsWithoutInvalidatingOtherSetmeals() throws Exception {
-        DishItemVO old = new DishItemVO(); old.setName("旧菜品");
-        DishItemVO updated = new DishItemVO(); updated.setName("新菜品");
-        DishItemVO other = new DishItemVO(); other.setName("其他套餐菜品");
-        when(setmealService.getDishItemById(7L)).thenReturn(Collections.singletonList(old),Collections.singletonList(updated));
-        when(setmealService.getDishItemById(8L)).thenReturn(Collections.singletonList(other));
-        successful(user(get("/user/setmeal/dish/7"))).andExpect(jsonPath("$.data[0].name").value("旧菜品"));
-        successful(user(get("/user/setmeal/dish/8"))).andExpect(jsonPath("$.data[0].name").value("其他套餐菜品"));
-        successful(admin(put("/admin/setmeal").contentType("application/json")
-                .content("{\"id\":7,\"setmealDishes\":[{\"dishId\":9,\"copies\":1}]}")));
-        successful(user(get("/user/setmeal/dish/7"))).andExpect(jsonPath("$.data[0].name").value("新菜品"));
-        successful(user(get("/user/setmeal/dish/8"))).andExpect(jsonPath("$.data[0].name").value("其他套餐菜品"));
-        verify(setmealService,times(2)).getDishItemById(7L);
-        verify(setmealService,times(1)).getDishItemById(8L);
-    }
-    @Test void failedSetmealUpdateKeepsOriginalListAndDishCache() throws Exception {
-        when(setmealService.list(any())).thenReturn(Collections.singletonList(Setmeal.builder().id(7L).name("原套餐").build()));
-        DishItemVO original = new DishItemVO(); original.setName("原菜品");
-        when(setmealService.getDishItemById(7L)).thenReturn(Collections.singletonList(original));
-        successful(user(get("/user/setmeal/list").param("categoryId","3"))).andExpect(jsonPath("$.data[0].name").value("原套餐"));
-        successful(user(get("/user/setmeal/dish/7"))).andExpect(jsonPath("$.data[0].name").value("原菜品"));
+    @Test void failedSetmealUpdateReturnsErrorEnvelope() throws Exception {
         doThrow(new BaseException("修改失败")).when(setmealService).updateWithDishes(any());
         mvc.perform(admin(put("/admin/setmeal").contentType("application/json").content("{\"id\":7}")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(0));
-        successful(user(get("/user/setmeal/list").param("categoryId","3"))).andExpect(jsonPath("$.data[0].name").value("原套餐"));
-        successful(user(get("/user/setmeal/dish/7"))).andExpect(jsonPath("$.data[0].name").value("原菜品"));
-        verify(setmealService,times(1)).list(any());
-        verify(setmealService,times(1)).getDishItemById(7L);
     }
 }

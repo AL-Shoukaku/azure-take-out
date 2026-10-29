@@ -12,6 +12,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -175,6 +177,50 @@ class CacheClientTest {
         cacheClient.deleteByKey(KEY);
 
         verify(redisTemplate).delete(KEY);
+    }
+
+    @Test
+    void deleteByKeyAfterCommitDeletesImmediatelyWithoutTransaction() {
+        cacheClient.deleteByKeyAfterCommit(KEY);
+
+        verify(redisTemplate).delete(KEY);
+    }
+
+    @Test
+    void deleteByPrefixAfterCommitDeletesImmediatelyWithoutTransaction() {
+        when(redissonClient.getKeys()).thenReturn(keys);
+
+        cacheClient.deleteByPrefixAfterCommit("cache:dish:");
+
+        verify(keys).deleteByPattern("cache:dish:*");
+    }
+
+    @Test
+    void deleteByKeyAfterCommitDefersUntilCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            cacheClient.deleteByKeyAfterCommit(KEY);
+
+            verify(redisTemplate, never()).delete(KEY); // 提交前不删除
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            verify(redisTemplate).delete(KEY); // 提交后删除
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void deleteByKeyAfterCommitDoesNothingWhenTransactionRollsBack() {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            cacheClient.deleteByKeyAfterCommit(KEY);
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+            verify(redisTemplate, never()).delete(KEY); // 回滚不删除
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

@@ -32,6 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -56,6 +58,8 @@ class OrderSubmissionMvcIntegrationTest {
         // Separate HTTP requests use separate production transactions and MyBatis sessions.
         new ResourceDatabasePopulator(new ClassPathResource("sql/schema.sql"),new ClassPathResource("sql/data.sql"))
                 .execute(jdbc.getDataSource());
+        // 事务提交后 CacheClient 会按前缀清理缓存，给 RedissonClient mock 补上 keys 入口
+        when(redissonClient.getKeys()).thenReturn(mock(org.redisson.api.RKeys.class));
     }
     @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
 

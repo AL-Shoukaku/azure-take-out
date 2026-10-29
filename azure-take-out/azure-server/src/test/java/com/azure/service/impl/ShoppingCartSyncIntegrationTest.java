@@ -48,6 +48,7 @@ class ShoppingCartSyncIntegrationTest extends TransactionTestSupport {
         inject(setmealTarget, "setmealMapper", transactionalMapper(SetmealMapper.class));
         inject(setmealTarget, "setmealDishMapper", transactionalMapper(SetmealDishMapper.class));
         inject(setmealTarget, "shoppingCartMapper", carts);
+        inject(setmealTarget, "cacheClient", mockedCacheClient());
         setmeals = transactionalService(setmealTarget, SetmealServiceImpl.class);
     }
 

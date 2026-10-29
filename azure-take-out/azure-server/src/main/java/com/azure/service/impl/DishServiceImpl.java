@@ -24,8 +24,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,8 +68,8 @@ public class DishServiceImpl implements DishService {
         if (flavors != null && flavors.size() > 0) {
             dishFlavorMapper.insertBatch(flavors);
         }
-        // 清空对应类型的菜品缓存数据
-        evictDishCacheByCategoryId(dish.getCategoryId());
+        // 清空对应分类的菜品缓存（事务提交后执行）
+        cacheClient.deleteByKeyAfterCommit(RedisConstants.DISH_KEY_PREFIX + dish.getCategoryId());
     }
 
     /**
@@ -117,8 +115,8 @@ public class DishServiceImpl implements DishService {
             updateShoppingCart(id);
         }
 
-        // 最后直接清空所有的菜品缓存，先用 keys 查询所有的键，然后再删除
-        evictDishCache();
+        // 清空所有菜品缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
     }
 
     /**
@@ -163,8 +161,8 @@ public class DishServiceImpl implements DishService {
         // 更新购物车
         updateShoppingCart(dish.getId());
 
-        // 清空所有的菜品缓存
-        evictDishCache();
+        // 清空所有菜品缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
     }
 
     /**
@@ -184,7 +182,8 @@ public class DishServiceImpl implements DishService {
             // 如果是停售，则需要删除购物车中对应的菜品
             updateShoppingCart(id);
         }
-        evictDishCache();
+        // 清空所有菜品缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
     }
 
     /**
@@ -232,39 +231,5 @@ public class DishServiceImpl implements DishService {
             return;
         }
         shoppingCartMapper.updateByDish(dish);
-    }
-
-    /**
-     * 清理菜品的缓存，使用事务同步机制，确保在事务提交后再清理缓存，避免并发读到未提交的旧数据。
-     */
-    private void evictDishCache() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    cacheClient.deleteByPrefix(RedisConstants.DISH_KEY_PREFIX);
-                }
-            });
-        } else {
-            cacheClient.deleteByPrefix(RedisConstants.DISH_KEY_PREFIX); // 无事务上下文的兜底
-        }
-    }
-
-    /**
-     * 根据分类 id 清理菜品的缓存，使用事务同步机制，确保在事务提交后再清理缓存，避免并发读到未提交的旧数据。
-     * @param categoryId 分类 id
-     */
-    private void evictDishCacheByCategoryId(long categoryId) {
-        String key = RedisConstants.DISH_KEY_PREFIX + categoryId;
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    cacheClient.deleteByKey(key);
-                }
-            });
-        } else {
-            cacheClient.deleteByKey(key); // 无事务上下文的兜底（deleteByPrefix 会误伤 id 前缀相同的其他分类）
-        }
     }
 }

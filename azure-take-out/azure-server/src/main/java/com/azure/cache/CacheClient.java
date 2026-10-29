@@ -8,6 +8,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -108,6 +110,39 @@ public class CacheClient {
      */
     public void deleteByPrefix(String prefix) {
          redissonClient.getKeys().deleteByPattern(prefix + "*");
+    }
+
+    /**
+     * 在事务提交后删除指定 key 的缓存。
+     * 调用方处于事务中时，删除被注册到事务提交之后执行——若在提交前删除，
+     * 并发读会用未提交的旧数据回填缓存，导致缓存脏到 TTL；事务回滚时自动跳过删除。
+     * 无事务上下文时立即删除。
+     * @param key        缓存的键
+     */
+    public void deleteByKeyAfterCommit(String key) {
+        runAfterCommit(() -> deleteByKey(key));
+    }
+
+    /**
+     * 在事务提交后按前缀批量删除缓存，事务语义同 {@link #deleteByKeyAfterCommit(String)}。
+     * @param prefix     批量删除缓存的前缀
+     */
+    public void deleteByPrefixAfterCommit(String prefix) {
+        runAfterCommit(() -> deleteByPrefix(prefix));
+    }
+
+    /** 有活跃事务时把删除动作挂到 afterCommit，否则立即执行 */
+    private void runAfterCommit(Runnable delete) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    delete.run();
+                }
+            });
+        } else {
+            delete.run();
+        }
     }
 
     /**
