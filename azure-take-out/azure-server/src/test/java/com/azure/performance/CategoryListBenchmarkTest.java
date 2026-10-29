@@ -1,7 +1,8 @@
 package com.azure.performance;
 
-import com.azure.entity.Category;
+import com.azure.cache.RedisConstants;
 import com.azure.service.CategoryService;
+import com.azure.entity.Category;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -19,14 +20,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 分类列表查询基准：对应用户端 /user/category/list 背后的 categoryService.list(type)。
- * 该接口目前没有缓存，每次请求 1 条 SQL；作为后续为分类列表接入 CacheClient 的对照基线，
- * 接入后重跑本测试即可对比性能与打库次数的变化。
+ * 用于对比接入 CacheClient 前后的性能与打库次数——输出格式与缓存状态无关，
+ * 开关缓存后各跑一轮，两份报告可直接逐行对比。
  *
  * <p>隔离措施：额外写入 100 个压测分类（ID 980001~980100）模拟大菜单规模，
  * 结束后自动删除；Redis 使用隔离的 15 号库，结束后由基类清空。
  *
  * <p>运行方式（终端需 JAVA_HOME 指向 JDK 21；IDEA 中加环境变量 CACHE_BENCH=true）：
  * <pre>JAVA_HOME=... CACHE_BENCH=true mvn test -pl azure-server -am -Dtest=CategoryListBenchmarkTest</pre>
+ * 单独运行本类不会执行其他测试，因此在临时注释掉缓存做"加缓存前"测量时，其余测试不受影响。
  */
 public class CategoryListBenchmarkTest extends PerformanceBenchmarkSupport {
 
@@ -36,6 +38,9 @@ public class CategoryListBenchmarkTest extends PerformanceBenchmarkSupport {
     private static final int TYPE_DISH = 1;
     private static final int THREADS = 20;
     private static final int REQUESTS_PER_THREAD = 200;
+    private static final int COLD_START_ROUNDS = 5;
+    /** 直接引用服务的 key 前缀常量，key 格式变化时自动跟随 */
+    private static final String BENCH_KEY = RedisConstants.CATEGORY_KEY_PREFIX + TYPE_DISH;
 
     @Autowired private CategoryService categoryService;
     private int expectedSize;
@@ -53,7 +58,7 @@ public class CategoryListBenchmarkTest extends PerformanceBenchmarkSupport {
         expectedSize = jdbcTemplate.queryForObject(
                 "select count(*) from category where status = 1 and type = ?", Integer.class, TYPE_DISH);
 
-        // 热身：JIT、连接池、MyBatis 语句解析、InnoDB buffer pool
+        // 热身：JIT、连接池、MyBatis 语句解析、InnoDB buffer pool；分类缓存若已启用，此阶段同时填充缓存
         for (int i = 0; i < 30; i++) {
             categoryService.list(TYPE_DISH);
         }
@@ -74,7 +79,19 @@ public class CategoryListBenchmarkTest extends PerformanceBenchmarkSupport {
     void benchmarkCategoryListQuery() throws Exception {
         int totalRequests = THREADS * REQUESTS_PER_THREAD;
 
-        SqlCountInterceptor.drain();
+        SqlCountInterceptor.drain(); // 丢弃热身期间的计数，只统计测量阶段
+        // 冷启动：每轮先删 key 再请求，单独测量"缓存未命中重建"的那条 SQL。
+        // 有缓存时每轮 1 条(重建)，无缓存时同样每轮 1 条(本就在直查)，两种状态数字可比。
+        long[] coldNanos = new long[COLD_START_ROUNDS];
+        for (int i = 0; i < COLD_START_ROUNDS; i++) {
+            redisTemplate.delete(BENCH_KEY);
+            long t0 = System.nanoTime();
+            assertThat(categoryService.list(TYPE_DISH)).hasSize(expectedSize);
+            coldNanos[i] = System.nanoTime() - t0;
+        }
+        long coldSql = totalSql(SqlCountInterceptor.drain());
+        assertThat(coldSql).as("冷启动每轮应恰好 1 条 SQL").isEqualTo(COLD_START_ROUNDS);
+
         ExecutorService pool = Executors.newFixedThreadPool(THREADS);
         long burstNanos;
         long[] nanos;
@@ -109,21 +126,25 @@ public class CategoryListBenchmarkTest extends PerformanceBenchmarkSupport {
         long sqlTotal = totalSql(sql);
 
         double[] s = stats(nanos);
+        double[] cold = stats(coldNanos);
         String report = String.format("""
                 ==================== 分类列表查询基准结果(categoryService.list) ====================
-                场景: %d 个启用菜品分类, %d 线程 × %d 次请求 = %d 次请求, 当前无缓存
+                场景: %d 个启用菜品分类, %d 线程 × %d 次请求 = %d 次请求
                 环境: 本地开发库(压测分类 ID≥980000), Redis 15 号库, 服务层直调(不含 HTTP 开销)
 
                 单次请求耗时: mean=%.3fms  p50=%.3fms  p95=%.3fms  max=%.3fms
                 全部完成总耗时=%.2fms
-                实际打库: %d 条 [CategoryMapper.list×%d]
-                平均每请求打库: %.3f 条  (当前无缓存=每请求 1 条; 接入 CacheClient 后应≈1 条)
+                实际打库: %d 条 [%s]
+                平均每请求打库: %.3f 条
+
+                冷启动(每轮先删 key 再请求, %d 轮): mean=%.3fms  p50=%.3fms  打库 %d 条 (每轮 1 条)
                 ============================================================================""",
                 expectedSize, THREADS, REQUESTS_PER_THREAD, totalRequests,
                 s[0], s[1], s[2], s[3],
                 burstNanos / 1_000_000.0,
-                sqlTotal, sql.getOrDefault("com.azure.mapper.CategoryMapper.list", 0L),
-                (double) sqlTotal / totalRequests);
+                sqlTotal, describeSql(sql),
+                (double) sqlTotal / totalRequests,
+                COLD_START_ROUNDS, cold[0], cold[1], coldSql);
         System.out.println(report);
         writeReport("category-list-bench-report.txt", report);
     }
