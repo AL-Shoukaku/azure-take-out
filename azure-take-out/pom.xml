@@ -38,6 +38,7 @@
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <!--        Argon2id      -->
         <bouncycastle.version>1.86</bouncycastle.version>
+        <redisson.version>3.50.0</redisson.version>
     </properties>
     <dependencyManagement>
         <dependencies>

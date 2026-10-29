@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.cache.CacheManager;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,6 +40,7 @@ class SetmealCacheMvcIntegrationTest {
     @Autowired private CacheManager cacheManager;
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean private RedissonClient redissonClient;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
     @MockitoBean private OrderTask orderTask;
     @AfterEach void clearState() {
