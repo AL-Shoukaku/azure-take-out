@@ -1,6 +1,8 @@
 package com.azure.controller.user;
 
+import com.azure.cache.CacheClient;
 import com.azure.result.Result;
+import com.azure.service.ShopService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
@@ -14,18 +16,13 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class ShopController {
 
-    public static final String SHOP_STATUS_KEY = "SHOP_STATUS";
-
     @Autowired
-    private RedisTemplate redisTemplate;
+    private ShopService shopService;
 
     @GetMapping("/status")
     @Operation(summary = "用户端获取店铺的营业状态")
     public Result<Integer> getShopStatus() {
-        Integer status = (Integer) redisTemplate.opsForValue().get(SHOP_STATUS_KEY);
-        if (status == null) {
-            status = 0; // 默认状态为打烊中
-        }
+        Integer status = shopService.getShopStatus();
         log.info("用户端查询店铺的营业状态，状态为: {}", (status == 1 ? "营业中" : "打烊中"));
         return Result.success(status);
     }

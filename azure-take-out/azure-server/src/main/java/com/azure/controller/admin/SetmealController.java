@@ -67,10 +67,6 @@ public class SetmealController {
      */
     @PutMapping
     @Operation(summary = "修改套餐信息")
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "setmealCache", allEntries = true),
-            @CacheEvict(cacheNames = "setmealDishCache", key = "#setmealDTO.id")
-    })
     public Result update(@RequestBody SetmealDTO setmealDTO) {
         log.info("修改套餐信息，参数为{}", setmealDTO);
         setmealService.updateWithDishes(setmealDTO);
@@ -85,7 +81,6 @@ public class SetmealController {
      */
     @PostMapping("/status/{status}")
     @Operation(summary = "启用或禁用套餐")
-    @CacheEvict(value = "setmealCache", allEntries = true)
     public Result startOrStop(@PathVariable Integer status, @RequestParam Long id) {
         log.info("启用或禁用套餐，参数为status={}, id={}", status, id);
         setmealService.startOrStop(status, id);
@@ -94,7 +89,6 @@ public class SetmealController {
 
     @DeleteMapping
     @Operation(summary = "删除套餐以及套餐和菜品的关联关系")
-    @CacheEvict(value = "setmealCache", allEntries = true)
     public Result delete(@RequestParam List<Long> ids) {
         log.info("删除套餐，id={}", ids);
         setmealService.deleteWithDishes(ids);
