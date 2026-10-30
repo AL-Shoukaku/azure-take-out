@@ -1,13 +1,11 @@
 package com.azure.controller.user;
 
-import com.azure.cache.CacheClient;
 import com.azure.result.Result;
 import com.azure.service.ShopService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController("userShopController")  // 防止与管理端的 ShopController 冲突，指定 bean 名称

@@ -2,6 +2,27 @@
 
 记录碧蓝外卖基于《苍穹外卖》的主要功能扩展、问题修复和技术升级，按版本从新到旧排列。点击版本号可查看对应阶段的代码变更。
 
+## [v1.1.0] - 2026-10-29
+
+### 缓存体系重构
+
+- 新增 `CacheClient` 缓存组件统一管理 Redis 缓存：`getOrLoad` 封装"查询缓存、未命中加载数据并回填"，使用 Redisson 互斥锁防止缓存击穿，空结果写入缓存防止缓存穿透，过期时间 ±10% 随机抖动防止缓存雪崩。
+- 新增 `deleteByKeyAfterCommit` / `deleteByPrefixAfterCommit` 事务后清理方法：写操作处于事务中时，缓存删除注册到事务提交之后执行，避免并发读用未提交数据回填缓存，事务回滚时自动跳过。
+- 菜品、套餐、套餐内菜品与分类列表的读取路径全部接入 `CacheClient`，替换原手写 `RedisTemplate` 缓存；写操作按影响范围在事务提交后清理对应缓存。
+- 店铺状态持久化到 `shop_status` 表，查询走缓存，修改同步更新缓存。
+- 移除 Spring Cache（`@Cacheable`）机制与注解，缓存 key 统一收敛到 `RedisConstants`。
+- 清理了不再需要的旧缓存配置文件 `RedisConfiguration.java`
+
+### 升级注意事项
+
+- 数据库结构变更：新增 `shop_status` 表。已有数据库请重新导入 `db/azure.sql`，或手动执行该表的建表语句，否则店铺状态相关接口不可用。
+- Redis 旧缓存不兼容且必须清理：缓存 key 由 `dish_16` 形式调整为 `dish:16`，value 由 JDK 序列化改为 JSON，旧 key 无过期时间不会自动失效，升级后请在启动应用前执行 `FLUSHDB` 清空对应数据库。
+
+### 测试与性能基准
+
+- 新增 `performance` 基准测试包，覆盖菜品缓存重建/命中/并发冷启动、缓存穿透与分类列表查询，统计实际打库次数并输出分位数报告；基准测试隔离运行，不触碰开发数据。
+- 修复多处测试基础设施问题（Spring Cache 移除后的上下文装配、事务测试的缓存组件注入），全量测试通过。
+
 ## [v1.0.0] - 2026-10-24
 
 ### 用户端网页重写
@@ -113,6 +134,7 @@
 - 修复地址修改字段不完整、取消订单未记录取消时间，以及完成配送未记录实际送达时间等问题。
 - 修复管理端实时提醒，移除定时发送的 WebSocket 演示广播，并完善微信登录失败与 HTTP 请求异常处理。
 
+[v1.1.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/a090c6fb8328ad0a7fb383ecffea5da68c1ffb20...7608f96c0d347511acaaa66c763dc901afc09217
 [v1.0.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/00bd1d1bdf1080d3347416385a6a25e12bf2d05c...a090c6fb8328ad0a7fb383ecffea5da68c1ffb20
 [v0.4.1]: https://github.com/AL-Shoukaku/azure-take-out/compare/0cd1d5147c6970a7079b730b5da98732232a1f9a...00bd1d1bdf1080d3347416385a6a25e12bf2d05c
 [v0.4.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/085ede2ab8a3965d922f4d502cbac5821c1c0924...0cd1d5147c6970a7079b730b5da98732232a1f9a

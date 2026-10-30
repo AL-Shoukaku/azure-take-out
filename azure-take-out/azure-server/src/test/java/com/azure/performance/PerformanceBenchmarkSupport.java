@@ -18,7 +18,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -57,7 +57,8 @@ public abstract class PerformanceBenchmarkSupport {
     @MockitoBean protected OrderTask orderTask;
     @MockitoBean(name = "serverEndpointExporter") protected ServerEndpointExporter serverEndpointExporter;
 
-    @Autowired protected RedisTemplate redisTemplate;
+    // 与 CacheClient 相同的 StringRedisTemplate：保证删 key 与缓存写入的字符串 key 序列化一致
+    @Autowired protected StringRedisTemplate redisTemplate;
     @Autowired protected JdbcTemplate jdbcTemplate;
     @Autowired protected SqlSessionFactory sqlSessionFactory;
 

@@ -70,7 +70,8 @@ azure-server/
     │   │   ├── AzureApplication.java          # Spring Boot 启动类
     │   │   ├── annotation/                    # 自定义注解
     │   │   ├── aspect/                        # 公共字段自动填充等 AOP 切面
-    │   │   ├── config/                        # MVC、Redis、WebSocket、OpenAPI 配置
+    │   │   ├── cache/                         # CacheClient 缓存组件与 key、TTL 常量
+    │   │   ├── config/                        # MVC、WebSocket、OpenAPI 配置
     │   │   ├── controller/                    # 接口控制器
     │   │   │   ├── admin/                     # 管理端接口
     │   │   │   └── user/                      # 用户端接口
@@ -90,7 +91,7 @@ azure-server/
     │       ├── mapper/                        # MyBatis SQL 映射文件
     │       └── template/                      # 运营数据报表模板
     └── test/
-        ├── java/com/azure/                    # 公共模块、接口、业务、数据访问及集成测试
+        ├── java/com/azure/                    # 单元、接口、集成测试与 performance 缓存基准测试
         └── resources/                        # 测试配置与 SQL 数据
 ```
 
