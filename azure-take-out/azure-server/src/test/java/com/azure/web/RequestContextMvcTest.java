@@ -115,7 +115,7 @@ class RequestContextMvcTest extends WebTestSupport {
             assertThat(BaseContext.getCurrentId()).isEqualTo(42L);
             return Collections.emptyList();
         });
-        when(values.get("SHOP_STATUS")).thenAnswer(invocation -> {
+        when(shopService.getShopStatus()).thenAnswer(invocation -> {
             assertThat(BaseContext.getCurrentId()).isNull();
             return 1;
         });

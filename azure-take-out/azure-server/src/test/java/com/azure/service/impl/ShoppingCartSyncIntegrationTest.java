@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
@@ -42,13 +41,14 @@ class ShoppingCartSyncIntegrationTest extends TransactionTestSupport {
         inject(dishTarget, "dishFlavorMapper", transactionalMapper(DishFlavorMapper.class));
         inject(dishTarget, "setMealDishMapper", transactionalMapper(SetmealDishMapper.class));
         inject(dishTarget, "shoppingCartMapper", carts);
-        inject(dishTarget, "redisTemplate", mock(RedisTemplate.class));
+        inject(dishTarget, "cacheClient", mockedCacheClient());
         dishes = transactionalService(dishTarget, DishServiceImpl.class);
 
         setmealTarget = new SetmealServiceImpl();
         inject(setmealTarget, "setmealMapper", transactionalMapper(SetmealMapper.class));
         inject(setmealTarget, "setmealDishMapper", transactionalMapper(SetmealDishMapper.class));
         inject(setmealTarget, "shoppingCartMapper", carts);
+        inject(setmealTarget, "cacheClient", mockedCacheClient());
         setmeals = transactionalService(setmealTarget, SetmealServiceImpl.class);
     }
 

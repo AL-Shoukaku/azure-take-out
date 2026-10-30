@@ -1,5 +1,8 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.azure.constant.MessageConstant;
@@ -34,6 +37,8 @@ public class CategoryServiceImpl implements CategoryService {
     private DishMapper dishMapper;
     @Autowired
     private SetmealMapper setmealMapper;
+    @Autowired
+    private CacheClient cacheClient;
 
     /**
      * 新增分类
@@ -85,6 +90,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         //删除分类数据
         categoryMapper.deleteById(id);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.CATEGORY_KEY_PREFIX);
     }
 
     /**
@@ -98,6 +104,8 @@ public class CategoryServiceImpl implements CategoryService {
         // 修改时间，修改人使用切面自动填充
 
         categoryMapper.update(category);
+
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.CATEGORY_KEY_PREFIX);
     }
 
     /**
@@ -113,14 +121,17 @@ public class CategoryServiceImpl implements CategoryService {
                 .updateUser(BaseContext.getCurrentId())
                 .build();
         categoryMapper.update(category);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.CATEGORY_KEY_PREFIX);
     }
 
     /**
-     * 根据类型查询分类
-     * @param type
-     * @return
+     * 用户端用于根据分类的类型查询分类列表
+     * @param type  分类类型：1：菜品分类，2：套餐分类
+     * @return      该类型分类的列表
      */
     public List<Category> list(Integer type) {
-        return categoryMapper.list(type);
+        String key = RedisConstants.CATEGORY_KEY_PREFIX + type;
+        return cacheClient.getOrLoad(key, new TypeReference<List<Category>>() {},
+                () -> categoryMapper.list(type), RedisConstants.CACHE_CATEGORY_TTL);
     }
 }

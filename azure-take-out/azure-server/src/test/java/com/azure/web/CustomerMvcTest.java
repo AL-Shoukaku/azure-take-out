@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -80,36 +79,20 @@ class CustomerMvcTest extends WebTestSupport {
         successful(user(delete("/user/shoppingCart/clean"))); verify(shoppingCartService).cleanShoppingCart();
     }
     @ParameterizedTest @ValueSource(ints={0,1})
-    void userShopStatusIsPublicAndAdminStatusUsesSameRedisKey(int state) throws Exception {
-        when(values.get("SHOP_STATUS")).thenReturn(state);
+    void shopStatusIsReadableWithoutLoginAndAdminUpdateDelegatesToService(int state) throws Exception {
+        when(shopService.getShopStatus()).thenReturn(state);
         successful(get("/user/shop/status")).andExpect(jsonPath("$.data").value(state));
         successful(admin(get("/admin/shop/status"))).andExpect(jsonPath("$.data").value(state));
-        successful(admin(put("/admin/shop/"+state))); verify(values).set("SHOP_STATUS",state);
+        successful(admin(put("/admin/shop/"+state))); verify(shopService).updateShopStatus(state);
     }
-    @Test void missingShopStatusIsReadableBeforeUserLoginAndDefaultsToClosed() throws Exception {
-        when(values.get("SHOP_STATUS")).thenReturn(null);
+    @Test void shopStatusIsReadableWithoutUserLogin() throws Exception {
+        when(shopService.getShopStatus()).thenReturn(0);
         successful(get("/user/shop/status")).andExpect(jsonPath("$.data").value(0));
         assertThat(BaseContext.getCurrentId()).isNull();
     }
-    @Test void missingShopStatusIsReadableForAdministratorAndDefaultsToClosed() throws Exception {
-        when(values.get("SHOP_STATUS")).thenReturn(null);
+    @Test void shopStatusIsReadableForAdministrator() throws Exception {
+        when(shopService.getShopStatus()).thenReturn(0);
         successful(admin(get("/admin/shop/status"))).andExpect(jsonPath("$.data").value(0));
         assertThat(BaseContext.getCurrentId()).isNull();
-    }
-    @Test void statusInitializationMustNotOverwriteAnOpeningRequest() throws Exception {
-        AtomicReference<Integer> stored = new AtomicReference<>();
-        doAnswer(invocation -> {
-            stored.set((Integer) invocation.getArgument(1));
-            return null;
-        }).when(values).set(eq("SHOP_STATUS"),anyInt());
-        when(values.get("SHOP_STATUS")).thenAnswer(invocation -> {
-            Integer observed = stored.get();
-            // PUT completes after GET observes a missing key, before GET returns its default.
-            successful(admin(put("/admin/shop/1")));
-            assertThat(stored.get()).isEqualTo(1);
-            return observed;
-        });
-        successful(admin(get("/admin/shop/status")));
-        assertThat(stored.get()).isEqualTo(1);
     }
 }

@@ -7,7 +7,6 @@ import com.azure.utils.JwtUtil;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
-import org.springframework.data.redis.core.*;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -38,8 +37,7 @@ public abstract class WebTestSupport {
     @Autowired protected UserService userService;
     @Autowired protected ReportService reportService;
     @Autowired protected WorkspaceService workspaceService;
-    @Autowired protected RedisTemplate redisTemplate;
-    @Autowired protected ValueOperations values;
+    @Autowired protected ShopService shopService;
     @Autowired protected CacheManager cacheManager;
     protected MockMvc mvc;
     @Autowired protected ObjectMapper json;
@@ -50,9 +48,8 @@ public abstract class WebTestSupport {
     @DynamicPropertySource static void uploadProperties(DynamicPropertyRegistry registry) { registry.add("azure.upload-path",UPLOADS::toString); }
     @BeforeEach void initializeMvc() {
         reset(employeeService,categoryService,dishService,setmealService,addressBookService,shoppingCartService,
-                ordersService,userService,reportService,workspaceService,redisTemplate,values);
+                ordersService,userService,reportService,workspaceService,shopService);
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
-        when(redisTemplate.opsForValue()).thenReturn(values); when(values.get("SHOP_STATUS")).thenReturn(1);
         BaseContext.removeCurrentId(); mvc = MockMvcBuilders.webAppContextSetup(context).build();
     }
     @AfterEach void clearMvcState() throws IOException {

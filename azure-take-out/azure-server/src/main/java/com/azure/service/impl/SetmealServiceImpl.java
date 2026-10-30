@@ -1,5 +1,8 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.azure.constant.MessageConstant;
@@ -39,6 +42,9 @@ public class SetmealServiceImpl implements SetmealService {
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
 
+    @Autowired
+    private CacheClient cacheClient;
+
     /**
      * 保存套餐信息，同时保存套餐和菜品的关联关系
      * 需要同步购物车中的数据
@@ -62,6 +68,9 @@ public class SetmealServiceImpl implements SetmealService {
         setmealDishMapper.batchInsert(dishes);
 
         updateShoppingCart(setmealId);
+
+        // 新套餐影响所属分类的套餐列表缓存（事务提交后执行）
+        cacheClient.deleteByKeyAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX + setmeal.getCategoryId());
     }
 
     /**
@@ -119,6 +128,10 @@ public class SetmealServiceImpl implements SetmealService {
 
         // 同步更新购物车中对应的套餐数据
         updateShoppingCart(setmeal.getId());
+
+        // 修改可能换了分类，且套餐内菜品也会变化，直接按前缀清空两类缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
 
     /**
@@ -139,8 +152,16 @@ public class SetmealServiceImpl implements SetmealService {
             updateShoppingCart(id);
         }
 
+        // 起售状态影响分类列表缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
 
+    /**
+     * 删除套餐信息，同时删除套餐和菜品的关联关系
+     * 需要同步更新购物车中对应的套餐数据
+     * @param ids   要删除的套餐 id 列表
+     */
     @Override
     @Transactional
     public void deleteWithDishes(List<Long> ids) {
@@ -159,27 +180,36 @@ public class SetmealServiceImpl implements SetmealService {
         for (Long id : ids) {
             updateShoppingCart(id);
         }
+
+        // 删除的套餐分布在不同分类，直接按前缀清空两类缓存（事务提交后执行）
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEAL_KEY_PREFIX);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
 
     /**
-     * 条件查询
-     * @param setmeal
-     * @return
+     * 根据 setmeal 中的信息查询对应的套餐列表，包含分类 id 和起售状态
+     * 用于用户端查询套餐，管理端不用
+     * @param setmeal   套餐对象，包含分类 id 和起售状态
+     * @return          查询出的曹参列表
      */
     @Override
     public List<Setmeal> list(Setmeal setmeal) {
-        List<Setmeal> list = setmealMapper.list(setmeal);
-        return list;
+        String key = RedisConstants.SETMEAL_KEY_PREFIX + setmeal.getCategoryId();
+        return cacheClient.getOrLoad(key, new TypeReference<List<Setmeal>>() {},
+                () -> setmealMapper.list(setmeal), RedisConstants.CACHE_SETMEAL_TTL);
     }
 
     /**
-     * 根据id查询菜品选项
-     * @param id
-     * @return
+     * 根据套餐 id 查询套餐中的菜品列表
+     * 用于用户端查询套餐详情，管理端不用
+     * @param id    套餐 id
+     * @return      查询出的套餐中的菜品列表
      */
     @Override
     public List<DishItemVO> getDishItemById(Long id) {
-        return setmealMapper.getDishItemBySetmealId(id);
+        String key = RedisConstants.SETMEALDISH_KEY_PREFIX + id;
+        return cacheClient.getOrLoad(key, new TypeReference<List<DishItemVO>>() {},
+                () -> setmealMapper.getDishItemBySetmealId(id), RedisConstants.CACHE_SETMEALDISH_TTL);
     }
 
     private void updateShoppingCart(Long setmealId) {

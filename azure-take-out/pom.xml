@@ -12,7 +12,7 @@
     <groupId>com.azure</groupId>
     <artifactId>azure-take-out</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <modules>
         <module>azure-common</module>
         <module>azure-pojo</module>
@@ -38,6 +38,7 @@
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <!--        Argon2id      -->
         <bouncycastle.version>1.86</bouncycastle.version>
+        <redisson.version>3.50.0</redisson.version>
     </properties>
     <dependencyManagement>
         <dependencies>

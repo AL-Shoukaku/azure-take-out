@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,6 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -46,6 +49,7 @@ class OrderSubmissionMvcIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     // 测试用：通过 MockitoBean 替换测试上下文中的组件，保持原有模拟范围。
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean private RedissonClient redissonClient;
     @MockitoBean(name="serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
     @MockitoBean private OrderTask orderTask;
     @MockitoBean private WebSocketServer webSocketServer;
@@ -54,6 +58,8 @@ class OrderSubmissionMvcIntegrationTest {
         // Separate HTTP requests use separate production transactions and MyBatis sessions.
         new ResourceDatabasePopulator(new ClassPathResource("sql/schema.sql"),new ClassPathResource("sql/data.sql"))
                 .execute(jdbc.getDataSource());
+        // 事务提交后 CacheClient 会按前缀清理缓存，给 RedissonClient mock 补上 keys 入口
+        when(redissonClient.getKeys()).thenReturn(mock(org.redisson.api.RKeys.class));
     }
     @AfterEach void clearIdentity() { BaseContext.removeCurrentId(); }
 

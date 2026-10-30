@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -49,6 +50,7 @@ class EmployeePermissionMvcIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PasswordHasher passwordHasher;
     @MockitoBean private LettuceConnectionFactory redisConnectionFactory;
+    @MockitoBean private RedissonClient redissonClient;
     @MockitoBean(name = "serverEndpointExporter") private ServerEndpointExporter serverEndpointExporter;
     @MockitoBean private OrderTask orderTask;
 

@@ -1197,3 +1197,10 @@ INSERT INTO `user` (`id`, `account`, `password`, `username`, `name`, `status`, `
   (22, 'demo22', '$argon2id$v=19$m=19456,t=2,p=1$9U4+A42KJSoujptZHKfKwA$r7qaC1bA17Nn7JCKL2vwrbzQakghw84ju42fbGop9g8', '许朝', '许朝', 1, '13900000022', '0', NULL, NULL, DATE_SUB(@demo_now, INTERVAL 5 DAY), DATE_SUB(@demo_now, INTERVAL 5 DAY)),
   (23, 'demo23', '$argon2id$v=19$m=19456,t=2,p=1$xs0EBBPzQZZJ18vMX3F//g$qKIUJWGcwAeslc/92yYXSs1bYLRyTKHgkBzL7gXEeEc', '纪安', '纪安', 1, '13900000023', '1', NULL, NULL, DATE_SUB(@demo_now, INTERVAL 3 DAY), DATE_SUB(@demo_now, INTERVAL 3 DAY)),
   (24, 'demo24', '$argon2id$v=19$m=19456,t=2,p=1$lbhM5h5qoPOt7wDgQ6vhag$tz97e9GuSvWlj13KvQNvKdAbbZ3o6485bXw2I8dc85g', '陈澄', '陈澄', 1, '13900000024', '0', NULL, NULL, DATE_SUB(@demo_now, INTERVAL 60 MINUTE), DATE_SUB(@demo_now, INTERVAL 60 MINUTE));
+
+# 店铺营业状态的持久化存储
+CREATE TABLE shop_status (
+     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键id',
+     status TINYINT NOT NULL DEFAULT 0 COMMENT '店铺状态，0=打样，1=营业'
+);
+INSERT INTO shop_status (status) VALUES (0);

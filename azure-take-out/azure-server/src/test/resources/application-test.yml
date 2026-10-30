@@ -1,5 +1,8 @@
 # Test-only configuration: never read application-local.yml or contact local services.
 spring:
+  autoconfigure:
+    # 测试不加载 Redisson 自动配置（其注册的连接工厂会与测试 mock 的 Lettuce 工厂冲突），RedissonClient 由各测试类 @MockitoBean 提供
+    exclude: org.redisson.spring.starter.RedissonAutoConfigurationV2
   datasource:
     druid:
       driver-class-name: org.h2.Driver

@@ -11,7 +11,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.*;
-import org.springframework.data.redis.core.*;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import static org.mockito.Mockito.*;
@@ -44,7 +43,6 @@ public class WebTestConfiguration {
     @Bean public UserService userService() { return mock(UserService.class); }
     @Bean public ReportService reportService() { return mock(ReportService.class); }
     @Bean public WorkspaceService workspaceService() { return mock(WorkspaceService.class); }
-    @Bean public RedisTemplate redisTemplate() { return mock(RedisTemplate.class); }
-    @Bean public ValueOperations valueOperations() { return mock(ValueOperations.class); }
+    @Bean public ShopService shopService() { return mock(ShopService.class); }
     @Bean public CacheManager cacheManager() { return new ConcurrentMapCacheManager("setmealCache","setmealDishCache"); }
 }
