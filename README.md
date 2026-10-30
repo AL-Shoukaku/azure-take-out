@@ -1,6 +1,6 @@
 # 碧蓝外卖(azure-take-out) —— 基于《苍穹外卖》二次开发的外卖演示平台
 
-![Version](https://img.shields.io/badge/version-v1.0.0-blue)
+![Version](https://img.shields.io/badge/version-v1.1.0-blue)
 
 ## 📖 项目简介
 
