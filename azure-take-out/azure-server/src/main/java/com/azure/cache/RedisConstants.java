@@ -21,6 +21,6 @@ public class RedisConstants {
 
     // 获取互斥锁的最大重试次数
     public static final int LOCK_MAX_RETRY_COUNT = 5;
-    // 删除缓存失败时的最大重试次数
-    public static final int DELETE_CACHE_MAX_RETRY_COUNT = 5;
+    // 删除缓存的尝试次数
+    public static final int DELETE_CACHE_MAX_ATTEMPTS = 3;
 }

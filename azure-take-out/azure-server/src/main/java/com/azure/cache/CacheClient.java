@@ -1,11 +1,15 @@
 package com.azure.cache;
 
+import com.azure.exception.CacheBusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.RedisException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -14,7 +18,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static jodd.util.ThreadUtil.sleep;
+
 @Component
+@Slf4j
 public class CacheClient {
 
     @Autowired
@@ -70,7 +77,7 @@ public class CacheClient {
                 Thread.sleep(50); // 等待 50 毫秒后重试
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("缓存加载被中断", e);
+                throw new CacheBusinessException("缓存加载被中断", e);
             }
             value = stringRedisTemplate.opsForValue().get(key);
             if (value != null) {
@@ -79,7 +86,7 @@ public class CacheClient {
             lockAcquired = lock.tryLock();
         }
         if (!lockAcquired) {
-            throw new RuntimeException("无法获取缓存锁！");
+            throw new CacheBusinessException("无法获取缓存锁！");
         }
 
         // 获取到锁后，先加载并缓存数据，最后释放锁
@@ -128,7 +135,7 @@ public class CacheClient {
      * @param key        缓存的键
      */
     public void deleteByKeyAfterCommit(String key) {
-        runAfterCommit(() -> deleteByKey(key));
+        runAfterCommit(key, () -> deleteByKey(key));
     }
 
     /**
@@ -136,20 +143,52 @@ public class CacheClient {
      * @param prefix     批量删除缓存的前缀
      */
     public void deleteByPrefixAfterCommit(String prefix) {
-        runAfterCommit(() -> deleteByPrefix(prefix));
+        runAfterCommit(prefix + "*", () -> deleteByPrefix(prefix));
     }
 
     /** 有活跃事务时把删除动作挂到 afterCommit，否则立即执行 */
-    private void runAfterCommit(Runnable delete) {
+    private void runAfterCommit(String target, Runnable delete) {
+        Runnable deleteWithRetry = () -> deleteWithRetry(target, delete);
+
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    delete.run();
+                    deleteWithRetry.run();
                 }
             });
         } else {
-            delete.run();
+            deleteWithRetry.run();
+        }
+    }
+
+    /**
+     * 调用删除缓存的 Runnable，若抛出异常则重试，超过重试次数则记录异常日志
+     * @param target    要删除缓存的目标，日志中使用
+     * @param delete    Runnable 删除缓存的操作
+     */
+    private void deleteWithRetry(String target, Runnable delete) {
+        for (int retry = 1; retry <= RedisConstants.DELETE_CACHE_MAX_ATTEMPTS; retry++) {
+            try {
+                delete.run();
+                return;
+            } catch(DataAccessException | RedisException e) {
+                log.warn("删除缓存失败，重试中...，目标：{}，重试次数：{}", target, retry, e);
+
+                if (retry == RedisConstants.DELETE_CACHE_MAX_ATTEMPTS) {
+                    log.error("删除缓存失败，超过最大重试次数，目标：{}", target, e);
+                    return;
+                }
+
+                int waitTime = (retry) * 100;
+                try {
+                    Thread.sleep(waitTime);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    log.error("删除缓存重试等待被中断，目标：{}，重试次数：{}", target, retry, ex);
+                    return;
+                }
+            }
         }
     }
 
@@ -162,7 +201,7 @@ public class CacheClient {
         try {
             return objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("无法将对象序列化为JSON！", e);
+            throw new CacheBusinessException("无法将对象序列化为JSON！", e);
         }
     }
 
@@ -177,7 +216,7 @@ public class CacheClient {
         try {
             return objectMapper.readValue(value, type);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("无法将JSON反序列化为对象！", e);
+            throw new CacheBusinessException("无法将JSON反序列化为对象！", e);
         }
     }
 }

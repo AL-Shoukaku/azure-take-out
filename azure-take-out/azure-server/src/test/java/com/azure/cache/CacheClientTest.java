@@ -1,5 +1,7 @@
 package com.azure.cache;
 
+import com.azure.exception.CacheBusinessException;
+import com.azure.handler.GlobalExceptionHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,8 +14,11 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -21,6 +26,9 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class CacheClientTest {
 
@@ -40,6 +48,21 @@ class CacheClientTest {
     private final TypeReference<Dish> dishType = new TypeReference<>() {};
 
     record Dish(Long id, String name) {}
+
+    @RestController
+    static class CacheTestController {
+
+        private final CacheClient cacheClient;
+
+        CacheTestController(CacheClient cacheClient) {
+            this.cacheClient = cacheClient;
+        }
+
+        @GetMapping("/cache-test")
+        public Dish getDish() {
+            return cacheClient.getOrLoad(KEY, new TypeReference<Dish>() {}, () -> DISH, 300);
+        }
+    }
 
     @BeforeEach
     void setUp() {
@@ -153,23 +176,75 @@ class CacheClientTest {
     }
 
     @Test
-    void getOrLoadWrapsDeserializationFailureInRuntimeError() throws JsonProcessingException {
+    void getOrLoadWrapsDeserializationFailureInBusinessException() throws JsonProcessingException {
+        JsonProcessingException cause = mock(JsonProcessingException.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get(KEY)).thenReturn("not-json");
-        when(objectMapper.readValue("not-json", dishType)).thenThrow(mock(JsonProcessingException.class));
+        when(objectMapper.readValue("not-json", dishType)).thenThrow(cause);
 
         assertThatThrownBy(() -> cacheClient.getOrLoad(KEY, dishType, loaderShouldNotRun(), 300))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("反序列化");
+                .isInstanceOf(CacheBusinessException.class)
+                .hasMessageContaining("反序列化")
+                .hasCause(cause);
     }
 
     @Test
-    void setWrapsSerializationFailureInRuntimeError() throws JsonProcessingException {
-        when(objectMapper.writeValueAsString(any())).thenThrow(mock(JsonProcessingException.class));
+    void setWrapsSerializationFailureInBusinessException() throws JsonProcessingException {
+        JsonProcessingException cause = mock(JsonProcessingException.class);
+        when(objectMapper.writeValueAsString(any())).thenThrow(cause);
 
         assertThatThrownBy(() -> cacheClient.set(KEY, DISH, 300))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("序列化");
+                .isInstanceOf(CacheBusinessException.class)
+                .hasMessageContaining("序列化")
+                .hasCause(cause);
+    }
+
+    @Test
+    void getOrLoadThrowsBusinessExceptionWhenLockRetriesAreExhausted() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(redissonClient.getLock("lock:" + KEY)).thenReturn(lock);
+        when(lock.tryLock()).thenReturn(false);
+
+        assertThatThrownBy(() -> cacheClient.getOrLoad(KEY, dishType, loaderShouldNotRun(), 300))
+                .isInstanceOf(CacheBusinessException.class)
+                .hasMessage("无法获取缓存锁！");
+
+        verify(lock, times(1 + RedisConstants.LOCK_MAX_RETRY_COUNT)).tryLock();
+        verify(lock, never()).unlock();
+    }
+
+    @Test
+    void getOrLoadPreservesInterruptWhenThrowingBusinessException() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(redissonClient.getLock("lock:" + KEY)).thenReturn(lock);
+        when(lock.tryLock()).thenReturn(false);
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThatThrownBy(() -> cacheClient.getOrLoad(KEY, dishType, loaderShouldNotRun(), 300))
+                    .isInstanceOf(CacheBusinessException.class)
+                    .hasMessage("缓存加载被中断")
+                    .hasCauseInstanceOf(InterruptedException.class);
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+            verify(lock, never()).unlock();
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    void cacheFailureReturnsUnifiedBusinessErrorThroughGlobalHandler() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(redissonClient.getLock("lock:" + KEY)).thenReturn(lock);
+        when(lock.tryLock()).thenReturn(false);
+
+        MockMvcBuilders.standaloneSetup(new CacheTestController(cacheClient))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build()
+                .perform(get("/cache-test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value("无法获取缓存锁！"));
     }
 
     @Test

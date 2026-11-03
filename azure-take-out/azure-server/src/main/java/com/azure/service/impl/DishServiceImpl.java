@@ -163,6 +163,7 @@ public class DishServiceImpl implements DishService {
 
         // 清空所有菜品缓存（事务提交后执行）
         cacheClient.deleteByPrefixAfterCommit(RedisConstants.DISH_KEY_PREFIX);
+        cacheClient.deleteByPrefixAfterCommit(RedisConstants.SETMEALDISH_KEY_PREFIX);
     }
 
     /**
