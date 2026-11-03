@@ -2,6 +2,15 @@
 
 记录碧蓝外卖基于《苍穹外卖》的主要功能扩展、问题修复和技术升级，按版本从新到旧排列。点击版本号可查看对应阶段的代码变更。
 
+## [v1.1.1] - 2026-11-03
+
+### 缓存体系的问题修复
+
+- 在 `CacheClient` 中进行缓存更新时，增加了重试 5 次的上限，避免线程一直无法获取锁导致阻塞。
+- 在 `CacheClient` 中进行缓存删除时，新增了删除失败的重试机制，最多尝试 3 次删除缓存。
+- 更新菜品时会同时清理套餐内菜品缓存，解决套餐内菜品信息不一致的问题。
+- 补充了缓存相关的业务异常。
+
 ## [v1.1.0] - 2026-10-29
 
 ### 缓存体系重构
@@ -134,6 +143,7 @@
 - 修复地址修改字段不完整、取消订单未记录取消时间，以及完成配送未记录实际送达时间等问题。
 - 修复管理端实时提醒，移除定时发送的 WebSocket 演示广播，并完善微信登录失败与 HTTP 请求异常处理。
 
+[v1.1.1]: https://github.com/AL-Shoukaku/azure-take-out/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/AL-Shoukaku/azure-take-out/compare/v0.4.1...v1.0.0
 [v0.4.1]: https://github.com/AL-Shoukaku/azure-take-out/compare/v0.4.0...v0.4.1
