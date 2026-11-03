@@ -18,4 +18,9 @@ public class RedisConstants {
     public static final long CACHE_SETMEAL_TTL = 30 * 60;           // 套餐缓存过期时间
     public static final long CACHE_SETMEALDISH_TTL = 30 * 60;     // 套餐内订单缓存过期时间
     public static final long CACHE_CATEGORY_TTL = 30 * 60;         // 分类缓存过期时间
+
+    // 获取互斥锁的最大重试次数
+    public static final int LOCK_MAX_RETRY_COUNT = 5;
+    // 删除缓存失败时的最大重试次数
+    public static final int DELETE_CACHE_MAX_RETRY_COUNT = 5;
 }

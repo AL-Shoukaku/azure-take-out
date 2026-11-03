@@ -63,15 +63,23 @@ public class CacheClient {
         RLock lock = redissonClient.getLock(lockKey);
         boolean lockAcquired = lock.tryLock();
 
-        // 如果未获取到锁，说明其他线程正在加载数据，当前线程可以选择等待一段时间后重试
-        if (!lockAcquired) {
+        // 获取不到锁，最多重试 5 次，每次等待 50 毫秒，检查缓存仍未命中时重试
+        for (int retry = 0; retry < RedisConstants.LOCK_MAX_RETRY_COUNT && !lockAcquired; retry++) {
+
             try {
                 Thread.sleep(50); // 等待 50 毫秒后重试
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("缓存加载被中断", e);
             }
-            return getOrLoad(key, type, loader, ttl); // 递归重试
+            value = stringRedisTemplate.opsForValue().get(key);
+            if (value != null) {
+                return (value.isEmpty()) ? null : deSerialize(value, type);
+            }
+            lockAcquired = lock.tryLock();
+        }
+        if (!lockAcquired) {
+            throw new RuntimeException("无法获取缓存锁！");
         }
 
         // 获取到锁后，先加载并缓存数据，最后释放锁
