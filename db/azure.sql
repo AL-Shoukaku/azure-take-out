@@ -1219,7 +1219,7 @@ CREATE TABLE `coupon` (
   `price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '购买价格，满减券为0，发放后固定',
   `start_time` datetime NOT NULL COMMENT '领取或购券开始时间，包含此时刻',
   `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态 0停售 1起售，停售不影响已到账券',
-  `valid_time` int NOT NULL COMMENT '到账后有效时长，单位秒，发放后固定',
+  `valid_time` int NOT NULL COMMENT '到账后有效时长，单位天，发放后固定',
   `end_time` datetime NOT NULL COMMENT '领取或购券结束时间，不包含此时刻',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime NOT NULL COMMENT '最后修改时间',
