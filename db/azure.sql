@@ -1,4 +1,4 @@
--- 碧蓝外卖完整演示数据。将重建 azure_take_out 全部 11 张表，导入前请备份自己的数据。
+-- 碧蓝外卖完整演示数据及优惠券表结构，共 16 张表，导入前请备份自己的数据。
 -- 商品图片已随仓库保存在 assets/initImage，Maven 构建时自动打包；无需额外下载或复制图片。
 -- 管理员 admin、店员 staff、用户 demo01 ~ demo24，密码均为 123456，使用独立随机盐的 Argon2id 哈希。
 -- 日期基于导入时间：过去30天营业数据 + 当前订单；账号 demo01 可演示全部六种订单状态。
@@ -1204,3 +1204,96 @@ CREATE TABLE shop_status (
      status TINYINT NOT NULL DEFAULT 0 COMMENT '店铺状态，0=打样，1=营业'
 );
 INSERT INTO shop_status (status) VALUES (0);
+
+-- 优惠券模块：使用逻辑外键；跨表归属校验、状态流转和库存操作的事务一致性由业务层保证。
+-- 以下仅创建表结构，不插入优惠券演示数据。
+DROP TABLE IF EXISTS `coupon`;
+CREATE TABLE `coupon` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键，每条记录对应一次发放批次',
+  `type` tinyint NOT NULL COMMENT '优惠券类型 1代金券 2满减券',
+  `name` varchar(32) NOT NULL COMMENT '优惠券名称',
+  `stock` int NOT NULL COMMENT '剩余可发放库存，购券预占时扣减，未支付关闭时归还',
+  `total_stock` int NOT NULL COMMENT '总库存，存在领取或购券记录后固定',
+  `discount_amount` decimal(10,2) NOT NULL COMMENT '券面额，发放后固定',
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '满减门槛，代金券为0，发放后固定',
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '购买价格，满减券为0，发放后固定',
+  `start_time` datetime NOT NULL COMMENT '领取或购券开始时间，包含此时刻',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态 0停售 1起售，停售不影响已到账券',
+  `valid_time` int NOT NULL COMMENT '到账后有效时长，单位秒，发放后固定',
+  `end_time` datetime NOT NULL COMMENT '领取或购券结束时间，不包含此时刻',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `update_time` datetime NOT NULL COMMENT '最后修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_coupon_status_time` (`status`, `start_time`, `end_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='优惠券模板及发放批次';
+
+DROP TABLE IF EXISTS `user_coupon`;
+CREATE TABLE `user_coupon` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id` bigint NOT NULL COMMENT '用户id，逻辑关联user.id',
+  `coupon_id` bigint NOT NULL COMMENT '模板id，逻辑关联coupon.id，每用户每批次限领一张',
+  `number` varchar(50) NOT NULL COMMENT '券号，付费券与coupon_order.coupon_number一致',
+  `type` tinyint NOT NULL COMMENT '券类型快照 1代金券 2满减券',
+  `name` varchar(32) NOT NULL COMMENT '券名称快照',
+  `discount_amount` decimal(10,2) NOT NULL COMMENT '券面额快照',
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '门槛快照，代金券为0',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态 0未使用 1锁定中 2已使用 3已过期 4购券款已退款',
+  `lock_order_id` bigint DEFAULT NULL COMMENT '逻辑关联orders.id，状态1、2保留原订单，其余为空',
+  `expire_time` datetime NOT NULL COMMENT '生效时间加发放时有效时长，退券不延长',
+  `create_time` datetime NOT NULL COMMENT '免费领取成功时间或付费购券支付成功时间',
+  `use_time` datetime DEFAULT NULL COMMENT '核销时间，仅状态2非空',
+  `refund_time` datetime DEFAULT NULL COMMENT '购券退款时间，仅状态4非空',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_coupon_number` (`number`),
+  UNIQUE KEY `uk_user_coupon_user_template` (`user_id`, `coupon_id`),
+  KEY `idx_user_coupon_user_status_expire` (`user_id`, `status`, `expire_time`),
+  KEY `idx_user_coupon_status_expire` (`status`, `expire_time`),
+  KEY `idx_user_coupon_lock_order` (`lock_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='用户持有的优惠券';
+
+DROP TABLE IF EXISTS `coupon_use_record`;
+CREATE TABLE `coupon_use_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` bigint NOT NULL COMMENT '外卖订单id，逻辑关联orders.id',
+  `user_id` bigint NOT NULL COMMENT '用户id，须与订单用户及用户券归属一致',
+  `coupon_id` bigint NOT NULL COMMENT '模板id，须与用户券的coupon_id一致',
+  `user_coupon_id` bigint NOT NULL COMMENT '逻辑关联user_coupon.id，退券后可用于其他订单',
+  `number` varchar(50) NOT NULL COMMENT '用户券编号快照，不设唯一约束',
+  `type` tinyint NOT NULL COMMENT '券类型快照 1代金券 2满减券',
+  `name` varchar(32) NOT NULL COMMENT '券名称快照',
+  `discount_amount` decimal(10,2) NOT NULL COMMENT '券面额快照，不表示逐券实际抵扣金额',
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '门槛快照，代金券为0',
+  `create_time` datetime NOT NULL COMMENT '本次订单锁券时间，取消或退券后保留记录',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_coupon_use_order_coupon` (`order_id`, `user_coupon_id`),
+  KEY `idx_coupon_use_user_coupon` (`user_coupon_id`),
+  KEY `idx_coupon_use_user_time` (`user_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='外卖订单用券记录及规则快照';
+
+DROP TABLE IF EXISTS `coupon_order`;
+CREATE TABLE `coupon_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id` bigint NOT NULL COMMENT '用户id，逻辑关联user.id，同用户同模板限一笔待支付订单由业务层保证',
+  `coupon_id` bigint NOT NULL COMMENT '模板id，逻辑关联coupon.id，允许未支付关闭后重新购买',
+  `number` varchar(50) NOT NULL COMMENT '购券订单号，创建后不变',
+  `coupon_number` varchar(50) NOT NULL COMMENT '预生成的唯一券号，支付成功后创建对应用户券',
+  `username` varchar(32) NOT NULL COMMENT '下单时用户名快照',
+  `coupon_name` varchar(32) NOT NULL COMMENT '下单时券名称快照',
+  `type` tinyint NOT NULL COMMENT '券类型，当前仅允许1付费代金券',
+  `price` decimal(10,2) NOT NULL COMMENT '购买价格快照，购券退款按此金额退回',
+  `discount_amount` decimal(10,2) NOT NULL COMMENT '下单时券面额快照',
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '门槛快照，付费代金券固定为0',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态 0未支付 1已支付 2已退款 3已关闭，仅允许0到1、0到3、1到2',
+  `pay_deadline` datetime NOT NULL COMMENT '支付截止时间，创建后固定，到达此时间禁止支付',
+  `create_time` datetime NOT NULL COMMENT '订单创建时间，与库存预占同事务提交',
+  `pay_time` datetime DEFAULT NULL COMMENT '支付时间，仅状态1、2非空',
+  `cancel_time` datetime DEFAULT NULL COMMENT '关闭时间，仅状态3非空',
+  `refund_time` datetime DEFAULT NULL COMMENT '退款时间，仅状态2非空',
+  `cancel_reason` varchar(255) DEFAULT NULL COMMENT '关闭原因，状态3时必须非空且非空白',
+  `refund_reason` varchar(255) DEFAULT NULL COMMENT '退款原因，状态2时必须非空且非空白',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_coupon_order_number` (`number`),
+  UNIQUE KEY `uk_coupon_order_coupon_number` (`coupon_number`),
+  KEY `idx_coupon_order_user_template_status` (`user_id`, `coupon_id`, `status`),
+  KEY `idx_coupon_order_status_deadline` (`status`, `pay_deadline`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='优惠券购买订单';
