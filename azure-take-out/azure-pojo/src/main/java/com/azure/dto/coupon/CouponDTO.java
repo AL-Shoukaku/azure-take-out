@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
 @Data
 public class CouponDTO {
 
+    /** 优惠券ID */
+    private Long id;
+
     @NotNull(message = "优惠券名称不能 null")
     @NotBlank(message = "优惠券名称不能为空")
     /** 优惠券名称 */
@@ -29,11 +32,11 @@ public class CouponDTO {
     /** 抵扣金额 */
     private double discountAmount;
 
-    @Positive(message = "满减券的门槛金额必须大于 0")
+    @Min(value = 0, message = "满减券的门槛金额不能小于 0")
     /** 满减券的门槛金额 */
     private double thresholdAmount;
 
-    @Positive(message = "代金券的购买价格必须大于 0")
+    @Min(value = 0, message = "代金券的购买价格不能小于 0")
     /** 代金券的购买价格 */
     private double price;
 
