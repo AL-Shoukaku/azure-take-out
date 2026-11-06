@@ -29,6 +29,9 @@ export async function mockLayoutAPIs(page: Page) {
   await page.route('**/api/category/list?**', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: [] } }),
   )
+  await page.route('**/api/coupon/pageQuery', (route) =>
+    route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
+  )
   await page.route('**/api/order/conditionSearch?**', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
   )

@@ -56,6 +56,9 @@ describe('登录路由守卫', () => {
     '/order',
     '/dish',
     '/setmeal',
+    '/coupon',
+    '/coupon/add',
+    '/coupon/add?id=2',
     '/category',
     '/employee',
     '/employee/add',
@@ -72,6 +75,7 @@ describe('登录路由守卫', () => {
     ['/order', '订单管理'],
     ['/dish', '菜品管理'],
     ['/setmeal', '套餐管理'],
+    ['/coupon', '优惠券管理'],
     ['/category', '分类管理'],
     ['/employee', '员工管理'],
   ])('登录后可以打开 %s，页面归属公共后台布局', async (path, pageTitle) => {
@@ -87,6 +91,27 @@ describe('登录路由守卫', () => {
     const router = createAppRouter(createMemoryHistory())
     await router.push('/login')
     expect(router.currentRoute.value.path).toBe('/login')
+  })
+
+  it.each(['0', '-1', 'abc', '1.5', '', '9007199254740992'])(
+    '优惠券修改拒绝非法 id=%s',
+    async (id) => {
+      setToken('persisted-token')
+      const router = createAppRouter(createMemoryHistory())
+      await router.push(`/coupon/add?id=${id}`)
+      expect(router.currentRoute.value.path).toBe('/coupon')
+    },
+  )
+
+  it('优惠券新建、修改共用表单并保留菜单归属', async () => {
+    setToken('persisted-token')
+    const router = createAppRouter(createMemoryHistory())
+    await router.push('/coupon/add')
+    expect(router.currentRoute.value.meta.activeMenu).toBe('/coupon')
+    await router.push('/coupon/add?id=2')
+    expect(router.currentRoute.value.query.id).toBe('2')
+    await router.push('/coupon/add?id=abc')
+    expect(router.currentRoute.value.path).toBe('/coupon')
   })
 
   it('员工新增和修改共用表单路由，保留员工管理菜单选中状态', async () => {

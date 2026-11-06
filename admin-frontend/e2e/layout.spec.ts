@@ -7,11 +7,12 @@ const pages = [
   ['/order', '订单管理', '全部订单'],
   ['/dish', '菜品管理', '+ 新建菜品'],
   ['/setmeal', '套餐管理', '+ 新建套餐'],
+  ['/coupon', '优惠券管理', '+ 新建优惠券'],
   ['/category', '分类管理', '+ 新增菜品分类'],
   ['/employee', '员工管理', '+ 添加员工'],
 ] as const
 
-test('按指定顺序展示七个管理入口，切换页面时保留顶部栏', async ({ page, context, baseURL }) => {
+test('按指定顺序展示八个管理入口，切换页面时保留顶部栏', async ({ page, context, baseURL }) => {
   const sockets = await mockAdminSession(page, context, baseURL!)
   await page.goto('/dashboard')
   await expect(page).toHaveTitle('工作台 · 碧蓝外卖管理端')

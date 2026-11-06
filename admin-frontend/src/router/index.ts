@@ -22,18 +22,27 @@ export function createAppRouter(
                 ? () => import('@/views/employee/EmployeeListPage.vue')
                 : item.path === '/category'
                   ? () => import('@/views/category/CategoryPage.vue')
-                  : ['/dish', '/setmeal'].includes(item.path)
-                    ? () => import('@/views/product/ProductListPage.vue')
-                    : item.path === '/order'
-                      ? () => import('@/views/order/OrderPage.vue')
-                      : item.path === '/statistics'
-                        ? () => import('@/views/statistics/StatisticsPage.vue')
-                        : () => import('@/views/dashboard/DashboardPage.vue'),
+                  : item.path === '/coupon'
+                    ? () => import('@/views/coupon/CouponListPage.vue')
+                    : ['/dish', '/setmeal'].includes(item.path)
+                      ? () => import('@/views/product/ProductListPage.vue')
+                      : item.path === '/order'
+                        ? () => import('@/views/order/OrderPage.vue')
+                        : item.path === '/statistics'
+                          ? () => import('@/views/statistics/StatisticsPage.vue')
+                          : () => import('@/views/dashboard/DashboardPage.vue'),
             props: ['/dish', '/setmeal'].includes(item.path)
               ? { kind: item.path.slice(1) }
               : undefined,
             meta: { title: `${item.title} · 碧蓝外卖管理端`, pageTitle: item.title },
           })),
+          {
+            path: 'coupon/add',
+            name: 'coupon-form',
+            component: () => import('@/views/coupon/CouponFormPage.vue'),
+            props: (route) => ({ couponId: route.query.id ? Number(route.query.id) : undefined }),
+            meta: { title: '优惠券资料 · 碧蓝外卖管理端', activeMenu: '/coupon' },
+          },
           {
             path: 'employee/add',
             name: 'employee-form',
@@ -72,6 +81,10 @@ export function createAppRouter(
     const token = getToken()
     if (!token && to.name !== 'login') return '/login'
     if (token && to.name === 'login') return '/dashboard'
+    if (to.name === 'coupon-form' && to.query.id !== undefined) {
+      const id = String(to.query.id)
+      if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id))) return '/coupon'
+    }
     if (to.name === 'employee-form') {
       if (to.query.id && !/^[1-9]\d*$/.test(String(to.query.id))) return '/employee'
       if (!to.query.id && !useSessionStore().isAdmin) return '/employee'

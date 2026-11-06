@@ -1,5 +1,24 @@
 -- Snapshot of db/azure.sql DDL. Only MySQL collation/engine/comment syntax is removed for H2.
 DROP ALL OBJECTS;
+CREATE TABLE `coupon` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `type` tinyint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `stock` int NOT NULL,
+  `total_stock` int NOT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `start_time` datetime NOT NULL,
+  `status` tinyint NOT NULL DEFAULT '0',
+  `valid_time` int NOT NULL,
+  `end_time` datetime NOT NULL,
+  `create_time` datetime NOT NULL,
+  `update_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_coupon_status_time` (`status`, `start_time`, `end_time`)
+);
+
 CREATE TABLE `address_book` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
