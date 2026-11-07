@@ -10,6 +10,7 @@ import com.azure.mapper.CouponMapper;
 import com.azure.result.PageResult;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.CouponVO;
+import com.azure.vo.coupon.AvailableCouponVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import org.springframework.beans.BeanUtils;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class CouponServiceImpl implements CouponService {
@@ -107,5 +109,15 @@ public class CouponServiceImpl implements CouponService {
         PageHelper.startPage(couponPageQueryDTO.getPage(), couponPageQueryDTO.getPageSize());
         Page<CouponVO> page = couponMapper.pageQuery(couponPageQueryDTO);
         return new PageResult(page.getTotal(), page.getResult());
+    }
+
+    /**
+     * 用户查询可领取的优惠券列表
+     * 包括未开始的优惠券和正在进行中的优惠券，且库存大于0
+     * @return  可领取/购买的优惠券列表
+     */
+    @Override
+    public List<AvailableCouponVO> queryAvailableCoupons() {
+        return couponMapper.getAvailableCoupons();
     }
 }

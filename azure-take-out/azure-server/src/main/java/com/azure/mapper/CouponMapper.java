@@ -2,10 +2,12 @@ package com.azure.mapper;
 
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.entity.Coupon;
-import com.azure.result.PageResult;
 import com.azure.vo.coupon.CouponVO;
+import com.azure.vo.coupon.AvailableCouponVO;
 import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.*;
+
+import java.util.List;
 
 @Mapper
 public interface CouponMapper {
@@ -45,4 +47,13 @@ public interface CouponMapper {
      */
     @Update("UPDATE coupon SET status = #{status}, update_time = NOW() WHERE id = #{couponId}")
     int updateStatus(Long couponId, Integer status);
+
+    /**
+     * 查询可领取/购买的优惠券列表
+     * 包括未开始的优惠券和正在进行中的优惠券，且库存大于0
+     * @return 可领取/购买的优惠券列表
+     */
+    @Select("SELECT id, name, type, stock, discount_amount, threshold_amount, price, start_time, end_time " +
+            "FROM coupon where status = 1 and stack > 0 and end_time >= NOW() order by start_time asc")
+    List<AvailableCouponVO> getAvailableCoupons();
 }

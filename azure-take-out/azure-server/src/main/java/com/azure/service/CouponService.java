@@ -5,6 +5,9 @@ import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
 import com.azure.result.PageResult;
 import com.azure.vo.coupon.CouponVO;
+import com.azure.vo.coupon.AvailableCouponVO;
+
+import java.util.List;
 
 public interface CouponService {
     /**
@@ -39,4 +42,11 @@ public interface CouponService {
      * @return 分页结果
      */
     PageResult pageQuery(CouponPageQueryDTO couponPageQueryDTO);
+
+    /**
+     * 用户查询可领取的优惠券列表
+     * 包括未开始的优惠券和正在进行中的优惠券，且库存大于0
+     * @return  可领取/购买的优惠券列表
+     */
+    List<AvailableCouponVO> queryAvailableCoupons();
 }
