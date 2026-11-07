@@ -5,15 +5,16 @@ test.beforeEach(async ({ page }) => restoreSession(page))
 
 const sections = [
   ['/menu', '在线点餐', '热腾腾的烟火气，是日常里最温柔的陪伴。'],
+  ['/coupons', '抢优惠券', '查看本店优惠与活动时间'],
   ['/orders', '我的订单', '每一餐，都是日常的记录。'],
   ['/addresses', '收货地址', '把一份热乎，送到你身边。'],
   ['/profile', '我的', '个人资料与账号设置'],
 ] as const
 
-test('四个导航入口切换板块并保持选中状态，logo 和用户入口正确跳转', async ({ page }) => {
+test('五个导航入口切换板块并保持选中状态，logo 和用户入口正确跳转', async ({ page }) => {
   await page.goto('/menu')
   const navigation = page.getByRole('navigation', { name: '主导航' })
-  await expect(navigation.getByRole('link')).toHaveCount(4)
+  await expect(navigation.getByRole('link')).toHaveText(sections.map(([, label]) => label))
   for (const [path, label, content] of sections) {
     await navigation.getByRole('link', { name: label, exact: true }).click()
     await expect(page).toHaveURL(path)

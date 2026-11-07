@@ -56,6 +56,11 @@ const navigation = [
     label: '在线点餐',
     icon: 'M4 3v5a3 3 0 0 0 6 0V3M7 3v18m9-18v18m0-18c4 0 4 9 0 9',
   },
+  {
+    path: '/coupons',
+    label: '抢优惠券',
+    icon: 'M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4V5Zm11 0v3m0 3v2m0 3v3',
+  },
   { path: '/orders', label: '我的订单', icon: 'M7 3h10v3H7zM7 5H4v16h16V5h-3M8 11h8m-8 4h8' },
   {
     path: '/addresses',
@@ -179,7 +184,7 @@ const navigation = [
   outline-offset: 5px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1050px) {
   .header-inner {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px 16px;

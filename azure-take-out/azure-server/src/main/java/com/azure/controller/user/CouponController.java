@@ -3,6 +3,7 @@ package com.azure.controller.user;
 import com.azure.result.Result;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.AvailableCouponVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +15,8 @@ import java.util.List;
 
 @RequestMapping("/user/coupon")
 @Slf4j
-@RestController
+@RestController("userCouponController")
+@Tag(name = "C端-优惠券相关接口")
 public class CouponController {
 
     @Autowired

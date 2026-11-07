@@ -20,6 +20,12 @@ export function createAppRouter(
             meta: { section: '在线点餐' },
           },
           {
+            path: 'coupons',
+            name: 'coupons',
+            component: () => import('@/views/coupon/CouponPage.vue'),
+            meta: { section: '抢优惠券' },
+          },
+          {
             path: 'orders',
             name: 'orders',
             component: () => import('@/views/order/OrderPage.vue'),

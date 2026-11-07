@@ -12,6 +12,9 @@ export const currentUser = {
 }
 
 export async function mockUserInfo(page: Page): Promise<void> {
+  await page.route('**/api/coupon/available', (route) =>
+    route.fulfill({ json: { code: 1, data: [] } }),
+  )
   await page.route('**/api/category/list', (route) =>
     route.fulfill({ json: { code: 1, data: [] } }),
   )

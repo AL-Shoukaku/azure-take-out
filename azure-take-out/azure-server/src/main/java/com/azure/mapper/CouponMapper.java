@@ -54,6 +54,6 @@ public interface CouponMapper {
      * @return 可领取/购买的优惠券列表
      */
     @Select("SELECT id, name, type, stock, discount_amount, threshold_amount, price, start_time, end_time " +
-            "FROM coupon where status = 1 and stack > 0 and end_time >= NOW() order by start_time asc")
+            "FROM coupon where status = 1 and stock > 0 and end_time >= NOW() order by start_time asc")
     List<AvailableCouponVO> getAvailableCoupons();
 }

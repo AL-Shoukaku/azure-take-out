@@ -188,6 +188,32 @@ class CouponMapperTest extends SqlTestSupport {
     }
 
     @Test
+    void availableCouponsIncludeUpcomingAndActiveStockAndExcludeStoppedExpiredOrEmptyStock() throws Exception {
+        Coupon active = insert("可买代金券", 1, 1, START.plusDays(1));
+        Coupon upcoming = insert("即将开始满减券", 2, 1, START.plusDays(1));
+        Coupon stopped = insert("已停售", 1, 0, START.plusDays(1));
+        Coupon empty = insert("已抢完", 2, 1, START.plusDays(1));
+        Coupon expired = insert("已过期", 1, 1, START.plusDays(1));
+        for (Coupon coupon : new Coupon[]{active, stopped, empty}) {
+            setActivity(coupon.getId(), "DATEADD('DAY', -1, NOW())", "DATEADD('DAY', 1, NOW())");
+        }
+        setActivity(upcoming.getId(), "DATEADD('DAY', 1, NOW())", "DATEADD('DAY', 2, NOW())");
+        setActivity(expired.getId(), "DATEADD('DAY', -2, NOW())", "DATEADD('DAY', -1, NOW())");
+        Coupon change = new Coupon();
+        change.setId(empty.getId());
+        change.setStock(0);
+        mapper(CouponMapper.class).updateCoupon(change);
+
+        var available = mapper(CouponMapper.class).getAvailableCoupons();
+        assertThat(available).extracting("name").containsExactly(active.getName(), upcoming.getName());
+        assertThat(available.getFirst().getId()).isEqualTo(active.getId());
+        assertThat(available.getFirst().getStock()).isEqualTo(80);
+        assertThat(available.getFirst().getDiscountAmount()).isEqualTo(20.5);
+        assertThat(available.getFirst().getPrice()).isEqualTo(9.9);
+        assertThat(available.getLast().getThresholdAmount()).isEqualTo(50.0);
+    }
+
+    @Test
     void unfilteredPageIncludesBothTypesAndStatusesAndMissingNameReturnsEmpty() {
         insert("普通代金券", 1, 0, START.plusDays(1));
         insert("普通满减券", 2, 1, START.plusDays(2));

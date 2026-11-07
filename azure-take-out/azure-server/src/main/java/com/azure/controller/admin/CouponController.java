@@ -8,14 +8,16 @@ import com.azure.result.Result;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.CouponVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+@RestController("adminCouponController")
 @RequestMapping("/admin/coupon")
 @Slf4j
+@Tag(name = "B端-优惠券相关接口")
 public class CouponController {
 
     @Autowired
