@@ -34,7 +34,7 @@ async function expectViewCentered(page: Page, number: string) {
 
 test('全部订单字段、三列操作规则、统计红点及六种状态切换', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await expect(page.getByRole('tab')).toHaveText([
     '全部订单',
     '待接单6',
@@ -92,7 +92,7 @@ test('全部订单字段、三列操作规则、统计红点及六种状态切�
 
 test('订单号手机号日期组合查询、回车、清空、空结果及分页', async ({ page }) => {
   const api = await mockOrders(page, 41)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await page.getByRole('button', { name: '下一页' }).click()
   await expect.poll(() => api.queries.at(-1)?.get('page')).toBe('2')
   await page.getByPlaceholder('请填写订单号').fill('order-0002')
@@ -124,7 +124,7 @@ test('订单号手机号日期组合查询、回车、清空、空结果及分�
 
 test('订单详情金额、两份菜品、取消原因以及关闭后回到列表', async ({ page }) => {
   await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await row(page, 'order-0002').getByRole('button', { name: '查看', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '订单信息', exact: true })
   await expect(dialog).toContainText('收货人2')
@@ -145,7 +145,7 @@ test('订单详情金额、两份菜品、取消原因以及关闭后回到列�
 
 test('详情与列表使用同一套状态操作，已取消只能返回', async ({ page }) => {
   await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   const dialog = page.getByRole('dialog', { name: '订单信息', exact: true })
   for (const [id, actions] of [
     [1, ['返回', '取消']],
@@ -165,7 +165,7 @@ test('详情与列表使用同一套状态操作，已取消只能返回', async
 
 test('列表接单、派送和完成后刷新统计和状态', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   const current = row(page, 'order-0002')
   await current.getByRole('button', { name: '接单', exact: true }).click()
   await expect(current.getByRole('button', { name: '派送', exact: true })).toBeVisible()
@@ -183,7 +183,7 @@ test('列表接单、派送和完成后刷新统计和状态', async ({ page }) 
 
 test('拒单原因必填、自定义原因、失败保留内容和重试', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await row(page, 'order-0002').getByRole('button', { name: '拒单', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '拒绝原因', exact: true })
   await dialog.getByRole('button', { name: '确定', exact: true }).click()
@@ -207,7 +207,7 @@ test('拒单原因必填、自定义原因、失败保留内容和重试', async
 
 test('待付款取消选择对应原因，取消弹窗不提交', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await row(page, 'order-0001').getByRole('button', { name: '取消', exact: true }).click()
   let dialog = await chooseReason(page, '客户要求取消')
   await dialog.getByRole('button', { name: '取消', exact: true }).click()
@@ -229,7 +229,7 @@ for (const [status, label, primary, cancelReason] of [
   test(`${label}取消失败保留原因与状态，并支持从详情重试取消`, async ({ page }) => {
     const api = await mockOrders(page)
     api.failures.action = '订单状态错误'
-    await page.goto(`/order?status=${status}`)
+    await page.goto(`/order/takeout?status=${status}`)
     const current = row(page, `order-000${status}`)
     await current.getByRole('button', { name: '取消', exact: true }).click()
     const reason = await chooseReason(page, cancelReason)
@@ -271,7 +271,7 @@ for (const [status, label, options] of cancellationCases) {
   for (const surface of ['列表', '详情'] as const) {
     test(`${label}${surface}按状态展示取消原因并通过统一接口提交`, async ({ page }) => {
       const api = await mockOrders(page)
-      await page.goto('/order')
+      await page.goto('/order/takeout')
       const current = row(page, `order-000${status}`)
       const source =
         surface === '列表' ? current : page.getByRole('dialog', { name: '订单信息', exact: true })
@@ -294,7 +294,7 @@ for (const [status, label, options] of cancellationCases) {
 
 test('取消原因必填，其他原因拒绝纯空白，重新打开时清空并按新订单状态切换选项', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await row(page, 'order-0001').getByRole('button', { name: '取消', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '取消原因', exact: true })
   await dialog.getByRole('button', { name: '确定', exact: true }).click()
@@ -324,7 +324,7 @@ test('取消原因必填，其他原因拒绝纯空白，重新打开时清空�
 
 test('待接单详情处理完自动打开下一条，取消勾选后关闭', async ({ page }) => {
   const api = await mockOrders(page)
-  await page.goto('/order?status=2')
+  await page.goto('/order/takeout?status=2')
   await row(page, 'order-0002').getByRole('button', { name: '查看', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '订单信息', exact: true })
   await dialog.getByRole('button', { name: '接单', exact: true }).click()
@@ -338,7 +338,7 @@ test('待接单详情处理完自动打开下一条，取消勾选后关闭', as
 test('通知在订单页内打开不同订单，并实时刷新数量', async ({ page, context, baseURL }) => {
   const sockets = await mockAdminSession(page, context, baseURL!)
   const api = await mockOrders(page)
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await expect.poll(() => sockets.length).toBe(1)
   api.records.unshift(makeOrder(100, 2))
   sockets[0]!.send(JSON.stringify({ type: 1, orderId: 100, content: 'order-0100' }))
@@ -361,20 +361,20 @@ test('通知在订单页内打开不同订单，并实时刷新数量', async ({
   expect(api.details).toContain(4)
 
   await page.goBack()
-  await expect(page).toHaveURL('/order?orderId=100')
+  await expect(page).toHaveURL('/order/takeout?orderId=100')
   await expect(dialog).toContainText('order-0100')
   await page.goBack()
-  await expect(page).toHaveURL('/order')
+  await expect(page).toHaveURL('/order/takeout')
   await expect(dialog).toBeHidden()
   await page.goForward()
-  await expect(page).toHaveURL('/order?orderId=100')
+  await expect(page).toHaveURL('/order/takeout?orderId=100')
   await expect(dialog).toContainText('order-0100')
 
   await dialog.getByRole('button', { name: '拒单', exact: true }).click()
   const reason = page.getByRole('dialog', { name: '拒绝原因', exact: true })
   await expect(reason).toBeVisible()
   await page.goBack()
-  await expect(page).toHaveURL('/order')
+  await expect(page).toHaveURL('/order/takeout')
   await expect(reason).toBeHidden()
   await expect(dialog).toBeHidden()
   await row(page, 'order-0002').getByRole('button', { name: '查看', exact: true }).click()
@@ -393,7 +393,7 @@ test('提醒详情加载期间浏览器返回，迟到的响应不会保留弹�
     await gate
     await route.fulfill({ json: { code: 1, msg: null, data: makeOrder(100, 2) } })
   })
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await expect.poll(() => sockets.length).toBe(1)
   sockets[0]!.send(JSON.stringify({ type: 1, orderId: 100, content: 'order-0100' }))
   const request = page.waitForRequest('**/api/order/details/100')
@@ -408,7 +408,7 @@ test('提醒详情加载期间浏览器返回，迟到的响应不会保留弹�
   await page.goBack()
   release()
   await response
-  await expect(page).toHaveURL('/order')
+  await expect(page).toHaveURL('/order/takeout')
   await expect(page.getByRole('dialog', { name: '订单信息', exact: true })).toBeHidden()
 })
 
@@ -416,7 +416,7 @@ test('列表和详情加载失败可重试，统计失败单独显示，操作�
   const api = await mockOrders(page)
   api.failures.list = '订单列表加载失败'
   api.failures.statistics = '统计暂不可用'
-  await page.goto('/order')
+  await page.goto('/order/takeout')
   await expect(page.getByRole('alert').filter({ hasText: '订单列表加载失败' })).toBeVisible()
   api.failures.list = ''
   api.failures.statistics = ''

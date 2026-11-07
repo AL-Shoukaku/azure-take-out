@@ -31,7 +31,7 @@ function showOrder(message: OrderNotification): void {
   }
 
   function openOrder(): void {
-    void router.push({ path: '/order', query: { orderId: String(message.orderId) } })
+    void router.push({ path: '/order/takeout', query: { orderId: String(message.orderId) } })
     notification.close()
   }
 

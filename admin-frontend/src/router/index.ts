@@ -27,7 +27,7 @@ export function createAppRouter(
                     : ['/dish', '/setmeal'].includes(item.path)
                       ? () => import('@/views/product/ProductListPage.vue')
                       : item.path === '/order'
-                        ? () => import('@/views/order/OrderPage.vue')
+                        ? () => import('@/views/order/OrderEntryPage.vue')
                         : item.path === '/statistics'
                           ? () => import('@/views/statistics/StatisticsPage.vue')
                           : () => import('@/views/dashboard/DashboardPage.vue'),
@@ -36,6 +36,18 @@ export function createAppRouter(
               : undefined,
             meta: { title: `${item.title} · 碧蓝外卖管理端`, pageTitle: item.title },
           })),
+          {
+            path: 'order/takeout',
+            name: 'takeout-order',
+            component: () => import('@/views/order/OrderPage.vue'),
+            meta: { title: '外卖订单 · 碧蓝外卖管理端', activeMenu: '/order' },
+          },
+          {
+            path: 'order/coupon',
+            name: 'coupon-order',
+            component: () => import('@/views/order/CouponOrderPage.vue'),
+            meta: { title: '优惠券订单 · 碧蓝外卖管理端', activeMenu: '/order' },
+          },
           {
             path: 'coupon/add',
             name: 'coupon-form',

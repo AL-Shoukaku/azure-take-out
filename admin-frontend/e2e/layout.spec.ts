@@ -4,7 +4,7 @@ import { employee, mockAdminSession } from './helpers/admin.js'
 const pages = [
   ['/dashboard', '工作台', '今日数据'],
   ['/statistics', '数据统计', '营业额统计'],
-  ['/order', '订单管理', '全部订单'],
+  ['/order', '订单管理', '外卖订单'],
   ['/dish', '菜品管理', '+ 新建菜品'],
   ['/setmeal', '套餐管理', '+ 新建套餐'],
   ['/coupon', '优惠券管理', '+ 新建优惠券'],
@@ -211,12 +211,14 @@ test('来单和催单通知点击进入对应订单，消息内容按文本显�
   await expect(incoming).toContainText('订单号 <img src=x onerror=alert(1)>')
   await expect(incoming.locator('img')).toHaveCount(0)
   await incoming.getByRole('button', { name: '订单待处理' }).click()
-  await expect(page).toHaveURL('/order?orderId=101')
+  await expect(page).toHaveURL('/order/takeout?orderId=101')
   await expect(incoming).toBeHidden()
+  // 订单页在路由过渡后才打开详情弹窗；先等弹窗出现，否则它的遮罩会盖住随后到达的催单通知。
+  await expect(page.getByRole('dialog', { name: '订单信息', exact: true })).toBeVisible()
   sockets[0]!.send(JSON.stringify({ type: 2, orderId: 102, content: '订单号 20261018002' }))
   const reminder = page.getByRole('alert').filter({ hasText: '催单' })
   await expect(reminder).toContainText('订单号 20261018002')
   await reminder.getByRole('button', { name: '去处理' }).click()
-  await expect(page).toHaveURL('/order?orderId=102')
+  await expect(page).toHaveURL('/order/takeout?orderId=102')
   expect(sockets).toHaveLength(1)
 })

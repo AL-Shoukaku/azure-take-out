@@ -54,6 +54,8 @@ describe('登录路由守卫', () => {
     '/dashboard',
     '/statistics',
     '/order',
+    '/order/takeout',
+    '/order/coupon',
     '/dish',
     '/setmeal',
     '/coupon',
@@ -112,6 +114,19 @@ describe('登录路由守卫', () => {
     expect(router.currentRoute.value.query.id).toBe('2')
     await router.push('/coupon/add?id=abc')
     expect(router.currentRoute.value.path).toBe('/coupon')
+  })
+
+  it.each([
+    ['/order/takeout', 'takeout-order', '外卖订单 · 碧蓝外卖管理端'],
+    ['/order/coupon', 'coupon-order', '优惠券订单 · 碧蓝外卖管理端'],
+  ])('%s 是订单管理下的子页面，保留订单管理菜单选中状态', async (path, name, title) => {
+    setToken('persisted-token')
+    const router = createAppRouter(createMemoryHistory())
+    await router.push(path)
+    expect(router.currentRoute.value.name).toBe(name)
+    expect(router.currentRoute.value.meta.activeMenu).toBe('/order')
+    expect(router.currentRoute.value.meta.title).toBe(title)
+    expect(router.currentRoute.value.matched).toHaveLength(2)
   })
 
   it('员工新增和修改共用表单路由，保留员工管理菜单选中状态', async () => {

@@ -20,7 +20,7 @@
       :date="today"
       :loading="orders.state.loading"
       :error="orders.state.error"
-      :more="{ label: '订单明细', to: '/order' }"
+      :more="{ label: '订单明细', to: '/order/takeout' }"
       @retry="orders.reload"
     >
       <div v-if="orders.state.data" class="order-overview">
@@ -109,31 +109,37 @@ const orderMetrics = computed(() => {
           label: '待接单',
           value: data.waitingOrders,
           icon: waitingIcon,
-          path: '/order?status=2',
+          path: '/order/takeout?status=2',
           pending: true,
         },
         {
           label: '待派送',
           value: data.deliveredOrders,
           icon: deliveryIcon,
-          path: '/order?status=3',
+          path: '/order/takeout?status=3',
           pending: true,
         },
         {
           label: '已完成',
           value: data.completedOrders,
           icon: completedIcon,
-          path: '/order?status=5',
+          path: '/order/takeout?status=5',
           pending: false,
         },
         {
           label: '已取消',
           value: data.cancelledOrders,
           icon: cancelledIcon,
-          path: '/order?status=6',
+          path: '/order/takeout?status=6',
           pending: false,
         },
-        { label: '全部订单', value: data.allOrders, icon: allIcon, path: '/order', pending: false },
+        {
+          label: '全部订单',
+          value: data.allOrders,
+          icon: allIcon,
+          path: '/order/takeout',
+          pending: false,
+        },
       ]
     : []
 })

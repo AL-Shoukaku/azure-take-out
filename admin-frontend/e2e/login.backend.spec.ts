@@ -86,6 +86,7 @@ test('连接真实后端登录，读取工作台、管理列表和统计并下�
     (response) => new URL(response.url()).pathname === '/api/order/conditionSearch',
   )
   await page.getByRole('menuitem', { name: '订单管理', exact: true }).click()
+  await page.getByRole('link', { name: /外卖订单/ }).click()
   const orderData = await (await orders).json()
   expect(orderData.code).toBe(1)
   await expect(page.getByRole('tab', { name: '全部订单', exact: true })).toBeVisible()

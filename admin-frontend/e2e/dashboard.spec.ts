@@ -63,7 +63,7 @@ test('详细数据、订单明细和商品入口可导航，今日订单数量�
   await mockWorkspace(page)
   for (const [name, path] of [
     ['详细数据', '/statistics'],
-    ['订单明细', '/order'],
+    ['订单明细', '/order/takeout'],
     ['菜品管理', '/dish'],
     ['新增菜品', '/dish/add'],
     ['套餐管理', '/setmeal'],
@@ -78,11 +78,11 @@ test('详细数据、订单明细和商品入口可导航，今日订单数量�
   await page.goto('/dashboard')
   const overview = page.getByRole('region', { name: '订单管理', exact: true })
   for (const [label, path] of [
-    ['待接单', '/order?status=2'],
-    ['待派送', '/order?status=3'],
-    ['已完成', '/order?status=5'],
-    ['已取消', '/order?status=6'],
-    ['全部订单', '/order'],
+    ['待接单', '/order/takeout?status=2'],
+    ['待派送', '/order/takeout?status=3'],
+    ['已完成', '/order/takeout?status=5'],
+    ['已取消', '/order/takeout?status=6'],
+    ['全部订单', '/order/takeout'],
   ]) {
     await expect(overview.getByRole('link', { name: new RegExp(label!) })).toHaveAttribute(
       'href',
@@ -222,7 +222,7 @@ test('来单消息刷新工作台，点击提醒打开订单管理详情，返�
     .filter({ hasText: '您有1个' })
     .getByRole('button', { name: '订单待处理' })
     .click()
-  await expect(page).toHaveURL('/order?orderId=100')
+  await expect(page).toHaveURL('/order/takeout?orderId=100')
   const detail = page.getByRole('dialog', { name: '订单信息', exact: true })
   await expect(detail).toContainText('order-0100')
   await page.goBack()

@@ -24,6 +24,14 @@
           }}</ElBadge>
         </button>
       </div>
+      <ElButton
+        v-if="!embedded"
+        type="primary"
+        class="order-switch"
+        :disabled="busy"
+        @click="router.push('/order/coupon')"
+        >查看优惠券订单</ElButton
+      >
     </div>
     <div
       id="order-list"
@@ -318,7 +326,7 @@ function selectTab(tab: OrderTab) {
   if (tab === activeTab.value) return
   resetTab(tab)
   if (!props.embedded)
-    void router.replace({ path: '/order', query: tab ? { status: String(tab) } : {} })
+    void router.replace({ query: tab ? { status: String(tab) } : {} })
 }
 
 async function openDetail(id: number) {
@@ -442,10 +450,22 @@ onBeforeUnmount(() => {
 .is-embedded .management-list {
   padding: 0;
 }
+.order-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
 .order-tabs {
   display: flex;
+  min-width: 0;
   margin-bottom: 20px;
   overflow-x: auto;
+}
+.order-switch.el-button {
+  flex-shrink: 0;
+  height: 40px;
+  font-size: 14px;
 }
 .order-tabs > button {
   min-width: 120px;

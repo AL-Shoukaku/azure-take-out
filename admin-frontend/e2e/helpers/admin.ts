@@ -43,6 +43,9 @@ export async function mockLayoutAPIs(page: Page) {
   await page.route('**/api/order/details/*', (route) =>
     route.fulfill({ json: { code: 0, msg: '订单不存在', data: null } }),
   )
+  await page.route('**/api/couponOrder/conditionSearch?**', (route) =>
+    route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
+  )
   await mockReportAPIs(page)
   await mockWorkspace(page)
   await page.routeWebSocket(/\/ws\//, (socket) => {
