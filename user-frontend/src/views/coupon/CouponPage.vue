@@ -5,7 +5,9 @@
         <h1>抢优惠券</h1>
         <p>查看本店优惠与活动时间</p>
       </div>
-      <ElButton class="refresh-button" :loading="loading" @click="load">刷新优惠券</ElButton>
+      <ElButton class="refresh-button" :loading="loading" :disabled="busy" @click="load"
+        >刷新优惠券</ElButton
+      >
     </header>
 
     <div v-if="loading" class="coupon-grid" aria-label="正在加载优惠券" aria-busy="true">
@@ -48,9 +50,19 @@
           <p>
             剩余 <strong>{{ coupon.stock }}</strong> 张
           </p>
-          <ElButton type="primary" :disabled="state !== 'active'" @click="showComingSoon(coupon)">{{
-            coupon.type === 1 ? `${money(coupon.price)} 购买` : '立即领取'
-          }}</ElButton>
+          <ElButton
+            type="primary"
+            :loading="actionCouponId === coupon.id"
+            :disabled="
+              busy ||
+              !session.user ||
+              received.has(coupon.id) ||
+              submitted.has(coupon.id) ||
+              state !== 'active'
+            "
+            @click="takeCoupon(coupon)"
+            >{{ actionLabel(coupon) }}</ElButton
+          >
         </div>
       </article>
     </div>
@@ -67,17 +79,38 @@
       <h2>暂无在售优惠券</h2>
       <p>商家还没有可领取或购买的优惠券，稍后再来看看吧。</p>
     </div>
+    <CouponPaymentDialog
+      v-if="paymentOrder"
+      v-model="paymentOpen"
+      v-model:busy="paymentBusy"
+      :order="paymentOrder"
+      :now="now"
+      @paid="paymentSucceeded"
+    />
+    <CouponSuccessDialog v-if="receipt" v-model="successOpen" :result="receipt" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElAlert, ElButton, ElMessage, ElSkeleton } from 'element-plus'
-import { getAvailableCoupons, type AvailableCoupon } from '@/api/coupons'
+import {
+  buyCoupon,
+  claimCoupon,
+  getAvailableCoupons,
+  type AvailableCoupon,
+  type CouponPaymentResult,
+} from '@/api/coupons'
+import { useSessionStore } from '@/stores/session'
 import { getToken } from '@/utils/auth'
 import { money } from '@/utils/pricing'
 import { couponOffer, couponState, formatActivityTime, stateNames } from './couponDisplay'
+import { type CouponReceipt, type CouponPaymentOrder } from './couponOrders'
+import CouponPaymentDialog from './components/CouponPaymentDialog.vue'
+import CouponSuccessDialog from './components/CouponSuccessDialog.vue'
 
+const session = useSessionStore()
 const coupons = ref<AvailableCoupon[]>([])
 const loading = ref(true),
   error = ref(''),
@@ -88,6 +121,33 @@ const cards = computed(() =>
 let revision = 0,
   active = true
 let timer: ReturnType<typeof setInterval> | undefined
+const actionCouponId = ref<number | null>(null),
+  paymentBusy = ref(false)
+const busy = computed(() => actionCouponId.value !== null || paymentBusy.value)
+const paymentOrder = ref<CouponPaymentOrder | null>(null),
+  paymentOpen = ref(false)
+const receipt = ref<CouponReceipt | null>(null),
+  successOpen = ref(false)
+const received = ref(new Set<number>())
+const submitted = ref(new Set<number>())
+
+watch(
+  () => session.user?.id,
+  () => {
+    paymentOpen.value = false
+    paymentOrder.value = null
+    successOpen.value = false
+    receipt.value = null
+    received.value = new Set()
+    submitted.value = new Set()
+  },
+  { immediate: true },
+)
+function actionLabel(coupon: AvailableCoupon): string {
+  if (received.value.has(coupon.id)) return coupon.type === 1 ? '已购买' : '已领取'
+  if (submitted.value.has(coupon.id)) return '已下单'
+  return coupon.type === 1 ? `${money(coupon.price)} 购买` : '立即领取'
+}
 
 async function load(): Promise<void> {
   const current = ++revision,
@@ -107,14 +167,74 @@ async function load(): Promise<void> {
   }
 }
 
-function showComingSoon(coupon: AvailableCoupon): void {
+async function takeCoupon(coupon: AvailableCoupon): Promise<void> {
+  if (
+    busy.value ||
+    !session.user ||
+    received.value.has(coupon.id) ||
+    submitted.value.has(coupon.id)
+  )
+    return
   now.value = Date.now()
   if (couponState(coupon, now.value) !== 'active') return
-  ElMessage.info(
-    coupon.type === 1 ? '优惠券购买暂未开放，敬请期待' : '优惠券领取暂未开放，敬请期待',
-  )
+  const token = getToken(),
+    userId = session.user.id
+  const current = () => active && token === getToken() && userId === session.user?.id
+  actionCouponId.value = coupon.id
+  try {
+    if (coupon.type === 2) {
+      const result = await claimCoupon(coupon.id)
+      if (!current()) return
+      received.value.add(coupon.id)
+      receipt.value = {
+        kind: 'claim',
+        name: coupon.name,
+        offer: couponOffer(coupon),
+        number: result.number,
+        expireTime: result.expireTime,
+      }
+      successOpen.value = true
+    } else {
+      const result = await buyCoupon(coupon.id)
+      if (!current()) return
+      const order: CouponPaymentOrder = {
+        ...result,
+        couponId: coupon.id,
+        name: coupon.name,
+        offer: couponOffer(coupon),
+      }
+      submitted.value.add(coupon.id)
+      paymentOrder.value = order
+      paymentOpen.value = true
+    }
+    await load()
+  } catch (cause) {
+    if (current()) {
+      ElMessage.error(cause instanceof Error ? cause.message : '操作失败，请稍后重试')
+      await load()
+    }
+  } finally {
+    actionCouponId.value = null
+  }
 }
 
+function paymentSucceeded(result: CouponPaymentResult): void {
+  const order = paymentOrder.value
+  if (!order) return
+  received.value.add(order.couponId)
+  receipt.value = {
+    kind: 'payment',
+    name: order.name,
+    offer: order.offer,
+    number: result.number,
+    expireTime: result.expireTime,
+    price: order.price,
+  }
+  successOpen.value = true
+  void load()
+}
+
+onBeforeRouteLeave((to) => !busy.value || to.name === 'login')
 onMounted(() => {
   void load()
   timer = setInterval(() => {

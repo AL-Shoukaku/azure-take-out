@@ -88,7 +88,7 @@ public class CouponServiceImpl implements CouponService {
         if (couponId == null || status == null) {
             throw new BaseException("优惠券ID和状态不能为空");
         }
-        if (couponId < 0 || (status != StatusConstant.ENABLE && status != StatusConstant.DISABLE)) {
+        if (couponId < 0 || (!status.equals(StatusConstant.ENABLE) && !status.equals(StatusConstant.DISABLE))) {
             throw new BaseException("优惠券ID或状态不合法");
         }
         int row = couponMapper.updateStatus(couponId, status);
@@ -229,6 +229,7 @@ public class CouponServiceImpl implements CouponService {
 
         return CouponOrderPayVO.builder()
                 .number(couponOrder.getNumber())
+                .expireTime(userCoupon.getExpireTime())
                 .build();
     }
 

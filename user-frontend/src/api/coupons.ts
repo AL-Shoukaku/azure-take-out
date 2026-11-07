@@ -15,3 +15,36 @@ export interface AvailableCoupon {
 export function getAvailableCoupons(): Promise<AvailableCoupon[]> {
   return request({ url: '/coupon/available', method: 'GET' })
 }
+
+export interface CouponClaimResult {
+  number: string
+  expireTime: string
+}
+
+export interface CouponSubmittedOrder {
+  number: string
+  price: number
+  payDeadline: string
+}
+
+export interface CouponPaymentResult {
+  number: string
+  expireTime: string
+}
+
+export function claimCoupon(couponId: number): Promise<CouponClaimResult> {
+  return request({ url: '/coupon/get', method: 'POST', params: { couponId } })
+}
+
+export function buyCoupon(couponId: number): Promise<CouponSubmittedOrder> {
+  return request({ url: '/coupon/buy', method: 'POST', params: { couponId } })
+}
+
+export function payCouponOrder(number: string): Promise<CouponPaymentResult> {
+  // 当前后端从 query 读取订单号，路径中的占位值不参与订单查询。
+  return request({
+    url: `/coupon/pay/${encodeURIComponent(number)}`,
+    method: 'POST',
+    params: { couponOrderNumber: number },
+  })
+}

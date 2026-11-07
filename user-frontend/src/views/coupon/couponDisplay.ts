@@ -17,7 +17,7 @@ export function couponOffer(coupon: AvailableCoupon): string {
     : `无门槛减 ${money(coupon.discountAmount)}`
 }
 
-function activityTime(value: string): number {
+export function activityTime(value: string): number {
   // 后端返回北京时间的 LocalDateTime，按营业时区解释，不随浏览器时区变化。
   const normalized = value?.replace(' ', 'T')
   return Date.parse(normalized ? `${normalized}+08:00` : '')
