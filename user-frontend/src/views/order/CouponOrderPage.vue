@@ -7,7 +7,7 @@
       </div>
       <div class="heading-actions">
         <ElButton type="primary" @click="router.push('/orders/takeout')">查看外卖订单</ElButton>
-        <ElButton class="coupon-button" @click="router.push('/coupons')"
+        <ElButton class="coupon-button" @click="router.push('/coupons/take')"
           >抢优惠券 <span aria-hidden="true">→</span></ElButton
         >
       </div>

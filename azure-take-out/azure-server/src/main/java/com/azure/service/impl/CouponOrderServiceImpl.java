@@ -78,7 +78,11 @@ public class CouponOrderServiceImpl implements CouponOrderService {
         return couponOrder;
     }
 
+    /**
+     * 商家退款优惠券订单
+     */
     @Transactional
+    @Override
     public void refundCouponOrder(CouponOrderRefundDTO couponOrderRefundDTO) {
         Long orderId = couponOrderRefundDTO.getId();
         String refundReason = couponOrderRefundDTO.getRefundReason();

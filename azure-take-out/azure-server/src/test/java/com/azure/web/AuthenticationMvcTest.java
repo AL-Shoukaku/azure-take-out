@@ -18,7 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthenticationMvcTest extends WebTestSupport {
     @ParameterizedTest @ValueSource(strings={"/admin/employee/page","/admin/category/list","/admin/dish/list","/admin/setmeal/page",
             "/admin/shop/status","/admin/order/statistics","/admin/report/top10","/admin/workspace/overviewDishes",
-            "/user/category/list","/user/dish/list","/user/setmeal/list","/user/addressBook/list","/user/shoppingCart/list","/user/order/historyOrders","/user/user/info"})
+            "/user/category/list","/user/dish/list","/user/setmeal/list","/user/addressBook/list","/user/shoppingCart/list","/user/order/historyOrders","/user/user/info",
+            "/user/userCoupon/page","/user/userCoupon/details/9"})
     void everyProtectedControllerRejectsMissingToken(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isUnauthorized());
         verifyNoInteractions(employeeService,categoryService,dishService,setmealService,addressBookService,shoppingCartService,ordersService,reportService,workspaceService);

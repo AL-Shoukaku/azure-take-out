@@ -40,6 +40,7 @@ public abstract class WebTestSupport {
     @Autowired protected ShopService shopService;
     @Autowired protected CouponService couponService;
     @Autowired protected CouponOrderService couponOrderService;
+    @Autowired protected UserCouponService userCouponService;
     @Autowired protected CacheManager cacheManager;
     protected MockMvc mvc;
     @Autowired protected ObjectMapper json;
@@ -50,7 +51,8 @@ public abstract class WebTestSupport {
     @DynamicPropertySource static void uploadProperties(DynamicPropertyRegistry registry) { registry.add("azure.upload-path",UPLOADS::toString); }
     @BeforeEach void initializeMvc() {
         reset(employeeService,categoryService,dishService,setmealService,addressBookService,shoppingCartService,
-                ordersService,userService,reportService,workspaceService,shopService,couponService,couponOrderService);
+                ordersService,userService,reportService,workspaceService,shopService,couponService,couponOrderService,
+                userCouponService);
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
         BaseContext.removeCurrentId(); mvc = MockMvcBuilders.webAppContextSetup(context).build();
     }

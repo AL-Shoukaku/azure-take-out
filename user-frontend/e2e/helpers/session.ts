@@ -42,6 +42,9 @@ export async function restoreSession(page: Page): Promise<void> {
   await page.route('**/api/couponOrder/historyOrders**', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
   )
+  await page.route('**/api/userCoupon/page**', (route) =>
+    route.fulfill({ json: { code: 1, msg: null, data: { total: 0, records: [] } } }),
+  )
   await page.route('**/api/addressBook/list', (route) =>
     route.fulfill({ json: { code: 1, msg: null, data: [] } }),
   )

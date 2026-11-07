@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.azure.mapper.UserCouponMapper">
+
+    <!-- 状态按存储值原样查询与筛选，已过期(3)由后续定时任务负责流转。 -->
+    <select id="userPageQuery" resultType="com.azure.vo.coupon.UserCouponVO">
+        select * from user_coupon
+        where user_id = #{userId}
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by create_time desc
+    </select>
+
+    <select id="selectByIdAndUserId" resultType="com.azure.vo.coupon.UserCouponVO">
+        select * from user_coupon
+        where id = #{id} and user_id = #{userId}
+    </select>
+
+</mapper>

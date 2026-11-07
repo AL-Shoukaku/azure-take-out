@@ -12,6 +12,8 @@ vi.mock('@/views/order/OrderEntryPage.vue', () => ({ default: { template: '<div 
 vi.mock('@/views/order/CouponOrderPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/menu/MenuPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/coupon/CouponPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/coupon/CouponEntryPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/coupon/MyCouponPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/error/NotFoundPage.vue', () => ({ default: { template: '<div />' } }))
 
 afterEach(removeToken)
@@ -26,6 +28,8 @@ describe('用户端登录守卫', () => {
     '/',
     '/menu',
     '/coupons',
+    '/coupons/take',
+    '/coupons/mine',
     '/orders',
     '/orders/takeout',
     '/orders/coupons',
@@ -53,7 +57,9 @@ describe('用户端登录守卫', () => {
 
   it.each([
     ['/menu', '在线点餐'],
-    ['/coupons', '抢优惠券'],
+    ['/coupons', '优惠券'],
+    ['/coupons/take', '优惠券'],
+    ['/coupons/mine', '优惠券'],
     ['/orders', '我的订单'],
     ['/orders/takeout', '我的订单'],
     ['/orders/coupons', '我的订单'],
@@ -80,6 +86,22 @@ describe('用户端登录守卫', () => {
     expect(router.currentRoute.value.matched.map((record) => record.path)).toEqual([
       '/',
       '/orders',
+      path,
+    ])
+  })
+
+  it.each([
+    ['/coupons', 'coupons'],
+    ['/coupons/take', 'coupon-take'],
+    ['/coupons/mine', 'coupon-mine'],
+  ])('优惠券 %s 是同一优惠券板块下的子页面', async (path, name) => {
+    setToken('saved-user-token')
+    const router = createAppRouter(createMemoryHistory())
+    await router.push(path)
+    expect(router.currentRoute.value.name).toBe(name)
+    expect(router.currentRoute.value.matched.map((record) => record.path)).toEqual([
+      '/',
+      '/coupons',
       path,
     ])
   })

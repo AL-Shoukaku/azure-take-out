@@ -57,8 +57,16 @@ public interface CouponOrderMapper {
     @Update("update coupon_order set status = #{newStatus}, pay_time = #{payTime} where id = #{id} and status = #{expectedStatus}")
     int updateStatusByIdWithExpectedStatus(Long id, Integer expectedStatus, Integer newStatus, LocalDateTime payTime);
 
+    /**
+     * 将超时未支付的订单状态更新为已关闭
+     */
     @Update("update coupon_order set status = 3, cancel_time = NOW(), cancel_reason = '超时未支付' where status = 0 and pay_deadline < NOW()")
     void updateExpireAndUnpaidOrdersToClosed();
+
+    /**
+     *
+     */
+    void update
 
     /**
      * 分页查询商家的优惠券订单，支持按订单号、用户名、下单时间、订单状态筛选

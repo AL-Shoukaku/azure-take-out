@@ -5,9 +5,14 @@
         <h1>抢优惠券</h1>
         <p>查看本店优惠与活动时间</p>
       </div>
-      <ElButton class="refresh-button" :loading="loading" :disabled="busy" @click="load"
-        >刷新优惠券</ElButton
-      >
+      <div class="heading-actions">
+        <ElButton type="primary" :disabled="busy" @click="router.push('/coupons/mine')"
+          >查看我的优惠券</ElButton
+        >
+        <ElButton class="refresh-button" :loading="loading" :disabled="busy" @click="load"
+          >刷新优惠券</ElButton
+        >
+      </div>
     </header>
 
     <div v-if="loading" class="coupon-grid" aria-label="正在加载优惠券" aria-busy="true">
@@ -93,7 +98,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElAlert, ElButton, ElMessage, ElSkeleton } from 'element-plus'
 import {
   buyCoupon,
@@ -111,6 +116,7 @@ import CouponPaymentDialog from './components/CouponPaymentDialog.vue'
 import CouponSuccessDialog from './components/CouponSuccessDialog.vue'
 
 const session = useSessionStore()
+const router = useRouter()
 const coupons = ref<AvailableCoupon[]>([])
 const loading = ref(true),
   error = ref(''),
@@ -267,9 +273,20 @@ h1 {
   color: #8491a6;
   font-size: 14px;
 }
-.refresh-button {
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.heading-actions .el-button {
   height: 42px;
+  margin: 0;
   border-radius: 8px;
+}
+.refresh-button {
+  color: #526580;
 }
 .coupon-grid {
   display: grid;

@@ -21,9 +21,24 @@ export function createAppRouter(
           },
           {
             path: 'coupons',
-            name: 'coupons',
-            component: () => import('@/views/coupon/CouponPage.vue'),
-            meta: { section: '抢优惠券' },
+            meta: { section: '优惠券' },
+            children: [
+              {
+                path: '',
+                name: 'coupons',
+                component: () => import('@/views/coupon/CouponEntryPage.vue'),
+              },
+              {
+                path: 'take',
+                name: 'coupon-take',
+                component: () => import('@/views/coupon/CouponPage.vue'),
+              },
+              {
+                path: 'mine',
+                name: 'coupon-mine',
+                component: () => import('@/views/coupon/MyCouponPage.vue'),
+              },
+            ],
           },
           {
             path: 'orders',

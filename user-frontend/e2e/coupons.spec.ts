@@ -66,9 +66,14 @@ test('导航进入优惠券页，展示类型、优惠方式、时间、库存�
   await page.goto('/menu')
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '抢优惠券', exact: true })
+    .getByRole('link', { name: '优惠券', exact: true })
     .click()
   await expect(page).toHaveURL('/coupons')
+  await page
+    .getByRole('main')
+    .getByRole('link', { name: /抢优惠券/ })
+    .click()
+  await expect(page).toHaveURL('/coupons/take')
   const voucher = card(page, '午餐代金券')
   await expect(voucher).toContainText('代金券')
   await expect(voucher).toContainText('可抵扣 ¥20.50')
@@ -87,7 +92,7 @@ test('导航进入优惠券页，展示类型、优惠方式、时间、库存�
 
 test('领取满减券后显示真实券号和有效期，刷新库存并禁止重复领取', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '双人满减券').getByRole('button', { name: '立即领取', exact: true }).click()
   const success = page.getByRole('dialog', { name: '领取成功', exact: true })
   await expect(success).toContainText('双人满减券')
@@ -111,12 +116,12 @@ test('领取满减券后显示真实券号和有效期，刷新库存并禁止�
   expect(api.writes).toEqual([
     { path: '/api/coupon/get', method: 'POST', params: { couponId: '2' }, body: null },
   ])
-  await expect(page).toHaveURL('/coupons')
+  await expect(page).toHaveURL('/coupons/take')
 })
 
 test('代金券支付成功显示后端返回的实付金额、订单号和过期时间', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '午餐代金券').getByRole('button', { name: '¥9.90 购买', exact: true }).click()
   const payment = page.getByRole('dialog', { name: '代金券支付', exact: true })
   await expect(payment).toContainText('午餐代金券')
@@ -158,7 +163,7 @@ test('代金券支付成功显示后端返回的实付金额、订单号和过�
 
 test('暂不支付后返回抢券列表，刷新也不展示继续支付入口', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '午餐代金券').getByRole('button', { name: '¥9.90 购买', exact: true }).click()
   await page
     .getByRole('dialog', { name: '代金券支付', exact: true })
@@ -183,7 +188,7 @@ test('领取与下单失败不显示成功页，保留后端错误并支持重�
   const api = await mockCouponCheckout(page, coupons)
   api.failures.get = '用户已领取过该满减券'
   api.failures.buy = '优惠券库存不足'
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '双人满减券').getByRole('button', { name: '立即领取', exact: true }).click()
   await expect(page.getByRole('alert').filter({ hasText: api.failures.get })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -197,7 +202,7 @@ test('领取与下单失败不显示成功页，保留后端错误并支持重�
 
 test('支付失败保留订单重试，支付期间阻止重复提交和导航关闭', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '午餐代金券').getByRole('button', { name: '¥9.90 购买', exact: true }).click()
   const payment = page.getByRole('dialog', { name: '代金券支付', exact: true })
   api.failures.pay = '支付失败，请稍后重试'
@@ -216,7 +221,7 @@ test('支付失败保留订单重试，支付期间阻止重复提交和导航�
   await page.evaluate(() => {
     document.querySelector<HTMLAnchorElement>('.main-navigation a')!.click()
   })
-  await expect(page).toHaveURL('/coupons')
+  await expect(page).toHaveURL('/coupons/take')
   expect(api.writes.filter((write) => write.path.includes('/pay/'))).toHaveLength(2)
   api.release()
   await expect(page.getByRole('dialog', { name: '支付成功', exact: true })).toBeVisible()
@@ -225,7 +230,7 @@ test('支付失败保留订单重试，支付期间阻止重复提交和导航�
 test('领取请求期间锁定按钮和导航，避免重复领取', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
   api.delay = 'get'
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   const button = card(page, '双人满减券').getByRole('button', { name: '立即领取', exact: true })
   await button.click()
   await expect(button).toBeDisabled()
@@ -233,7 +238,7 @@ test('领取请求期间锁定按钮和导航，避免重复领取', async ({ pa
     .getByRole('navigation', { name: '主导航' })
     .getByRole('link', { name: '在线点餐', exact: true })
     .click()
-  await expect(page).toHaveURL('/coupons')
+  await expect(page).toHaveURL('/coupons/take')
   expect(api.writes).toHaveLength(1)
   api.release()
   await expect(page.getByRole('dialog', { name: '领取成功', exact: true })).toBeVisible()
@@ -242,7 +247,7 @@ test('领取请求期间锁定按钮和导航，避免重复领取', async ({ pa
 test('支付截止时间到达后禁用确认支付，手机弹窗不横向溢出', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
   await page.setViewportSize({ width: 375, height: 667 })
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await card(page, '午餐代金券').getByRole('button', { name: '¥9.90 购买', exact: true }).click()
   const payment = page.getByRole('dialog', { name: '代金券支付', exact: true })
   await expect(payment.getByRole('button', { name: '确认支付', exact: true })).toBeInViewport()
@@ -261,7 +266,7 @@ test('支付截止时间到达后禁用确认支付，手机弹窗不横向溢�
 })
 
 test('活动开始结束后自动更新状态，时间按北京时间解释', async ({ page }) => {
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   const upcoming = card(page, '限时优惠券')
   await expect(upcoming).toContainText('未开始')
   await page.clock.setFixedTime(new Date('2026-11-07T10:01:00+08:00'))
@@ -276,7 +281,7 @@ test('加载失败可重试，空列表和库存耗尽有明确状态', async ({
   await page.route('**/api/coupon/available', (route) =>
     route.fulfill({ json: { code: 0, msg: '列表暂不可用', data: null } }),
   )
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await expect(page.getByRole('alert')).toContainText('列表暂不可用')
   await page.route('**/api/coupon/available', (route) =>
     route.fulfill({ json: { code: 1, data: [] } }),
@@ -293,12 +298,12 @@ test('加载失败可重试，空列表和库存耗尽有明确状态', async ({
 
 test('手机布局可浏览完整优惠券与五个导航入口，刷新后保留页面', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/coupons')
+  await page.goto('/coupons/take')
   await expect(card(page, '午餐代金券')).toBeVisible()
   const navigation = page.getByRole('navigation', { name: '主导航' })
   await expect(navigation.getByRole('link')).toHaveText([
     '在线点餐',
-    '抢优惠券',
+    '优惠券',
     '我的订单',
     '收货地址',
     '我的',
@@ -306,9 +311,8 @@ test('手机布局可浏览完整优惠券与五个导航入口，刷新后保�
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
   await page.screenshot({ path: test.info().outputPath('coupon-mobile.png'), fullPage: true })
   await page.reload()
-  await expect(navigation.getByRole('link', { name: '抢优惠券', exact: true })).toHaveAttribute(
-    'aria-current',
-    'page',
+  await expect(navigation.getByRole('link', { name: '优惠券', exact: true })).toHaveClass(
+    /is-active/,
   )
   await expect(card(page, '午餐代金券')).toBeVisible()
 })

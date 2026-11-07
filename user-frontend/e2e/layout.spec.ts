@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => restoreSession(page))
 
 const sections = [
   ['/menu', '在线点餐', '热腾腾的烟火气，是日常里最温柔的陪伴。'],
-  ['/coupons', '抢优惠券', '查看本店优惠与活动时间'],
+  ['/coupons', '优惠券', '抢券与我的优惠券，都在这里。'],
   ['/orders', '我的订单', '外卖与优惠券订单，都在这里。'],
   ['/addresses', '收货地址', '把一份热乎，送到你身边。'],
   ['/profile', '我的', '个人资料与账号设置'],
@@ -42,6 +42,20 @@ for (const [path, , content] of sections) {
     await expect(
       page.getByRole('link', { name: `你好，${currentUser.username}`, exact: true }),
     ).toBeVisible()
+  })
+}
+
+for (const [path, content] of [
+  ['/coupons/take', '查看本店优惠与活动时间'],
+  ['/coupons/mine', '每一张券，都是实打实的优惠。'],
+  ['/orders/takeout', '每一餐，都是日常的记录。'],
+  ['/orders/coupons', '每一张券，都是下一餐的小惊喜。'],
+] as const) {
+  test(`直接打开并刷新子页面 ${path} 后显示正确内容`, async ({ page }) => {
+    await page.goto(path)
+    await expect(page.getByRole('main')).toContainText(content)
+    await page.reload()
+    await expect(page.getByRole('main')).toContainText(content)
   })
 }
 

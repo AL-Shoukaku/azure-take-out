@@ -228,7 +228,7 @@ test('右上角并排提供查看外卖订单和抢优惠券入口', async ({ pa
   await expect(takeout).toHaveCSS('color', 'rgb(255, 255, 255)')
   await expect(coupons).toHaveCSS('color', 'rgb(82, 101, 128)')
   await coupons.click()
-  await expect(page).toHaveURL('/coupons')
+  await expect(page).toHaveURL('/coupons/take')
   await page.goBack()
   await page.getByRole('button', { name: '查看外卖订单', exact: true }).click()
   await expect(page).toHaveURL('/orders/takeout')
