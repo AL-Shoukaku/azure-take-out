@@ -4,6 +4,7 @@ import com.azure.entity.CouponOrder;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Mapper
 public interface CouponOrderMapper {
@@ -39,4 +40,6 @@ public interface CouponOrderMapper {
     @Update("update coupon_order set status = #{newStatus}, pay_time = #{payTime} where id = #{id} and status = #{expectedStatus}")
     int updateStatusByIdWithExpectedStatus(Long id, Integer expectedStatus, Integer newStatus, LocalDateTime payTime);
 
+    @Update("update coupon_order set status = 3, cancel_time = NOW(), cancel_reason = '超时未支付' where status = 0 and pay_deadline < NOW()")
+    void updateExpireAndUnpaidOrdersToClosed();
 }
