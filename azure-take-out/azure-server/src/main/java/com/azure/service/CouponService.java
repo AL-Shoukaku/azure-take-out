@@ -4,8 +4,7 @@ import com.azure.dto.coupon.CouponDTO;
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
 import com.azure.result.PageResult;
-import com.azure.vo.coupon.CouponVO;
-import com.azure.vo.coupon.AvailableCouponVO;
+import com.azure.vo.coupon.*;
 
 import java.util.List;
 
@@ -49,4 +48,18 @@ public interface CouponService {
      * @return  可领取/购买的优惠券列表
      */
     List<AvailableCouponVO> queryAvailableCoupons();
+
+    /**
+     * 用户领取满减券
+     * @param couponId  优惠券ID
+     */
+    CouponClaimVO userGetCoupon(Long couponId);
+
+    /**
+     * 用户购买代金券
+     * @param couponId  优惠券ID
+     */
+    CouponOrderSubmitVO userBuyCoupon(Long couponId);
+
+    CouponOrderPayVO payCouponOrder(String couponOrderNumber);
 }

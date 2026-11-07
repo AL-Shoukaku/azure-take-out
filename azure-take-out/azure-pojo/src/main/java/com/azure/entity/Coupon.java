@@ -2,10 +2,14 @@ package com.azure.entity;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 public class Coupon {
+    public static final Integer TYPE_VOUCHER = 1; // 代金券
+    public static final Integer TYPE_FULL_REDUCTION = 2; // 满减券
+
     /** 优惠券ID */
     private Long id;
     /** 优惠券名称 */
@@ -17,11 +21,11 @@ public class Coupon {
     /** 优惠券剩余库存 */
     private Integer stock;
     /** 抵扣金额 */
-    private Double discountAmount;
+    private BigDecimal discountAmount;
     /** 满减券的门槛金额 */
-    private Double thresholdAmount;
+    private BigDecimal thresholdAmount;
     /** 代金券的购买价格 */
-    private Double price;
+    private BigDecimal price;
     /** 优惠券的状态 0停售 1启售 */
     private Integer status;
     /** 优惠券活动开始时间 */

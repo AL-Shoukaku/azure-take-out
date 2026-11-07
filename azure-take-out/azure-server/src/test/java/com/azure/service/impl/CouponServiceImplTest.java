@@ -4,8 +4,14 @@ import com.azure.dto.coupon.CouponDTO;
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
 import com.azure.entity.Coupon;
+import com.azure.entity.CouponOrder;
+import com.azure.entity.User;
+import com.azure.entity.UserCoupon;
 import com.azure.exception.BaseException;
 import com.azure.mapper.CouponMapper;
+import com.azure.mapper.CouponOrderMapper;
+import com.azure.mapper.UserCouponMapper;
+import com.azure.mapper.UserMapper;
 import com.azure.result.PageResult;
 import com.azure.support.ServiceTestSupport;
 import com.azure.vo.coupon.CouponVO;
@@ -19,6 +25,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.*;
@@ -28,6 +35,9 @@ import static org.mockito.Mockito.*;
 class CouponServiceImplTest extends ServiceTestSupport {
     @InjectMocks private CouponServiceImpl service;
     @Mock private CouponMapper mapper;
+    @Mock private UserCouponMapper userCouponMapper;
+    @Mock private CouponOrderMapper couponOrderMapper;
+    @Mock private UserMapper userMapper;
     @Captor private ArgumentCaptor<Coupon> coupon;
 
     private static final LocalDateTime START = LocalDateTime.of(2026, 11, 1, 10, 0);
@@ -37,13 +47,65 @@ class CouponServiceImplTest extends ServiceTestSupport {
         dto.setName("午餐券");
         dto.setType(1);
         dto.setTotalStock(100);
-        dto.setDiscountAmount(20);
-        dto.setThresholdAmount(0);
-        dto.setPrice(9.9);
+        dto.setDiscountAmount(new BigDecimal("20"));
+        dto.setThresholdAmount(BigDecimal.ZERO);
+        dto.setPrice(new BigDecimal("9.9"));
         dto.setStartTime(START);
         dto.setEndTime(START.plusDays(7));
         dto.setValidTime(30);
         return dto;
+    }
+
+    private Coupon availableCoupon(int type) {
+        Coupon row = new Coupon();
+        org.springframework.beans.BeanUtils.copyProperties(publication(), row);
+        row.setId(7L);
+        row.setType(type);
+        row.setStatus(1);
+        row.setStock(100);
+        row.setStartTime(LocalDateTime.now().minusDays(1));
+        row.setEndTime(LocalDateTime.now().plusDays(1));
+        row.setDiscountAmount(new BigDecimal("20.10"));
+        row.setThresholdAmount(type == Coupon.TYPE_FULL_REDUCTION ? new BigDecimal("50.20") : BigDecimal.ZERO);
+        row.setPrice(type == Coupon.TYPE_VOUCHER ? new BigDecimal("9.90") : BigDecimal.ZERO);
+        return row;
+    }
+
+    @Test
+    void claimingPreservesDecimalAmountsAndLeavesUserCouponIdForDatabase() {
+        Coupon template = availableCoupon(Coupon.TYPE_FULL_REDUCTION);
+        when(mapper.selectById(7L)).thenReturn(template);
+
+        service.userGetCoupon(7L);
+
+        ArgumentCaptor<UserCoupon> issued = ArgumentCaptor.forClass(UserCoupon.class);
+        verify(userCouponMapper).userHasGetCoupon(USER_ID, 7L);
+        verify(userCouponMapper).insertUserCoupon(issued.capture());
+        assertThat(issued.getValue().getId()).isNull();
+        assertThat(issued.getValue().getCouponId()).isEqualTo(7L);
+        assertThat(issued.getValue().getUserId()).isEqualTo(USER_ID);
+        assertThat(issued.getValue().getDiscountAmount()).isEqualByComparingTo("20.10");
+        assertThat(issued.getValue().getThresholdAmount()).isEqualByComparingTo("50.20");
+        verify(mapper).updateCoupon(coupon.capture());
+        assertThat(coupon.getValue().getStock()).isEqualTo(99);
+    }
+
+    @Test
+    void purchaseCreatesUnpaidOrderWithDecimalPriceAndFaceValue() {
+        Coupon template = availableCoupon(Coupon.TYPE_VOUCHER);
+        when(mapper.selectById(7L)).thenReturn(template);
+        when(userMapper.getById(USER_ID)).thenReturn(User.builder().id(USER_ID).username("测试用户").build());
+
+        service.userBuyCoupon(7L);
+
+        ArgumentCaptor<CouponOrder> order = ArgumentCaptor.forClass(CouponOrder.class);
+        verify(couponOrderMapper).insertCouponOrder(order.capture());
+        assertThat(order.getValue().getPrice()).isEqualByComparingTo("9.90");
+        assertThat(order.getValue().getDiscountAmount()).isEqualByComparingTo("20.10");
+        assertThat(order.getValue().getThresholdAmount()).isEqualByComparingTo("0");
+        assertThat(order.getValue().getStatus()).isEqualTo(CouponOrder.STATUS_UNPAID);
+        assertThat(order.getValue().getId()).isNull();
+        verify(userCouponMapper, never()).insertUserCoupon(any());
     }
 
     @ParameterizedTest
@@ -52,8 +114,8 @@ class CouponServiceImplTest extends ServiceTestSupport {
         CouponDTO dto = publication();
         dto.setType(type);
         if (type == 2) {
-            dto.setPrice(0);
-            dto.setThresholdAmount(50);
+            dto.setPrice(BigDecimal.ZERO);
+            dto.setThresholdAmount(new BigDecimal("50"));
         }
         LocalDateTime before = LocalDateTime.now();
 
@@ -95,7 +157,7 @@ class CouponServiceImplTest extends ServiceTestSupport {
         CouponUpdateDTO dto = new CouponUpdateDTO();
         dto.setId(7L);
         dto.setName("新名称");
-        dto.setPrice(switch (price) { case "zero" -> 0.0; case "positive" -> 8.8; default -> null; });
+        dto.setPrice(switch (price) { case "zero" -> BigDecimal.ZERO; case "positive" -> new BigDecimal("8.8"); default -> null; });
         when(mapper.updateCoupon(any())).thenReturn(1);
         LocalDateTime before = LocalDateTime.now();
 

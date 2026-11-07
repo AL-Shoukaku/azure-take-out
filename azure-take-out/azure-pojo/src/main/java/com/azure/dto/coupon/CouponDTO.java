@@ -3,6 +3,7 @@ package com.azure.dto.coupon;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -28,17 +29,20 @@ public class CouponDTO {
     /** 优惠券总库存 */
     private int totalStock;
 
+    @NotNull(message = "抵扣金额不能为空")
     @Positive(message = "抵扣金额必须大于 0")
     /** 抵扣金额 */
-    private double discountAmount;
+    private BigDecimal discountAmount;
 
+    @NotNull(message = "满减券的门槛金额不能为空")
     @Min(value = 0, message = "满减券的门槛金额不能小于 0")
     /** 满减券的门槛金额 */
-    private double thresholdAmount;
+    private BigDecimal thresholdAmount = BigDecimal.ZERO;
 
+    @NotNull(message = "代金券的购买价格不能为空")
     @Min(value = 0, message = "代金券的购买价格不能小于 0")
     /** 代金券的购买价格 */
-    private double price;
+    private BigDecimal price = BigDecimal.ZERO;
 
     /** 优惠券活动开始时间 */
     private LocalDateTime startTime;

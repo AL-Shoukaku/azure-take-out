@@ -2,6 +2,7 @@ package com.azure.vo.coupon;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -17,11 +18,11 @@ public class CouponVO {
     /** 优惠券剩余库存 */
     private int stock;
     /** 抵扣金额 */
-    private double discountAmount;
+    private BigDecimal discountAmount;
     /** 满减券的门槛金额 */
-    private double thresholdAmount;
+    private BigDecimal thresholdAmount;
     /** 代金券的购买价格 */
-    private double price;
+    private BigDecimal price;
     /** 优惠券的状态 0停售 1启售 */
     private int status;
     /** 优惠券活动开始时间 */

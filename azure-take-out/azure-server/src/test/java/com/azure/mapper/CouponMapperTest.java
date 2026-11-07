@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 
@@ -25,9 +26,9 @@ class CouponMapperTest extends SqlTestSupport {
         row.setType(type);
         row.setTotalStock(100);
         row.setStock(80);
-        row.setDiscountAmount(20.5);
-        row.setThresholdAmount(type == 1 ? 0.0 : 50.0);
-        row.setPrice(type == 1 ? 9.9 : 0.0);
+        row.setDiscountAmount(new BigDecimal("20.50"));
+        row.setThresholdAmount(type == 1 ? new BigDecimal("0.00") : new BigDecimal("50.00"));
+        row.setPrice(type == 1 ? new BigDecimal("9.90") : new BigDecimal("0.00"));
         row.setStatus(status);
         row.setStartTime(START);
         row.setEndTime(end);
@@ -79,9 +80,9 @@ class CouponMapperTest extends SqlTestSupport {
         change.setType(2);
         change.setTotalStock(200);
         change.setStock(0);
-        change.setDiscountAmount(15.5);
-        change.setThresholdAmount(60.0);
-        change.setPrice(0.0);
+        change.setDiscountAmount(new BigDecimal("15.50"));
+        change.setThresholdAmount(new BigDecimal("60.00"));
+        change.setPrice(new BigDecimal("0.00"));
         change.setStatus(0);
         change.setStartTime(START.plusDays(1));
         change.setEndTime(START.plusDays(20));
@@ -208,9 +209,9 @@ class CouponMapperTest extends SqlTestSupport {
         assertThat(available).extracting("name").containsExactly(active.getName(), upcoming.getName());
         assertThat(available.getFirst().getId()).isEqualTo(active.getId());
         assertThat(available.getFirst().getStock()).isEqualTo(80);
-        assertThat(available.getFirst().getDiscountAmount()).isEqualTo(20.5);
-        assertThat(available.getFirst().getPrice()).isEqualTo(9.9);
-        assertThat(available.getLast().getThresholdAmount()).isEqualTo(50.0);
+        assertThat(available.getFirst().getDiscountAmount()).isEqualByComparingTo("20.50");
+        assertThat(available.getFirst().getPrice()).isEqualByComparingTo("9.90");
+        assertThat(available.getLast().getThresholdAmount()).isEqualByComparingTo("50.00");
     }
 
     @Test

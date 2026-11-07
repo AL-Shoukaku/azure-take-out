@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,7 +36,9 @@ class CouponMvcTest extends WebTestSupport {
 
         verify(couponService).publishCoupon(argThat(dto -> dto.getName().equals("午餐券")
                 && dto.getType() == 1 && dto.getTotalStock() == 100
-                && dto.getDiscountAmount() == 20 && dto.getThresholdAmount() == 0 && dto.getPrice() == 9.9
+                && dto.getDiscountAmount().compareTo(new BigDecimal("20")) == 0
+                && dto.getThresholdAmount().compareTo(BigDecimal.ZERO) == 0
+                && dto.getPrice().compareTo(new BigDecimal("9.9")) == 0
                 && dto.getStartTime().equals(LocalDateTime.of(2026, 11, 1, 10, 0))
                 && dto.getEndTime().equals(LocalDateTime.of(2026, 11, 8, 10, 0))
                 && dto.getValidTime() == 30));
@@ -75,10 +78,28 @@ class CouponMvcTest extends WebTestSupport {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"discountAmount", "thresholdAmount", "price"})
+    void explicitNullPublicationAmountsAreRejected(String field) throws Exception {
+        ObjectNode body = publication();
+        body.putNull(field);
+        validationError(post("/admin/coupon/publish").contentType("application/json").content(body.toString()));
+    }
+
+    @Test
+    void omittedPriceAndThresholdKeepZeroDefaults() throws Exception {
+        ObjectNode body = publication();
+        body.remove("price");
+        body.remove("thresholdAmount");
+        successful(admin(post("/admin/coupon/publish").contentType("application/json").content(body.toString())));
+        verify(couponService).publishCoupon(argThat(dto -> dto.getPrice().compareTo(BigDecimal.ZERO) == 0
+                && dto.getThresholdAmount().compareTo(BigDecimal.ZERO) == 0));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"omitted", "zero", "positive"})
     void updateAllowsOmittedPriceAndZero(String scenario) throws Exception {
         ObjectNode body = json.createObjectNode().put("id", 7).put("name", "新名称");
-        Double price = switch (scenario) { case "zero" -> 0.0; case "positive" -> 8.8; default -> null; };
+        BigDecimal price = switch (scenario) { case "zero" -> BigDecimal.ZERO; case "positive" -> new BigDecimal("8.8"); default -> null; };
         if (price != null) body.put("price", price);
         successful(admin(put("/admin/coupon/update").contentType("application/json").content(body.toString())));
         verify(couponService).updateCoupon(argThat(dto -> dto.getId() == 7L && dto.getName().equals("新名称")
@@ -112,6 +133,9 @@ class CouponMvcTest extends WebTestSupport {
         row.setName("午餐券");
         row.setStock(80);
         row.setValidTime(30);
+        row.setDiscountAmount(new BigDecimal("20.10"));
+        row.setThresholdAmount(new BigDecimal("50.20"));
+        row.setPrice(new BigDecimal("9.90"));
         row.setStartTime(LocalDateTime.of(2026, 11, 1, 10, 0));
         when(couponService.getById(7L)).thenReturn(row);
 
@@ -119,6 +143,9 @@ class CouponMvcTest extends WebTestSupport {
                 .andExpect(jsonPath("$.data.id").value(7))
                 .andExpect(jsonPath("$.data.name").value("午餐券"))
                 .andExpect(jsonPath("$.data.stock").value(80))
+                .andExpect(jsonPath("$.data.discountAmount").value(20.10))
+                .andExpect(jsonPath("$.data.thresholdAmount").value(50.20))
+                .andExpect(jsonPath("$.data.price").value(9.90))
                 .andExpect(jsonPath("$.data.validTime").value(30))
                 .andExpect(jsonPath("$.data.startTime").value("2026-11-01 10:00"));
         verify(couponService).getById(7L);

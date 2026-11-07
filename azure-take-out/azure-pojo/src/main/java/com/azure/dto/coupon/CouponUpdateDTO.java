@@ -3,7 +3,7 @@ package com.azure.dto.coupon;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 public class CouponUpdateDTO {
@@ -21,5 +21,5 @@ public class CouponUpdateDTO {
 
     /** 代金券的购买价格 */
     @Min(value = 0, message = "代金券的购买价格不能小于 0")
-    private Double price;
+    private BigDecimal price;
 }

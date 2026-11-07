@@ -1,30 +1,47 @@
 package com.azure.service.impl;
 
 import com.azure.constant.StatusConstant;
+import com.azure.context.BaseContext;
 import com.azure.dto.coupon.CouponDTO;
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
 import com.azure.entity.Coupon;
+import com.azure.entity.CouponOrder;
+import com.azure.entity.User;
+import com.azure.entity.UserCoupon;
 import com.azure.exception.BaseException;
 import com.azure.mapper.CouponMapper;
+import com.azure.mapper.CouponOrderMapper;
+import com.azure.mapper.UserMapper;
+import com.azure.mapper.UserCouponMapper;
 import com.azure.result.PageResult;
 import com.azure.service.CouponService;
-import com.azure.vo.coupon.CouponVO;
-import com.azure.vo.coupon.AvailableCouponVO;
+import com.azure.vo.coupon.*;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class CouponServiceImpl implements CouponService {
 
     @Autowired
     private CouponMapper couponMapper;
+
+    @Autowired
+    private UserCouponMapper userCouponMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private CouponOrderMapper couponOrderMapper;
 
     /**
      * 商家发布优惠券
@@ -119,5 +136,161 @@ public class CouponServiceImpl implements CouponService {
     @Override
     public List<AvailableCouponVO> queryAvailableCoupons() {
         return couponMapper.getAvailableCoupons();
+    }
+
+    /**
+     * 用户领取满减券
+     * @param couponId  优惠券ID
+     */
+    @Override
+    @Transactional
+    public CouponClaimVO userGetCoupon(Long couponId) {
+        LocalDateTime now = LocalDateTime.now();
+        Long userId = BaseContext.getCurrentId();
+        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION);
+        // 扣减库存，并将优惠券发放给用户
+        coupon.setStock(coupon.getStock() - 1);
+        couponMapper.updateCoupon(coupon);
+        UserCoupon userCoupon = createUserCoupon(coupon, userId);
+        userCouponMapper.insertUserCoupon(userCoupon);
+
+        return CouponClaimVO.builder()
+                .number(userCoupon.getNumber())
+                .expireTime(userCoupon.getExpireTime())
+                .build();
+    }
+
+    /**
+     * 用户购买代金券
+     * @param couponId  优惠券ID
+     */
+    @Override
+    @Transactional
+    public CouponOrderSubmitVO userBuyCoupon(Long couponId) {
+        LocalDateTime now = LocalDateTime.now();
+        Long userId = BaseContext.getCurrentId();
+        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_VOUCHER);
+
+        // 扣减库存，并提交优惠券订单
+        coupon.setStock(coupon.getStock() - 1);
+        couponMapper.updateCoupon(coupon);
+        CouponOrder couponOrder = createCouponOrder(coupon, userId);
+        couponOrderMapper.insertCouponOrder(couponOrder);
+
+        return CouponOrderSubmitVO.builder()
+                .number(couponOrder.getNumber())
+                .price(couponOrder.getPrice())
+                .payDeadline(couponOrder.getPayDeadline())
+                .build();
+    }
+
+    /**
+     * 用户支付代金券订单
+     * @param couponOrderNumber 代金券订单号
+     */
+    @Override
+    public CouponOrderPayVO payCouponOrder(String couponOrderNumber) {
+
+
+        return null;
+    }
+
+
+    /**
+     * 检查优惠券是否可领取/购买
+     * @param couponId      优惠券ID
+     * @param userId        用户ID
+     * @param now           当前时间
+     * @param expectType    预期的优惠券类型
+     * @return              优惠券信息
+     */
+    private Coupon checkCouponAvailable(Long couponId, Long userId, LocalDateTime now, Integer expectType) {
+        if (couponId == null || couponId < 0) {
+            throw new BaseException("优惠券ID不合法");
+        }
+        Coupon coupon = couponMapper.selectById(couponId);
+        if (coupon == null) {
+            throw new BaseException("优惠券不存在");
+        }
+        // 检查优惠券类型是否符合预期
+        if (!coupon.getType().equals(expectType)) {
+            throw new BaseException("优惠券类型不符合预期");
+        }
+        // 检查优惠券是否启售
+        if (!coupon.getStatus().equals(StatusConstant.ENABLE)) {
+            throw new BaseException("优惠券未启售");
+        }
+        // 检查优惠券是否在活动时间内
+        if (now.isBefore(coupon.getStartTime()) || coupon.getEndTime().isBefore(now)) {
+            throw new BaseException("优惠券不在活动时间内");
+        }
+        // 检查库存是否大于0
+        if (coupon.getStock() <= 0) {
+            throw new BaseException("优惠券库存不足");
+        }
+        // 检查用户是否已经领取过该优惠券，满减券从 user_coupon 表中查询，代金券从 coupon_order 表中查询
+        if (coupon.getType().equals(Coupon.TYPE_FULL_REDUCTION) && userCouponMapper.userHasGetCoupon(userId, couponId) > 0) {
+            throw new BaseException("用户已领取过该满减券");
+        }
+        if (coupon.getType().equals(Coupon.TYPE_VOUCHER) && couponOrderMapper.userHasBuyCoupon(userId, couponId) > 0) {
+            throw new BaseException("用户已购买过该代金券");
+        }
+        return coupon;
+    }
+
+    /**
+     * 创建用户优惠券
+     * @param coupon    优惠券模板
+     * @param userId    用户ID
+     * @return          用户优惠券
+     */
+    private UserCoupon createUserCoupon(Coupon coupon, Long userId) {
+        if (userId == null) {
+            throw new BaseException("用户未登录");
+        }
+
+        UserCoupon userCoupon = new UserCoupon();
+        LocalDateTime now = LocalDateTime.now();
+        BeanUtils.copyProperties(coupon, userCoupon, "id");
+        userCoupon.setUserId(userId);
+        userCoupon.setCouponId(coupon.getId());
+        userCoupon.setNumber(UUID.randomUUID().toString().replace("-", ""));
+        userCoupon.setStatus(UserCoupon.STATUS_UNUSED);
+        userCoupon.setCreateTime(now);
+        userCoupon.setExpireTime(now.plusDays(coupon.getValidTime()));
+        return userCoupon;
+    }
+
+    /**
+     * 创建购券订单
+     * @param coupon    优惠券模板
+     * @param userId    用户ID
+     * @return          购券订单
+     */
+    private CouponOrder createCouponOrder(Coupon coupon, Long userId) {
+        if (userId == null) {
+            throw new BaseException("用户未登录");
+        }
+        User user = userMapper.getById(userId);
+        if (user == null) {
+            throw new BaseException("用户不存在");
+        }
+
+        CouponOrder couponOrder = new CouponOrder();
+        LocalDateTime now = LocalDateTime.now();
+        couponOrder.setUserId(userId);
+        couponOrder.setCouponId(coupon.getId());
+        couponOrder.setNumber(UUID.randomUUID().toString().replace("-", ""));
+        couponOrder.setCouponNumber(UUID.randomUUID().toString().replace("-", ""));
+        couponOrder.setUsername(user.getUsername());
+        couponOrder.setCouponName(coupon.getName());
+        couponOrder.setType(coupon.getType());
+        couponOrder.setPrice(coupon.getPrice());
+        couponOrder.setDiscountAmount(coupon.getDiscountAmount());
+        couponOrder.setThresholdAmount(coupon.getThresholdAmount());
+        couponOrder.setStatus(CouponOrder.STATUS_UNPAID);
+        couponOrder.setCreateTime(now);
+        couponOrder.setPayDeadline(now.plusMinutes(15));
+        return couponOrder;
     }
 }

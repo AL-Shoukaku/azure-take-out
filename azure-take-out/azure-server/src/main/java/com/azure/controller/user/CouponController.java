@@ -3,13 +3,13 @@ package com.azure.controller.user;
 import com.azure.result.Result;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.AvailableCouponVO;
+import com.azure.vo.coupon.CouponClaimVO;
+import com.azure.vo.coupon.CouponOrderPayVO;
+import com.azure.vo.coupon.CouponOrderSubmitVO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -39,10 +39,10 @@ public class CouponController {
      * @param couponId  优惠券ID
      */
     @PostMapping("/get")
-    public Result<Void> getCoupon(Long couponId) {
+    public Result<CouponClaimVO> getCoupon(Long couponId) {
         log.info("用户领取满减券，优惠券ID：{}", couponId);
-
-        return Result.error("功能未实现");
+        CouponClaimVO couponClaimVO = couponService.userGetCoupon(couponId);
+        return Result.success(couponClaimVO);
     }
 
     /**
@@ -50,9 +50,16 @@ public class CouponController {
      * @param couponId  优惠券ID
      */
     @PostMapping("/buy")
-    public Result<Void> buyCoupon(Long couponId) {
+    public Result<CouponOrderSubmitVO> buyCoupon(Long couponId) {
         log.info("用户购买代金券，优惠券ID：{}", couponId);
+        CouponOrderSubmitVO couponOrderSubmitVO = couponService.userBuyCoupon(couponId);
+        return Result.success(couponOrderSubmitVO);
+    }
 
-        return Result.error("功能未实现");
+    @PostMapping("/pay/{couponOrderId}")
+    public Result<CouponOrderPayVO> pay(@RequestParam String couponOrderNumber) {
+        log.info("用户支付代金券订单，订单ID：{}", couponOrderNumber);
+        CouponOrderPayVO couponOrderPayVO = couponService.payCouponOrder(couponOrderNumber);
+        return Result.success(couponOrderPayVO);
     }
 }
