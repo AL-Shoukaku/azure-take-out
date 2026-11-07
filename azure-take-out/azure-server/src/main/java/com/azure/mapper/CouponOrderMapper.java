@@ -1,6 +1,10 @@
 package com.azure.mapper;
 
+import com.azure.dto.coupon.CouponOrderPageQueryDTO;
 import com.azure.entity.CouponOrder;
+import com.azure.vo.coupon.CouponOrderPageQueryVO;
+import com.azure.vo.coupon.CouponOrderVO;
+import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDateTime;
@@ -29,6 +33,18 @@ public interface CouponOrderMapper {
     CouponOrder selectByNumberAndUserId(String couponOrderNumber, Long userId);
 
     /**
+     * 根据订单ID查询优惠券订单详情
+     */
+    @Select("SELECT * FROM coupon_order WHERE id = #{id}")
+    CouponOrderVO selectById(Long id);
+
+    /**
+     * 根据订单ID和用户ID查询本人的优惠券订单详情
+     */
+    @Select("SELECT * FROM coupon_order WHERE id = #{id} AND user_id = #{userId}")
+    CouponOrderVO selectByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    /**
      * 根据订单ID和预期状态更新订单状态
      * 仅当订单当前状态与预期状态一致时才会更新成功
      * @param id                订单ID
@@ -42,4 +58,14 @@ public interface CouponOrderMapper {
 
     @Update("update coupon_order set status = 3, cancel_time = NOW(), cancel_reason = '超时未支付' where status = 0 and pay_deadline < NOW()")
     void updateExpireAndUnpaidOrdersToClosed();
+
+    /**
+     * 分页查询商家的优惠券订单，支持按订单号、用户名、下单时间、订单状态筛选
+     */
+    Page<CouponOrderPageQueryVO> adminPageSearch(CouponOrderPageQueryDTO couponOrderPageQueryDTO);
+
+    /**
+     * 分页查询用户自己的优惠券订单，支持按订单状态筛选
+     */
+    Page<CouponOrderPageQueryVO> userPageQuery(@Param("userId") Long userId, @Param("status") Integer status);
 }

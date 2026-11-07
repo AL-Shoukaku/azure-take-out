@@ -45,5 +45,6 @@ public class WebTestConfiguration {
     @Bean public WorkspaceService workspaceService() { return mock(WorkspaceService.class); }
     @Bean public ShopService shopService() { return mock(ShopService.class); }
     @Bean public CouponService couponService() { return mock(CouponService.class); }
+    @Bean public CouponOrderService couponOrderService() { return mock(CouponOrderService.class); }
     @Bean public CacheManager cacheManager() { return new ConcurrentMapCacheManager("setmealCache","setmealDishCache"); }
 }
