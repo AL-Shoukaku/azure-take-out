@@ -1,6 +1,7 @@
 package com.azure.service;
 
 import com.azure.dto.coupon.CouponOrderPageQueryDTO;
+import com.azure.dto.coupon.CouponOrderRefundDTO;
 import com.azure.result.PageResult;
 import com.azure.vo.coupon.CouponOrderVO;
 
@@ -25,4 +26,9 @@ public interface CouponOrderService {
      * 用户查询本人的优惠券订单详情
      */
     CouponOrderVO queryUserOrderDetail(Long id);
+
+    /**
+     * 商家退款优惠券订单
+     */
+    void refundCouponOrder(CouponOrderRefundDTO couponOrderRefundDTO);
 }

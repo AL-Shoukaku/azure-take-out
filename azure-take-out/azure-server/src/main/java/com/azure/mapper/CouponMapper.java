@@ -56,4 +56,12 @@ public interface CouponMapper {
     @Select("SELECT id, name, type, stock, discount_amount, threshold_amount, price, start_time, end_time " +
             "FROM coupon where status = 1 and stock > 0 and end_time >= NOW() order by start_time asc")
     List<AvailableCouponVO> getAvailableCoupons();
+
+
+    /**
+     * 将指定 id 的优惠券库存加 1
+     * @param couponId 优惠券ID
+     */
+    @Update("UPDATE coupon SET stock = stock + 1, update_time = NOW() WHERE id = #{couponId}")
+    void addStockByOne(Long couponId);
 }

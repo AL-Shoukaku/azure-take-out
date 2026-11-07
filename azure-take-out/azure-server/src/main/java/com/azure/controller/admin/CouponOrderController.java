@@ -1,18 +1,17 @@
 package com.azure.controller.admin;
 
 import com.azure.dto.coupon.CouponOrderPageQueryDTO;
+import com.azure.dto.coupon.CouponOrderRefundDTO;
 import com.azure.result.PageResult;
 import com.azure.result.Result;
 import com.azure.service.CouponOrderService;
 import com.azure.vo.coupon.CouponOrderVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController("adminCouponOrderController")
 @RequestMapping("/admin/couponOrder")
@@ -40,8 +39,11 @@ public class CouponOrderController {
     }
 
 
-    public Result<Void> refundCouponOrder(@PathVariable Long id) {
-        log.info("商家退款优惠券订单: {}", id);
+    @PutMapping("/refund")
+    @Operation(summary = "商家退款优惠券订单")
+    public Result<Void> refundCouponOrder(@RequestBody @Valid CouponOrderRefundDTO couponOrderRefundDTO) {
+        log.info("商家退款优惠券订单: {}", couponOrderRefundDTO);
+        couponOrderService.refundCouponOrder(couponOrderRefundDTO);
         return Result.success();
     }
 }

@@ -7,6 +7,7 @@ import com.azure.vo.coupon.CouponOrderVO;
 import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -68,4 +69,8 @@ public interface CouponOrderMapper {
      * 分页查询用户自己的优惠券订单，支持按订单状态筛选
      */
     Page<CouponOrderPageQueryVO> userPageQuery(@Param("userId") Long userId, @Param("status") Integer status);
+
+    @Update("update coupon_order set status = #{newStatus}, refund_reason = #{refundReason}, refund_time = #{refundTime} " +
+            "where id = #{id} and status = #{expectedStatus}")
+    int updateToRefunded(Long id, String refundReason, Integer expectedStatus, Integer newStatus, LocalDateTime refundTime);
 }
