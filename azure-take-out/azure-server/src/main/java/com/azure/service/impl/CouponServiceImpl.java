@@ -189,10 +189,47 @@ public class CouponServiceImpl implements CouponService {
      * @param couponOrderNumber 代金券订单号
      */
     @Override
+    @Transactional
     public CouponOrderPayVO payCouponOrder(String couponOrderNumber) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BaseException("用户未登录");
+        }
+        if (couponOrderNumber == null || couponOrderNumber.isBlank()) {
+            throw new BaseException("代金券订单号不能为空");
+        }
 
+        // 根据订单号与用户ID查询订单，确保订单存在且属于当前用户
+        CouponOrder couponOrder = couponOrderMapper.selectByNumberAndUserId(couponOrderNumber, userId);
+        if (couponOrder == null) {
+            throw new BaseException("代金券订单不存在");
+        }
 
-        return null;
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(couponOrder.getPayDeadline())) {
+            throw new BaseException("代金券订单已超过支付截止时间");
+        }
+
+        // 更新订单状态为已支付，并设置支付时间
+        couponOrder.setStatus(CouponOrder.STATUS_PAID);
+        couponOrder.setPayTime(now);
+        int updateRows = couponOrderMapper.updateStatusByIdWithExpectedStatus(
+                couponOrder.getId(),
+                CouponOrder.STATUS_UNPAID,
+                CouponOrder.STATUS_PAID,
+                now
+        );
+        if (updateRows == 0) {
+            throw new BaseException("订单状态更新失败，可能是订单已支付或已关闭");
+        }
+
+        // 发放代金券给用户
+        UserCoupon userCoupon = createUserCouponWithOrder(couponOrder);
+        userCouponMapper.insertUserCoupon(userCoupon);
+
+        return CouponOrderPayVO.builder()
+                .number(couponOrder.getNumber())
+                .build();
     }
 
 
@@ -258,6 +295,31 @@ public class CouponServiceImpl implements CouponService {
         userCoupon.setStatus(UserCoupon.STATUS_UNUSED);
         userCoupon.setCreateTime(now);
         userCoupon.setExpireTime(now.plusDays(coupon.getValidTime()));
+        return userCoupon;
+    }
+
+    /**
+     * 根据已支付的购券订单创建用户优惠券
+     * @param couponOrder 已支付的购券订单
+     * @return 用户优惠券
+     */
+    private UserCoupon createUserCouponWithOrder(CouponOrder couponOrder) {
+        Coupon coupon = couponMapper.selectById(couponOrder.getCouponId());
+        if (coupon == null) {
+            throw new BaseException("优惠券不存在");
+        }
+
+        UserCoupon userCoupon = new UserCoupon();
+        userCoupon.setUserId(couponOrder.getUserId());
+        userCoupon.setCouponId(couponOrder.getCouponId());
+        userCoupon.setNumber(couponOrder.getCouponNumber());
+        userCoupon.setType(couponOrder.getType());
+        userCoupon.setName(couponOrder.getCouponName());
+        userCoupon.setDiscountAmount(couponOrder.getDiscountAmount());
+        userCoupon.setThresholdAmount(couponOrder.getThresholdAmount());
+        userCoupon.setStatus(UserCoupon.STATUS_UNUSED);
+        userCoupon.setCreateTime(couponOrder.getPayTime());
+        userCoupon.setExpireTime(couponOrder.getPayTime().plusDays(coupon.getValidTime()));
         return userCoupon;
     }
 

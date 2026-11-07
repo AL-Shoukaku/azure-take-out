@@ -19,6 +19,56 @@ CREATE TABLE `coupon` (
   KEY `idx_coupon_status_time` (`status`, `start_time`, `end_time`)
 );
 
+CREATE TABLE `user_coupon` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `coupon_id` bigint NOT NULL,
+  `number` varchar(50) NOT NULL,
+  `type` tinyint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `status` tinyint NOT NULL DEFAULT '0',
+  `lock_order_id` bigint DEFAULT NULL,
+  `expire_time` datetime NOT NULL,
+  `create_time` datetime NOT NULL,
+  `use_time` datetime DEFAULT NULL,
+  `refund_time` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_coupon_number` (`number`),
+  UNIQUE KEY `uk_user_coupon_user_template` (`user_id`, `coupon_id`),
+  KEY `idx_user_coupon_user_status_expire` (`user_id`, `status`, `expire_time`),
+  KEY `idx_user_coupon_status_expire` (`status`, `expire_time`),
+  KEY `idx_user_coupon_lock_order` (`lock_order_id`)
+);
+
+CREATE TABLE `coupon_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `coupon_id` bigint NOT NULL,
+  `number` varchar(50) NOT NULL,
+  `coupon_number` varchar(50) NOT NULL,
+  `username` varchar(32) NOT NULL,
+  `coupon_name` varchar(32) NOT NULL,
+  `type` tinyint NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `status` tinyint NOT NULL DEFAULT '0',
+  `pay_deadline` datetime NOT NULL,
+  `create_time` datetime NOT NULL,
+  `pay_time` datetime DEFAULT NULL,
+  `cancel_time` datetime DEFAULT NULL,
+  `refund_time` datetime DEFAULT NULL,
+  `cancel_reason` varchar(255) DEFAULT NULL,
+  `refund_reason` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_coupon_order_number` (`number`),
+  UNIQUE KEY `uk_coupon_order_coupon_number` (`coupon_number`),
+  KEY `idx_coupon_order_user_template_status` (`user_id`, `coupon_id`, `status`),
+  KEY `idx_coupon_order_status_deadline` (`status`, `pay_deadline`)
+);
+
 CREATE TABLE `address_book` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,

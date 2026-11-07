@@ -1,10 +1,9 @@
 package com.azure.mapper;
 
 import com.azure.entity.CouponOrder;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
+
+import java.time.LocalDateTime;
 
 @Mapper
 public interface CouponOrderMapper {
@@ -24,4 +23,20 @@ public interface CouponOrderMapper {
 
     @Select("SELECT COUNT(*) FROM coupon_order WHERE user_id = #{userId} AND coupon_id = #{couponId}")
     int userHasBuyCoupon(Long userId, Long couponId);
+
+    @Select("SELECT * FROM coupon_order WHERE number = #{couponOrderNumber} AND user_id = #{userId}")
+    CouponOrder selectByNumberAndUserId(String couponOrderNumber, Long userId);
+
+    /**
+     * 根据订单ID和预期状态更新订单状态
+     * 仅当订单当前状态与预期状态一致时才会更新成功
+     * @param id                订单ID
+     * @param expectedStatus    预期状态
+     * @param newStatus         新状态
+     * @param payTime           支付时间
+     * @return                  更新的记录数，若为0则表示更新失败（可能是订单状态不匹配）
+     */
+    @Update("update coupon_order set status = #{newStatus}, pay_time = #{payTime} where id = #{id} and status = #{expectedStatus}")
+    int updateStatusByIdWithExpectedStatus(Long id, Integer expectedStatus, Integer newStatus, LocalDateTime payTime);
+
 }
