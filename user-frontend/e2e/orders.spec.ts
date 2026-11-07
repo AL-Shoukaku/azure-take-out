@@ -7,8 +7,8 @@ test.beforeEach(async ({ page }) => restoreSession(page))
 test('桌面三列两行，每页六条并展示订单摘要和分页', async ({ page }) => {
   await mockOrders(page)
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await page.goto('/orders')
-  await expect(page.getByRole('heading', { name: '我的订单', exact: true })).toBeVisible()
+  await page.goto('/orders/takeout')
+  await expect(page.getByRole('heading', { name: '外卖订单', exact: true })).toBeVisible()
   await expect(page.getByText('每一餐，都是日常的记录。', { exact: true })).toBeVisible()
   const cards = page.getByRole('article')
   await expect(cards).toHaveCount(6)
@@ -34,7 +34,7 @@ test('桌面三列两行，每页六条并展示订单摘要和分页', async ({
 
 test('五个选项卡准确筛选，进行中用状态列表查询，切换后回到第一页', async ({ page }) => {
   const { queries } = await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await expect(page.getByRole('tab')).toHaveText([
     '全部订单',
     '待付款',
@@ -59,9 +59,27 @@ test('五个选项卡准确筛选，进行中用状态列表查询，切换后�
   await expect(page).toHaveURL('/menu')
 })
 
+test('继续点餐左侧提供查看优惠券订单入口', async ({ page }) => {
+  await mockOrders(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/orders/takeout')
+  const coupons = page.getByRole('button', { name: '查看优惠券订单', exact: true })
+  const menu = page.getByRole('button', { name: '继续点餐', exact: true })
+  const couponBox = (await coupons.boundingBox())!
+  const menuBox = (await menu.boundingBox())!
+  expect(couponBox.x + couponBox.width).toBeLessThan(menuBox.x)
+  expect(couponBox.y).toBe(menuBox.y)
+  await expect(coupons).toHaveCSS('background-color', 'rgb(37, 99, 235)')
+  await expect(coupons).toHaveCSS('color', 'rgb(255, 255, 255)')
+  await expect(menu).toHaveCSS('color', 'rgb(82, 101, 128)')
+  await coupons.click()
+  await expect(page).toHaveURL('/orders/coupons')
+  await expect(page.getByRole('heading', { name: '优惠券订单', exact: true })).toBeVisible()
+})
+
 test('根据六种状态提供操作，联系商家显示明确的演示手机号', async ({ page }) => {
   await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   const cards = page.getByRole('article')
   await expect(cards.nth(0).getByRole('button', { name: '去支付' })).toBeVisible()
   await expect(cards.nth(0).getByRole('button', { name: '取消订单' })).toBeVisible()
@@ -82,7 +100,7 @@ test('根据六种状态提供操作，联系商家显示明确的演示手机�
 
 test('详情读取最新信息，显示状态流程、菜品数量与行小计、费用和配送信息', async ({ page }) => {
   await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await page.getByRole('article').nth(1).getByRole('button', { name: '订单详情' }).click()
   const dialog = page.getByRole('dialog', { name: '订单详情', exact: true })
   await expect(dialog.getByRole('heading', { name: '待接单', exact: true })).toBeVisible()
@@ -111,7 +129,7 @@ test('详情读取最新信息，显示状态流程、菜品数量与行小计�
 
 test('模拟支付确认成功后刷新列表和详情状态，待付款筛选移除该单', async ({ page }) => {
   const { writes } = await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await page.getByRole('tab', { name: '待付款', exact: true }).click()
   await page.getByRole('button', { name: '订单详情' }).click()
   const detail = page.getByRole('dialog', { name: '订单详情', exact: true })
@@ -139,7 +157,7 @@ test('模拟支付确认成功后刷新列表和详情状态，待付款筛选�
 
 test('取消待接单订单先确认，成功后详情显示取消原因及退款状态', async ({ page }) => {
   const { writes } = await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await page.getByRole('article').nth(1).getByRole('button', { name: '订单详情' }).click()
   const dialog = page.getByRole('dialog', { name: '订单详情', exact: true })
   await dialog.getByRole('button', { name: '取消订单' }).click()
@@ -160,7 +178,7 @@ test('催单调用 GET，失败展示错误并允许重试', async ({ page }) =>
     (route) => route.fulfill({ json: { code: 0, msg: '订单状态错误' } }),
     { times: 1 },
   )
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   const card = page.getByRole('article').nth(1)
   await card.getByRole('button', { name: '催单', exact: true }).click()
   await expect(page.getByText('订单状态错误', { exact: true })).toBeVisible()
@@ -171,7 +189,7 @@ test('催单调用 GET，失败展示错误并允许重试', async ({ page }) =>
 
 test('再来一单先加入后端购物车并同步共享状态，再跳转点餐，不清空原购物车', async ({ page }) => {
   const { writes } = await mockOrders(page)
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   const refreshed = page.waitForResponse('**/api/shoppingCart/list')
   await page.getByRole('article').first().getByRole('button', { name: '再来一单' }).click()
   const cart = await (await refreshed).json()
@@ -187,7 +205,7 @@ test('列表失败可重试，空状态保留继续点餐入口', async ({ page 
     (route) => route.fulfill({ json: { code: 0, msg: '订单暂时不可用' } }),
     { times: 1 },
   )
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await expect(page.getByText('订单暂时不可用', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '重新加载' }).click()
   await expect(page.getByText('还没有相关订单', { exact: true })).toBeVisible()
@@ -206,7 +224,7 @@ test('详情失败可重试，支付失败保持弹窗且不显示成功', async
     (route) => route.fulfill({ json: { code: 0, msg: '订单状态错误，请刷新' } }),
     { times: 1 },
   )
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await page.getByRole('article').first().getByRole('button', { name: '订单详情' }).click()
   const dialog = page.getByRole('dialog', { name: '订单详情', exact: true })
   await expect(dialog.getByText('订单详情暂时不可用')).toBeVisible()
@@ -229,7 +247,7 @@ test('手机单列、图片失败有占位，长订单号与详情不横向溢�
   await mockOrders(page, [order, makeOrder(2, 4)])
   await page.route('**/broken-image.png', (route) => route.fulfill({ status: 404 }))
   await page.setViewportSize({ width: 375, height: 667 })
-  await page.goto('/orders')
+  await page.goto('/orders/takeout')
   await expect(page.getByRole('article')).toHaveCount(2)
   await expect(page.locator('.dish-image-fallback').first()).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)

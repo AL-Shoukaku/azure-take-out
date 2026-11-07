@@ -36,7 +36,7 @@
       </div>
     </div>
     <template #footer>
-      <ElButton @click="visible = false">继续领券</ElButton>
+      <ElButton @click="visible = false">{{ closeText }}</ElButton>
       <ElButton type="primary" @click="goToMenu">去点餐</ElButton>
     </template>
   </ElDialog>
@@ -50,7 +50,9 @@ import successImage from '@/assets/images/status/payment-success.webp'
 import { formatActivityTime } from '../couponDisplay'
 import type { CouponReceipt } from '../couponOrders'
 
-defineProps<{ result: CouponReceipt }>()
+withDefaults(defineProps<{ result: CouponReceipt; closeText?: string }>(), {
+  closeText: '继续领券',
+})
 const visible = defineModel<boolean>({ required: true })
 const router = useRouter()
 function goToMenu(): void {

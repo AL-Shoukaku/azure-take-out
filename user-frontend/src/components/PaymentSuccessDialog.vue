@@ -18,7 +18,7 @@
     </div>
     <template #footer>
       <ElButton @click="navigate('/menu')">继续点餐</ElButton>
-      <ElButton type="primary" @click="navigate('/orders')">查看订单</ElButton>
+      <ElButton type="primary" @click="navigate('/orders/takeout')">查看订单</ElButton>
     </template>
   </ElDialog>
 </template>

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * 优惠券订单分页查询返回对象，
- * 相比 {@link CouponOrderVO} 不含 userId、couponId、couponNumber、type、createTime 列表不需要的字段
+ * 相比 {@link CouponOrderVO} 不含 userId、couponId、couponNumber、type 列表不需要的字段
  */
 @Data
 public class CouponOrderPageQueryVO implements Serializable {
@@ -39,6 +39,9 @@ public class CouponOrderPageQueryVO implements Serializable {
 
     /** 支付截止时间 */
     private LocalDateTime payDeadline;
+
+    /** 订单创建时间 */
+    private LocalDateTime createTime;
 
     /** 支付时间 */
     private LocalDateTime payTime;

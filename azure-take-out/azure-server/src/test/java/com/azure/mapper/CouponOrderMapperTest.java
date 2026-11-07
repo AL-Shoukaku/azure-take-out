@@ -117,8 +117,9 @@ class CouponOrderMapperTest extends SqlTestSupport {
         assertThat(page).hasSize(1);
         CouponOrderPageQueryVO vo = page.getFirst();
         assertThat(vo.getId()).isEqualTo(inserted.getId());
-        // 分页返回对象不含 userId、couponId、couponNumber、type、createTime，其余字段与实体逐一比对
+        // 分页返回对象不含 userId、couponId、couponNumber、type，其余字段与实体逐一比对
         assertThat(vo).usingRecursiveComparison().ignoringFields("id").isEqualTo(inserted);
+        assertThat(vo.getCreateTime()).isEqualTo(START);
     }
 
     @Test

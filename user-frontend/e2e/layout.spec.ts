@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => restoreSession(page))
 const sections = [
   ['/menu', '在线点餐', '热腾腾的烟火气，是日常里最温柔的陪伴。'],
   ['/coupons', '抢优惠券', '查看本店优惠与活动时间'],
-  ['/orders', '我的订单', '每一餐，都是日常的记录。'],
+  ['/orders', '我的订单', '外卖与优惠券订单，都在这里。'],
   ['/addresses', '收货地址', '把一份热乎，送到你身边。'],
   ['/profile', '我的', '个人资料与账号设置'],
 ] as const

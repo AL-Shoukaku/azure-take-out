@@ -46,9 +46,9 @@ import { payCouponOrder, type CouponPaymentResult } from '@/api/coupons'
 import { getToken } from '@/utils/auth'
 import { money } from '@/utils/pricing'
 import { formatActivityTime } from '../couponDisplay'
-import { paymentSeconds, type CouponPaymentOrder } from '../couponOrders'
+import { paymentSeconds, type CouponPaymentSummary } from '../couponOrders'
 
-const props = defineProps<{ order: CouponPaymentOrder; now: number }>()
+const props = defineProps<{ order: CouponPaymentSummary; now: number }>()
 const visible = defineModel<boolean>({ required: true })
 const busy = defineModel<boolean>('busy', { default: false })
 const emit = defineEmits<{ paid: [result: CouponPaymentResult] }>()

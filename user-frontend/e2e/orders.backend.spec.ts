@@ -81,6 +81,10 @@ test('真实后端：独立账号分页、详情、模拟支付、催单、取�
       .getByRole('navigation', { name: '主导航' })
       .getByRole('link', { name: '我的订单', exact: true })
       .click()
+    await page
+      .getByRole('main')
+      .getByRole('link', { name: /外卖订单/ })
+      .click()
     await expect(page.getByRole('article')).toHaveCount(6)
     await page.getByRole('navigation', { name: '订单分页' }).locator('.btn-next').click()
     await expect(page.getByRole('article')).toHaveCount(1)
@@ -120,7 +124,7 @@ test('真实后端：独立账号分页、详情、模拟支付、催单、取�
     expect(
       cart.data.reduce((count: number, item: { number: number }) => count + item.number, 0),
     ).toBe(2)
-    await page.goto('/orders')
+    await page.goto('/orders/takeout')
     await page.getByRole('tab', { name: '进行中', exact: true }).click()
     await expect(page.getByRole('article')).toHaveCount(0)
     await page.getByRole('tab', { name: '已取消', exact: true }).click()

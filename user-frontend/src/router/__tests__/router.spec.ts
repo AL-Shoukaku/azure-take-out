@@ -8,6 +8,8 @@ vi.mock('@/layouts/UserLayout.vue', () => ({ default: { template: '<div />' } })
 vi.mock('@/views/profile/ProfilePage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/address/AddressPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/order/OrderPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/order/OrderEntryPage.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/order/CouponOrderPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/menu/MenuPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/coupon/CouponPage.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/error/NotFoundPage.vue', () => ({ default: { template: '<div />' } }))
@@ -20,14 +22,21 @@ describe('用户端登录守卫', () => {
     expect(router.getRoutes().find((route) => route.path === '/')?.redirect).toBe('/menu')
   })
 
-  it.each(['/', '/menu', '/coupons', '/orders', '/addresses', '/profile', '/unknown-page'])(
-    '没有 Cookie 凭证时，访问 %s 进入登录页',
-    async (path) => {
-      const router = createAppRouter(createMemoryHistory())
-      await router.push(path)
-      expect(router.currentRoute.value.path).toBe('/login')
-    },
-  )
+  it.each([
+    '/',
+    '/menu',
+    '/coupons',
+    '/orders',
+    '/orders/takeout',
+    '/orders/coupons',
+    '/addresses',
+    '/profile',
+    '/unknown-page',
+  ])('没有 Cookie 凭证时，访问 %s 进入登录页', async (path) => {
+    const router = createAppRouter(createMemoryHistory())
+    await router.push(path)
+    expect(router.currentRoute.value.path).toBe('/login')
+  })
 
   it('未登录时可直接打开登录页', async () => {
     const router = createAppRouter(createMemoryHistory())
@@ -46,6 +55,8 @@ describe('用户端登录守卫', () => {
     ['/menu', '在线点餐'],
     ['/coupons', '抢优惠券'],
     ['/orders', '我的订单'],
+    ['/orders/takeout', '我的订单'],
+    ['/orders/coupons', '我的订单'],
     ['/addresses', '收货地址'],
     ['/profile', '我的'],
   ])('已登录可直接访问 %s，页面属于公共布局', async (path, section) => {
@@ -53,8 +64,24 @@ describe('用户端登录守卫', () => {
     const router = createAppRouter(createMemoryHistory())
     await router.push(path)
     expect(router.currentRoute.value.path).toBe(path)
-    expect(router.currentRoute.value.matched).toHaveLength(2)
+    expect(router.currentRoute.value.matched[0]!.path).toBe('/')
     expect(router.currentRoute.value.meta.section).toBe(section)
+  })
+
+  it.each([
+    ['/orders', 'orders'],
+    ['/orders/takeout', 'takeout-orders'],
+    ['/orders/coupons', 'coupon-orders'],
+  ])('我的订单 %s 是同一订单板块下的子页面', async (path, name) => {
+    setToken('saved-user-token')
+    const router = createAppRouter(createMemoryHistory())
+    await router.push(path)
+    expect(router.currentRoute.value.name).toBe(name)
+    expect(router.currentRoute.value.matched.map((record) => record.path)).toEqual([
+      '/',
+      '/orders',
+      path,
+    ])
   })
 
   it('每次导航都读取 Cookie，凭证移除后返回登录页', async () => {

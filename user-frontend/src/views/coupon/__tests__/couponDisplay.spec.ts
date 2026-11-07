@@ -20,9 +20,8 @@ describe('优惠方式', () => {
     expect(couponOffer({ ...coupon, thresholdAmount: 0 })).toBe('无门槛减 ¥20.50')
   })
   it('代金券展示抵扣金额，购买价不作为优惠金额', () => {
-    expect(couponOffer({ ...coupon, type: 1, thresholdAmount: 0, price: 9.9 })).toBe(
-      '可抵扣 ¥20.50',
-    )
+    const voucher: AvailableCoupon = { ...coupon, type: 1, thresholdAmount: 0, price: 9.9 }
+    expect(couponOffer(voucher)).toBe('可抵扣 ¥20.50')
   })
 })
 

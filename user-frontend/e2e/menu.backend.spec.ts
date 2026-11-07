@@ -110,7 +110,7 @@ test('真实后端：口味隔离、空口味增减、确认下单和模拟支�
       [],
     )
     await success.getByRole('button', { name: '查看订单', exact: true }).click()
-    await expect(page).toHaveURL('/orders')
+    await expect(page).toHaveURL('/orders/takeout')
     await expect(page.getByRole('article')).toHaveCount(1)
   } finally {
     if (orderId) await request.put(`/api/order/cancel/${orderId}`, { headers })

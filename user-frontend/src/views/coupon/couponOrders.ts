@@ -1,10 +1,13 @@
 import type { CouponSubmittedOrder } from '@/api/coupons'
 import { activityTime } from './couponDisplay'
 
-export interface CouponPaymentOrder extends CouponSubmittedOrder {
-  couponId: number
+export interface CouponPaymentSummary extends CouponSubmittedOrder {
   name: string
   offer: string
+}
+
+export interface CouponPaymentOrder extends CouponPaymentSummary {
+  couponId: number
 }
 
 export interface CouponReceipt {

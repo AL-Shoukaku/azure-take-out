@@ -27,9 +27,24 @@ export function createAppRouter(
           },
           {
             path: 'orders',
-            name: 'orders',
-            component: () => import('@/views/order/OrderPage.vue'),
             meta: { section: '我的订单' },
+            children: [
+              {
+                path: '',
+                name: 'orders',
+                component: () => import('@/views/order/OrderEntryPage.vue'),
+              },
+              {
+                path: 'takeout',
+                name: 'takeout-orders',
+                component: () => import('@/views/order/OrderPage.vue'),
+              },
+              {
+                path: 'coupons',
+                name: 'coupon-orders',
+                component: () => import('@/views/order/CouponOrderPage.vue'),
+              },
+            ],
           },
           {
             path: 'addresses',

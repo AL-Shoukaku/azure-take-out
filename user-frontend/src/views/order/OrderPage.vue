@@ -2,12 +2,15 @@
   <div class="orders-page">
     <div class="page-heading">
       <div>
-        <h1>我的订单</h1>
+        <h1>外卖订单</h1>
         <p>每一餐，都是日常的记录。</p>
       </div>
-      <ElButton class="continue-button" @click="router.push('/menu')"
-        >继续点餐 <span aria-hidden="true">→</span></ElButton
-      >
+      <div class="heading-actions">
+        <ElButton type="primary" @click="router.push('/orders/coupons')">查看优惠券订单</ElButton>
+        <ElButton class="continue-button" @click="router.push('/menu')"
+          >继续点餐 <span aria-hidden="true">→</span></ElButton
+        >
+      </div>
     </div>
     <ElTabs class="order-tabs" :model-value="tab" @tab-change="selectTab($event as OrderTab)">
       <ElTabPane
@@ -84,25 +87,7 @@
       @paid="paymentSucceeded"
     />
     <PaymentSuccessDialog v-if="paymentOrder" v-model="successOpen" :order="paymentOrder" />
-    <ElDialog
-      v-model="contactOpen"
-      title="联系商家"
-      width="400px"
-      class="user-dialog"
-      modal-class="user-dialog-overlay"
-      align-center
-      append-to-body
-      destroy-on-close
-    >
-      <div class="merchant-contact">
-        <p>碧蓝外卖 · 演示手机号</p>
-        <a href="tel:13800000000">138 0000 0000</a>
-        <p>订单配送或售后问题，可以联系商家咨询。</p>
-      </div>
-      <template #footer
-        ><ElButton type="primary" @click="contactOpen = false">知道了</ElButton></template
-      >
-    </ElDialog>
+    <MerchantContactDialog v-model="contactOpen" />
   </div>
 </template>
 <script setup lang="ts">
@@ -112,7 +97,6 @@ import {
   ElAlert,
   ElButton,
   ElConfigProvider,
-  ElDialog,
   ElMessage,
   ElMessageBox,
   ElPagination,
@@ -125,6 +109,7 @@ import { cancelOrder, remindOrder, repeatOrder, type Order } from '@/api/orders'
 import { useCartStore } from '@/stores/cart'
 import { useAddressesStore } from '@/stores/addresses'
 import { getToken } from '@/utils/auth'
+import MerchantContactDialog from '@/components/MerchantContactDialog.vue'
 import PaymentDialog from '@/components/PaymentDialog.vue'
 import PaymentSuccessDialog from '@/components/PaymentSuccessDialog.vue'
 import OrderCard from './components/OrderCard.vue'
@@ -259,10 +244,19 @@ h1 {
   color: #8491a6;
   font-size: 14px;
 }
-.continue-button {
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.heading-actions .el-button {
   height: 42px;
+  margin: 0;
   padding-inline: 20px;
   border-radius: 8px;
+}
+.continue-button {
   color: #526580;
 }
 .continue-button span {
@@ -327,22 +321,6 @@ h1 {
   font-size: 14px;
   line-height: 1.8;
 }
-.merchant-contact {
-  padding-block: 8px;
-  text-align: center;
-}
-.merchant-contact p {
-  color: #8491a6;
-  font-size: 14px;
-  line-height: 1.8;
-}
-.merchant-contact a {
-  display: inline-block;
-  margin-block: 8px;
-  color: var(--user-primary);
-  font-size: 28px;
-  text-decoration: none;
-}
 @media (max-width: 1199px) {
   .order-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -357,9 +335,11 @@ h1 {
     align-items: flex-start;
     flex-wrap: wrap;
   }
-  .continue-button {
-    height: 38px;
+  .heading-actions {
     margin-left: auto;
+  }
+  .heading-actions .el-button {
+    height: 38px;
     padding-inline: 14px;
   }
   .order-tabs :deep(.el-tabs__item) {

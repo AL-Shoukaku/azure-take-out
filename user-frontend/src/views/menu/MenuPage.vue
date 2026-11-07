@@ -71,7 +71,7 @@
         :closable="false"
         class="menu-notice"
         ><ElButton type="primary" link @click="paymentOpen = true">继续支付</ElButton
-        ><RouterLink to="/orders">查看我的订单</RouterLink></ElAlert
+        ><RouterLink to="/orders/takeout">查看我的订单</RouterLink></ElAlert
       >
       <section ref="menuArea" class="ordering-area" aria-label="在线点餐">
         <ElTabs

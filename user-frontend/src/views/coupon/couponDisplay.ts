@@ -10,7 +10,9 @@ export const stateNames: Record<CouponState, string> = {
   unavailable: '暂不可用',
 }
 
-export function couponOffer(coupon: AvailableCoupon): string {
+export function couponOffer(
+  coupon: Pick<AvailableCoupon, 'type' | 'discountAmount' | 'thresholdAmount'>,
+): string {
   if (coupon.type === 1) return `可抵扣 ${money(coupon.discountAmount)}`
   return coupon.thresholdAmount > 0
     ? `满 ${money(coupon.thresholdAmount)} 减 ${money(coupon.discountAmount)}`
