@@ -392,6 +392,8 @@ public class OrdersServiceImpl implements OrdersService {
     /**
      * 用户取消订单
      */
+    @Override
+    @Transactional
     public void userCancelOrder(Long id) {
         Orders orders = getCurrentUserOrder(id);
 
@@ -411,18 +413,21 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 已支付订单在本地模拟退款。
         if (orders.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
-            //支付状态修改为 退款
             newOrders.setPayStatus(Orders.REFUND);
         }
 
         if (ordersMapper.updateForUser(newOrders, orders.getStatus(), getCurrentUserId()) == 0) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
+
+        // 退回优惠券给用户
+        refundCouponToUser(orders);
     }
 
     /**
      * 用户再来一单
      */
+    @Override
     public void repetition(Long id) {
         Orders orders = getCurrentUserOrder(id);
         // 获取所有订单明细，然后将它们插入到购物车中
@@ -470,6 +475,8 @@ public class OrdersServiceImpl implements OrdersService {
     /**
      * 商家取消订单，需要传入取消原因
      */
+    @Override
+    @Transactional
     public void cancelOrder(OrdersCancelDTO ordersCancelDTO) {
         Orders orders = ordersMapper.getById(ordersCancelDTO.getId());
 
@@ -505,6 +512,9 @@ public class OrdersServiceImpl implements OrdersService {
         }
 
         updateOrderIfStatus(newOrders, orders.getStatus());
+
+        // 退回优惠券给用户
+        refundCouponToUser(orders);
     }
 
     /**
@@ -632,6 +642,8 @@ public class OrdersServiceImpl implements OrdersService {
     /**
      * 商家拒单
      */
+    @Override
+    @Transactional
     public void rejectOrder(OrdersRejectionDTO ordersRejectionDTO) {
         Long id = ordersRejectionDTO.getId();
         Orders orders = ordersMapper.getById(id);
@@ -656,12 +668,16 @@ public class OrdersServiceImpl implements OrdersService {
         newOrders.setRejectionReason(ordersRejectionDTO.getRejectionReason().trim());
         newOrders.setPayStatus(Orders.REFUND);
         updateOrderIfStatus(newOrders, Orders.TO_BE_CONFIRMED);
+
+        // 退回优惠券给用户
+        refundCouponToUser(orders);
     }
 
     /**
      * 商家派送订单
      * @param id 订单id
      */
+    @Override
     public void deliveryOrder(Long id) {
         Orders orders = ordersMapper.getById(id);
         if (orders == null) {
@@ -684,6 +700,7 @@ public class OrdersServiceImpl implements OrdersService {
     /**
      * 客户催单
      */
+    @Override
     public void remindOrder(Long id) {
         Orders orders = getCurrentUserOrder(id);
         // 客户只能催单待接单的订单，其他状态的订单不能催单
@@ -703,6 +720,20 @@ public class OrdersServiceImpl implements OrdersService {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
     }
+
+    /**
+     * 根据订单id退回优惠券给用户
+     * @param orders    要退款的订单
+     */
+    private void refundCouponToUser(Orders orders) {
+        int rows = userCouponMapper.UpdateStatusWhenOrderRefund(
+                orders.getId()
+        );
+        if (rows != orders.getCouponCount()) {
+            throw new BaseException("订单取消失败，未能成功退回优惠券，请联系管理员");
+        }
+    }
+
 
     /**
      * 根据发送消息的类型，订单 id 和订单号序列化为 JSON 字符串

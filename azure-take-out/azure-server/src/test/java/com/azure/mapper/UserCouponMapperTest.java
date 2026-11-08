@@ -7,6 +7,8 @@ import com.azure.vo.coupon.UserCouponVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,6 +20,10 @@ class UserCouponMapperTest extends SqlTestSupport {
     private static final LocalDateTime START = LocalDateTime.of(2026, 11, 1, 10, 0);
 
     private UserCoupon insert(long userId, long couponId, int type, int status, LocalDateTime expireTime, LocalDateTime createTime) {
+        return insert(userId, couponId, type, status, expireTime, createTime, null);
+    }
+
+    private UserCoupon insert(long userId, long couponId, int type, int status, LocalDateTime expireTime, LocalDateTime createTime, Long orderId) {
         UserCoupon row = new UserCoupon();
         row.setUserId(userId);
         row.setCouponId(couponId);
@@ -27,6 +33,7 @@ class UserCouponMapperTest extends SqlTestSupport {
         row.setDiscountAmount(new BigDecimal("20.00"));
         row.setThresholdAmount(type == 1 ? new BigDecimal("0.00") : new BigDecimal("60.00"));
         row.setStatus(status);
+        row.setLockOrderId(orderId);
         row.setExpireTime(expireTime);
         row.setCreateTime(createTime);
         if (status == UserCoupon.STATUS_USED) {
@@ -122,5 +129,39 @@ class UserCouponMapperTest extends SqlTestSupport {
         assertThat(dto.getPage()).isEqualTo(1);
         assertThat(dto.getPageSize()).isEqualTo(10);
         assertThat(dto.getStatus()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1, 1, 0", "2, 1, 0", "1, -1, 3", "2, -1, 3"})
+    void returningCouponUsesExpiryAndClearsOrderAndUseTime(int status, int expiresInDays, int expectedStatus) {
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        UserCoupon coupon = insert(USER_ID, 101, 1, status, now.plusDays(expiresInDays), now.minusDays(2), 7L);
+        UserCouponMapper coupons = mapper(UserCouponMapper.class);
+
+        assertThat(coupons.UpdateStatusWhenOrderRefund(7L)).isEqualTo(1);
+
+        UserCoupon returned = coupons.getByCouponNumber(coupon.getNumber());
+        assertThat(returned.getStatus()).isEqualTo(expectedStatus);
+        assertThat(returned.getLockOrderId()).isNull();
+        assertThat(returned.getUseTime()).isNull();
+        assertThat(returned.getRefundTime()).isNull();
+        assertThat(returned.getExpireTime()).isEqualTo(coupon.getExpireTime());
+        assertThat(coupons.UpdateStatusWhenOrderRefund(7L)).isZero();
+    }
+
+    @Test
+    void returningCouponsLeavesOtherOrdersAndIneligibleStatusesUnchanged() {
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        UserCoupon otherOrder = insert(USER_ID, 101, 1, UserCoupon.STATUS_USED, now.plusDays(1), now.minusDays(2), 8L);
+        UserCoupon unused = insert(USER_ID, 102, 1, UserCoupon.STATUS_UNUSED, now.plusDays(1), now.minusDays(2));
+        UserCoupon expired = insert(USER_ID, 103, 1, UserCoupon.STATUS_EXPIRED, now.minusDays(1), now.minusDays(2));
+        UserCoupon refunded = insert(USER_ID, 104, 1, UserCoupon.STATUS_REFUNDED, now.plusDays(1), now.minusDays(2));
+        UserCouponMapper coupons = mapper(UserCouponMapper.class);
+
+        assertThat(coupons.UpdateStatusWhenOrderRefund(7L)).isZero();
+
+        for (UserCoupon coupon : java.util.List.of(otherOrder, unused, expired, refunded)) {
+            assertThat(coupons.getByCouponNumber(coupon.getNumber())).usingRecursiveComparison().isEqualTo(coupon);
+        }
     }
 }

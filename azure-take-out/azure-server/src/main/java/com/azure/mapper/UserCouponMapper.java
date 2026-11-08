@@ -83,4 +83,14 @@ public interface UserCouponMapper {
      * @return                  更新的记录数，若为0则表示更新失败（可能是优惠券状态不匹配）
      */
     int updateStatusAndUseTimeByOrderIdWithExpectStatus(Long orderId, Integer expectedStatus, Integer newStatus, LocalDateTime useTime);
+
+    /**
+     * 根据订单 id，将对应的用户优惠券状态进行更新，同时清理使用时间和锁定订单 id
+     * 只有优惠券的状态为已使用或锁定中时才会更新成功。
+     * @param orderId           订单 id
+     * @return                  更新的记录数，若为0则表示更新失败（可能是优惠券状态不匹配）
+     */
+    @Update("update user_coupon set status = case when expire_time <= NOW() then 3 else 0 end, lock_order_id = NULL, use_time = NULL" +
+            " where lock_order_id = #{orderId} and status in (1, 2)")
+    int UpdateStatusWhenOrderRefund(Long orderId);
 }

@@ -2,6 +2,7 @@ package com.azure.task;
 
 import com.azure.entity.Orders;
 import com.azure.mapper.OrdersMapper;
+import com.azure.mapper.UserCouponMapper;
 import com.azure.support.ServiceTestSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,14 +16,18 @@ import static org.mockito.Mockito.*;
 class OrderTaskTest extends ServiceTestSupport {
     @InjectMocks private OrderTask task;
     @Mock private OrdersMapper mapper;
+    @Mock private UserCouponMapper couponMapper;
     @Captor private ArgumentCaptor<LocalDateTime> cutoff;
     @Captor private ArgumentCaptor<Orders> update;
 
     @Test void timeoutUsesFifteenMinuteCutoffAndConditionalCancellation() {
         when(mapper.getByStatusAndOrderTime(eq(1),any())).thenReturn(Arrays.asList(Orders.builder().id(7L).build(),Orders.builder().id(8L).build()));
+        when(mapper.update(any(),eq(1))).thenReturn(1);
         LocalDateTime before = LocalDateTime.now(); task.processTimeOutOrders(); LocalDateTime after = LocalDateTime.now();
         verify(mapper).getByStatusAndOrderTime(eq(1),cutoff.capture()); assertThat(cutoff.getValue()).isBetween(before.minusMinutes(15),after.minusMinutes(15));
         verify(mapper,times(2)).update(update.capture(),eq(1));
+        verify(couponMapper).UpdateStatusWhenOrderRefund(7L);
+        verify(couponMapper).UpdateStatusWhenOrderRefund(8L);
         assertThat(update.getAllValues()).extracting(Orders::getId).containsExactly(7L,8L);
         for (Orders row : update.getAllValues()) {
             assertThat(row.getStatus()).isEqualTo(Orders.CANCELLED); assertThat(row.getCancelReason()).isEqualTo("订单超时未支付，系统自动取消");
@@ -47,5 +52,15 @@ class OrderTaskTest extends ServiceTestSupport {
     @Test void concurrentPaymentDoesNotStopProcessingRemainingTimeoutCandidates() {
         when(mapper.getByStatusAndOrderTime(eq(1),any())).thenReturn(Arrays.asList(Orders.builder().id(7L).build(),Orders.builder().id(8L).build()));
         when(mapper.update(any(),eq(1))).thenReturn(0,1); task.processTimeOutOrders(); verify(mapper,times(2)).update(any(),eq(1));
+        verify(couponMapper,never()).UpdateStatusWhenOrderRefund(7L);
+        verify(couponMapper).UpdateStatusWhenOrderRefund(8L);
+    }
+    @Test void couponCountMismatchStillFailsTimeoutCancellation() {
+        when(mapper.getByStatusAndOrderTime(eq(1),any())).thenReturn(Collections.singletonList(Orders.builder().id(7L).couponCount(1).build()));
+        when(mapper.update(any(),eq(1))).thenReturn(1);
+
+        assertThatThrownBy(() -> task.processTimeOutOrders())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("处理超时订单时，更新优惠券状态发生异常");
     }
 }
