@@ -11,7 +11,26 @@
           /></svg
         >我的餐袋 <span>{{ cart.count }}</span>
       </h2>
-      <ElButton link :disabled="!cart.count || locked" aria-label="清空餐袋" @click="$emit('clean')"
+      <ElBadge
+        class="coupon-picker-badge"
+        type="danger"
+        :value="String(couponPreview.coupons.length)"
+        :hidden="couponPreview.coupons.length === 0"
+      >
+        <ElButton
+          type="primary"
+          class="coupon-picker-button"
+          :disabled="locked"
+          @click="$emit('selectCoupons')"
+          >选择优惠券</ElButton
+        >
+      </ElBadge>
+      <ElButton
+        class="cart-clean"
+        link
+        :disabled="!cart.count || locked"
+        aria-label="清空餐袋"
+        @click="$emit('clean')"
         ><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
             d="M4 6h16M9 3h6M6 6l1 15h10l1-15M10 10v7m4-7v7"
@@ -73,10 +92,18 @@
       <div>
         <span>配送费</span><span>{{ money(cart.deliveryAmount) }}</span>
       </div>
+      <div v-if="couponPreview.coupons.length" class="coupon-discount-row">
+        <span>优惠券试算（{{ couponPreview.coupons.length }} 张）</span
+        ><span>−{{ money(couponPreview.discount) }}</span>
+      </div>
     </div>
     <div class="cart-total">
-      <span>合计</span><strong>{{ money(cart.total) }}</strong>
+      <span>{{ couponPreview.coupons.length ? '试算合计' : '合计' }}</span
+      ><strong>{{ money(couponPreview.total) }}</strong>
     </div>
+    <p v-if="couponPreview.coupons.length" class="coupon-preview-note">
+      优惠仅供试算，实际支付暂不使用优惠券。
+    </p>
     <ElButton
       class="checkout-button"
       type="primary"
@@ -90,20 +117,26 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ElAlert, ElButton, ElSkeleton } from 'element-plus'
+import { ElAlert, ElBadge, ElButton, ElSkeleton } from 'element-plus'
 import { useCartStore } from '@/stores/cart'
 import type { CartItem } from '@/api/cart'
 import DishImage from '@/components/DishImage.vue'
 import emptyCartImage from '@/assets/images/status/cart-empty.webp'
 import { money, lineTotal } from '@/utils/pricing'
 import { groupCartItems } from '../menuDisplay'
-const props = defineProps<{ closed: boolean; checking: boolean }>()
+import type { CouponPricePreview } from '../couponPreview'
+const props = defineProps<{
+  closed: boolean
+  checking: boolean
+  couponPreview: CouponPricePreview
+}>()
 defineEmits<{
   add: [item: CartItem]
   subtract: [item: CartItem]
   clean: []
   retry: []
   checkout: []
+  selectCoupons: []
 }>()
 const cart = useCartStore()
 const groupedItems = computed(() => groupCartItems(cart.items))
@@ -127,21 +160,22 @@ const locked = computed(() => cart.busy || cart.loading || !!cart.error || props
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding-bottom: 20px;
   border-bottom: 1px solid #e6edf7;
 }
 h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   margin: 0;
   color: #354661;
-  font-size: 17px;
+  font-size: 16px;
+  white-space: nowrap;
 }
 h2 svg {
-  width: 23px;
-  height: 23px;
+  width: 20px;
+  height: 20px;
   color: var(--user-primary);
 }
 h2 span {
@@ -156,8 +190,31 @@ h2 span {
   width: 17px;
   height: 17px;
 }
-.cart-heading .el-button {
+.cart-heading .cart-clean {
   color: #93a2b8;
+  margin-left: 0;
+  flex-shrink: 0;
+}
+.cart-heading .coupon-picker-button {
+  height: 30px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.coupon-picker-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.coupon-discount-row {
+  color: var(--user-primary);
+}
+.coupon-preview-note {
+  flex-shrink: 0;
+  margin: -6px 0 14px;
+  color: #8491a6;
+  font-size: 11px;
+  line-height: 1.7;
 }
 .empty-cart {
   flex: 1;

@@ -1,5 +1,7 @@
 package com.azure.service.impl;
 
+import com.azure.exception.*;
+import com.azure.mapper.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.Page;
@@ -9,16 +11,6 @@ import com.azure.constant.StatusConstant;
 import com.azure.context.BaseContext;
 import com.azure.dto.*;
 import com.azure.entity.*;
-import com.azure.exception.AddressBookBusinessException;
-import com.azure.exception.OrderBusinessException;
-import com.azure.exception.ShoppingCartBusinessException;
-import com.azure.exception.UserNotLoginException;
-import com.azure.mapper.DishMapper;
-import com.azure.mapper.SetmealMapper;
-import com.azure.mapper.OrderDetailMapper;
-import com.azure.mapper.OrdersMapper;
-import com.azure.mapper.ShoppingCartMapper;
-import com.azure.mapper.UserMapper;
 import com.azure.result.PageResult;
 import com.azure.service.AddressBookService;
 import com.azure.service.OrdersService;
@@ -71,6 +63,12 @@ public class OrdersServiceImpl implements OrdersService {
     private SetmealMapper setmealMapper;
 
     @Autowired
+    private UserCouponMapper userCouponMapper;
+
+    @Autowired
+    private CouponUseRecordMapper couponUseRecordMapper;
+
+    @Autowired
     private ShoppingCartMapper shoppingCartMapper;
     @Autowired
     private WebSocketServer webSocketServer;
@@ -78,10 +76,16 @@ public class OrdersServiceImpl implements OrdersService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     *  用户下单
+     * @param ordersSubmitDTO   用户下单的数据
+     * @return                  讲订单号，金额，时间封装为 VO 返回
+     */
     @Transactional
+    @Override
     public OrderSubmitVO submitOrder(OrdersSubmitDTO ordersSubmitDTO) {
         Long userId = getCurrentUserId();
-        // 检查传入的数据是否合理，地址簿，购物车是否为空
+        // 校验地址簿和购物车数据
         AddressBook addressBook = addressBookService.getById(ordersSubmitDTO.getAddressBookId());
         if (addressBook == null || !userId.equals(addressBook.getUserId())) {
             throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_NOT_FOUND);
@@ -90,31 +94,13 @@ public class OrdersServiceImpl implements OrdersService {
         if (shoppingCartList == null || shoppingCartList.isEmpty()) {
             throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
-        checkShoppingCartProductStatus(shoppingCartList);
+        checkShoppingCartProductStatus(shoppingCartList);   // 检查购物车内有无停售菜品或套餐。
 
-        // 向订单表 orders 中插入一条数据
-        Orders orders = new Orders();
-        // 直接复制 DTO 中的数据，手动计算 amount 和 packAmount，防止来自非前端的恶意数据
-        BeanUtils.copyProperties(ordersSubmitDTO, orders, "amount", "packAmount");
-        int packAmount = shoppingCartList.stream().mapToInt(ShoppingCart::getNumber).sum();
-        BigDecimal dishesAmount = shoppingCartList.stream()
-                .map(item -> item.getAmount().multiply(BigDecimal.valueOf(item.getNumber())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        orders.setPackAmount(packAmount);
-        orders.setAmount(dishesAmount.add(DELIVERY_FEE).add(BigDecimal.valueOf(packAmount)));
-        orders.setUserId(userId);
-        orders.setOrderTime(LocalDateTime.now());
-        orders.setPayStatus(Orders.UN_PAID);
-        orders.setStatus(Orders.PENDING_PAYMENT);
-        orders.setNumber(UUID.randomUUID().toString().replace("-", ""));
-        orders.setPhone(addressBook.getPhone());
-        orders.setConsignee(addressBook.getConsignee());
-        orders.setAddress(addressBook.getDetail());
-        orders.setUserName(userMapper.getById(userId).getName());
+        // 创建订单对象，会根据购物车数据手动计算费用，防止来自非前端的恶意数据
+        Orders orders = createOrders(ordersSubmitDTO, userId, addressBook, shoppingCartList);
 
-        ordersMapper.submitOrder(orders);
-        List<OrderDetail> orderDetailList = new ArrayList<>();
         // 向明细表 order_detail 中插入多条数据
+        List<OrderDetail> orderDetailList = new ArrayList<>();
         for (ShoppingCart shoppingCart : shoppingCartList) {
             OrderDetail orderDetail = new OrderDetail();
             BeanUtils.copyProperties(shoppingCart, orderDetail);
@@ -125,7 +111,6 @@ public class OrdersServiceImpl implements OrdersService {
 
         // 清空购物车数据
         shoppingCartService.cleanShoppingCart();
-
         return OrderSubmitVO.builder()
                 .id(orders.getId())
                 .orderNumber(orders.getNumber())
@@ -156,9 +141,113 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     /**
+     * 创建订单对象，并计算总金额和打包费
+     * @param ordersSubmitDTO   前端传入的订单数据
+     * @param userId            当前登录用户id
+     * @param addressBook       用户选择的地址簿对象
+     * @param shoppingCartList  用户购物车列表
+     * @return                  创建好的订单对象
+     */
+    private Orders createOrders(OrdersSubmitDTO ordersSubmitDTO, Long userId, AddressBook addressBook, List<ShoppingCart> shoppingCartList) {
+        Orders orders = new Orders();
+        LocalDateTime now = LocalDateTime.now();
+        BeanUtils.copyProperties(ordersSubmitDTO, orders, "amount", "packAmount");
+        // 填写订单的其他信息
+        orders.setUserId(userId);
+        orders.setOrderTime(LocalDateTime.now());
+        orders.setPayStatus(Orders.UN_PAID);
+        orders.setStatus(Orders.PENDING_PAYMENT);
+        orders.setNumber(UUID.randomUUID().toString().replace("-", ""));
+        orders.setPhone(addressBook.getPhone());
+        orders.setConsignee(addressBook.getConsignee());
+        orders.setAddress(addressBook.getDetail());
+        orders.setUserName(userMapper.getById(userId).getName());
+
+        // 计算金额
+        int packAmount = shoppingCartList.stream().mapToInt(ShoppingCart::getNumber).sum();
+        BigDecimal dishesAmount = shoppingCartList.stream()
+                .map(item -> item.getAmount().multiply(BigDecimal.valueOf(item.getNumber())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        orders.setPackAmount(packAmount);
+        BigDecimal oldDishesAmount = dishesAmount;
+        List<Long> userCouponIds = ordersSubmitDTO.getUserCouponIds();
+        List<UserCoupon> userCouponList = new ArrayList<>();
+        if (userCouponIds != null && !userCouponIds.isEmpty()) {
+            userCouponList = userCouponMapper.batchGetByIds(userCouponIds);
+            if (userCouponList.size() !=userCouponIds.size()) {
+                throw new BaseException("有不存在的优惠券，请重新下单");
+            }
+            for (UserCoupon userCoupon : userCouponList) {
+                if (!userCoupon.getUserId().equals(userId)) {
+                    throw new BaseException("存在不属于当前用户的优惠券，请重新下单");
+                }
+                if (userCoupon.getExpireTime().isBefore(now)) {
+                    throw new BaseException("存在已过期的优惠券，不能下单");
+                }
+                if (userCoupon.getType().equals(Coupon.TYPE_FULL_REDUCTION) && userCoupon.getThresholdAmount().compareTo(oldDishesAmount) > 0) {
+                    throw new BaseException("订单金额未达到优惠券使用门槛，不能下单");
+                }
+                dishesAmount = dishesAmount.subtract(userCoupon.getDiscountAmount());
+            }
+        }
+        if (dishesAmount.compareTo(BigDecimal.ZERO) < 0) {
+            dishesAmount = BigDecimal.ZERO;
+        }
+        orders.setAmount(dishesAmount.add(DELIVERY_FEE).add(BigDecimal.valueOf(packAmount)));
+        orders.setCouponCount(userCouponList.size());
+
+        // 将订单保存到数据库，将 user_coupon 中对应的优惠券更新为已锁定，然后在 coupon_use_record 中插入使用记录
+        ordersMapper.submitOrder(orders);
+        if (userCouponIds != null && !userCouponIds.isEmpty()) {
+            int rows = userCouponMapper.batchUpdateStatusAndOrderIdWithExpectStatus(
+                    ordersSubmitDTO.getUserCouponIds(),
+                    UserCoupon.STATUS_UNUSED,
+                    UserCoupon.STATUS_LOCKED,
+                    orders.getId()
+            );
+            if (rows != userCouponIds.size()) {
+                throw new BaseException("存在状态不为未使用的优惠券，请重新下单");
+            }
+            List<CouponUseRecord> couponUseRecords = createCouponUseRecords(orders, userCouponList);
+            couponUseRecordMapper.batchInsert(couponUseRecords);
+        }
+
+        return orders;
+    }
+
+    /**
+     * 根据订单和用户优惠券列表创建用券记录
+     * @param orders 已保存的外卖订单
+     * @param userCouponList 本次订单使用的用户优惠券列表
+     * @return 优惠券使用记录列表
+     */
+    private List<CouponUseRecord> createCouponUseRecords(Orders orders, List<UserCoupon> userCouponList) {
+        List<CouponUseRecord> records = new ArrayList<>();
+        if (userCouponList == null) {
+            return records;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (UserCoupon userCoupon : userCouponList) {
+            CouponUseRecord record = new CouponUseRecord();
+            record.setOrderId(orders.getId());
+            record.setUserId(orders.getUserId());
+            record.setCouponId(userCoupon.getCouponId());
+            record.setUserCouponId(userCoupon.getId());
+            record.setNumber(userCoupon.getNumber());
+            record.setType(userCoupon.getType());
+            record.setName(userCoupon.getName());
+            record.setDiscountAmount(userCoupon.getDiscountAmount());
+            record.setThresholdAmount(userCoupon.getThresholdAmount());
+            record.setCreateTime(now);
+            records.add(record);
+        }
+        return records;
+    }
+
+    /**
      * 订单支付
      *
-     * @param ordersPaymentDTO
+     * @param ordersPaymentDTO  订单支付数据
      * @return
      */
     public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
@@ -206,6 +295,9 @@ public class OrdersServiceImpl implements OrdersService {
             }
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
+
+        // TODO: 根据订单的 id，在 user_coupon 表中把对应的优惠券状态更新为已使用，并设置 use_time 为当前时间
+
 
         // 通过 websocket 把来单消息推送给商家端，商家端收到消息后可以播放提示音
         // 封装 type, orderId 和 content 三个字段

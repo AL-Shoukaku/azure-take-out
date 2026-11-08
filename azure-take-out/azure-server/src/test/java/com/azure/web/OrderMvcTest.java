@@ -35,9 +35,12 @@ class OrderMvcTest extends WebTestSupport {
         verify(ordersService).historyOrdersPageQuery(1,10,null);
     }
     @Test void bothEndsExposeOrderDetail() throws Exception {
-        OrderVO vo = new OrderVO(); vo.setId(9L); vo.setNumber("order-9"); when(ordersService.queryUserOrderDetail(9L)).thenReturn(vo); when(ordersService.queryOrderDetail(9L)).thenReturn(vo);
-        successful(user(get("/user/order/orderDetail/9"))).andExpect(jsonPath("$.data.number").value("order-9"));
-        successful(admin(get("/admin/order/details/9"))).andExpect(jsonPath("$.data.id").value(9)); verify(ordersService).queryUserOrderDetail(9L); verify(ordersService).queryOrderDetail(9L);
+        OrderVO vo = new OrderVO(); vo.setId(9L); vo.setNumber("order-9"); vo.setCouponCount(2); when(ordersService.queryUserOrderDetail(9L)).thenReturn(vo); when(ordersService.queryOrderDetail(9L)).thenReturn(vo);
+        successful(user(get("/user/order/orderDetail/9"))).andExpect(jsonPath("$.data.number").value("order-9"))
+                .andExpect(jsonPath("$.data.couponCount").value(2));
+        successful(admin(get("/admin/order/details/9"))).andExpect(jsonPath("$.data.id").value(9))
+                .andExpect(jsonPath("$.data.couponCount").value(2));
+        verify(ordersService).queryUserOrderDetail(9L); verify(ordersService).queryOrderDetail(9L);
     }
     @Test void userCancelRepetitionAndReminderDelegateTargetId() throws Exception {
         successful(user(put("/user/order/cancel/9"))); verify(ordersService).userCancelOrder(9L);

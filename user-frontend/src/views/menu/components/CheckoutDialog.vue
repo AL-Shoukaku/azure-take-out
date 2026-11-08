@@ -94,6 +94,13 @@
         <div class="fee-row">
           <span>配送费</span><span>{{ money(cart.deliveryAmount) }}</span>
         </div>
+        <div v-if="couponPreview.coupons.length" class="fee-row coupon-discount-row">
+          <span>优惠券试算（{{ couponPreview.coupons.length }} 张）</span
+          ><span>−{{ money(couponPreview.discount) }}</span>
+        </div>
+        <p v-if="couponPreview.coupons.length" class="coupon-preview-note">
+          优惠仅供试算，实际支付暂不使用优惠券。
+        </p>
       </section>
       <ElFormItem label="订单备注" prop="remark"
         ><ElInput
@@ -108,7 +115,8 @@
     <template #footer
       ><div class="checkout-footer">
         <span
-          >合计 <strong>{{ money(cart.total) }}</strong></span
+          >{{ couponPreview.coupons.length ? '试算合计' : '合计' }}
+          <strong>{{ money(couponPreview.total) }}</strong></span
         ><ElButton
           form="checkout-form"
           native-type="submit"
@@ -146,7 +154,8 @@ import type { OrderSubmission } from '@/api/orders'
 import DishImage from '@/components/DishImage.vue'
 import { lineTotal, money } from '@/utils/pricing'
 import { deliveryDateTime, groupCartItems } from '../menuDisplay'
-defineProps<{ busy: boolean }>()
+import type { CouponPricePreview } from '../couponPreview'
+defineProps<{ busy: boolean; couponPreview: CouponPricePreview }>()
 const visible = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ submit: [data: OrderSubmission] }>()
 const addresses = useAddressesStore()
@@ -284,6 +293,15 @@ h3 {
   gap: 20px;
   color: #536580;
   font-size: 14px;
+}
+.coupon-discount-row {
+  color: var(--user-primary);
+}
+.coupon-preview-note {
+  margin: 16px 0 0;
+  color: #8491a6;
+  font-size: 12px;
+  line-height: 1.7;
 }
 .checkout-footer strong {
   margin-left: 8px;

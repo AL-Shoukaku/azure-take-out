@@ -82,6 +82,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         LocalDateTime before = LocalDateTime.now(); OrderSubmitVO result = service.submitOrder(submitRequest());
         verify(ordersMapper).submitOrder(order.capture()); Orders saved = order.getValue();
         assertThat(saved.getAmount()).isEqualByComparingTo("42.00"); assertThat(saved.getPackAmount()).isEqualTo(3);
+        assertThat(saved.getCouponCount()).isZero();
         assertThat(saved.getNumber()).matches("[0-9a-f]{32}"); assertThat(saved.getUserId()).isEqualTo(USER_ID);
         assertThat(saved.getOrderTime()).isBetween(before,LocalDateTime.now());
         assertThat(saved).extracting(Orders::getStatus,Orders::getPayStatus,Orders::getPhone,Orders::getConsignee,

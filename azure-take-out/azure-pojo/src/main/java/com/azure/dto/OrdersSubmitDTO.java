@@ -6,6 +6,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class OrdersSubmitDTO implements Serializable {
@@ -28,4 +29,6 @@ public class OrdersSubmitDTO implements Serializable {
     private Integer packAmount;
     //总金额
     private BigDecimal amount;
+    // 本次订单使用的优惠券id
+    private List<Long> userCouponIds;
 }

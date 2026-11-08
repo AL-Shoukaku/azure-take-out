@@ -66,6 +66,10 @@ public class Orders implements Serializable {
     //实收金额
     private BigDecimal amount;
 
+    //使用优惠券数量
+    @Builder.Default
+    private Integer couponCount = 0;
+
     //备注
     private String remark;
 

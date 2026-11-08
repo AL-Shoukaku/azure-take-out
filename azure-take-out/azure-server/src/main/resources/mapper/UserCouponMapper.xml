@@ -17,4 +17,23 @@
         where id = #{id} and user_id = #{userId}
     </select>
 
+    <select id="batchGetByIds" resultType="com.azure.entity.UserCoupon">
+        select * from user_coupon
+        where id in
+        <foreach collection="userCouponIds" open="(" separator="," close=")" item="id">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="batchUpdateStatusAndOrderIdWithExpectStatus" parameterType="com.azure.entity.UserCoupon">
+        update user_coupon
+        set status = #{newStatus},
+            lock_order_id = #{lockOrderId}
+        where id in
+        <foreach collection="userCouponIds" open="(" separator="," close=")" item="id">
+            #{id}
+        </foreach>
+        and status = #{expectedStatus}
+    </update>
+
 </mapper>

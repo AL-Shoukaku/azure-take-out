@@ -167,6 +167,7 @@ CREATE TABLE `orders` (
   `pay_status` tinyint NOT NULL DEFAULT '0',
   `amount` decimal(10,2) NOT NULL,
   `remark` varchar(100) DEFAULT NULL,
+  `coupon_count` int NOT NULL DEFAULT '0',
   `phone` varchar(11) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
   `user_name` varchar(32) DEFAULT NULL,

@@ -1,0 +1,199 @@
+import { expect, test, type Page } from '@playwright/test'
+import { mockMenu } from './helpers/menu'
+import { makeUserCoupon, mockUserCoupons } from './helpers/userCoupons'
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-08T10:00:00+08:00'))
+})
+
+const fixtures = [
+  { ...makeUserCoupon(1, 0), name: '五元代金券', discountAmount: 5 },
+  { ...makeUserCoupon(2, 0), name: '满十五减四', thresholdAmount: 15, discountAmount: 4 },
+  { ...makeUserCoupon(3, 0), name: '已过期但状态未更新', expireTime: '2020-01-01 10:00' },
+  { ...makeUserCoupon(4, 0), name: '满五十减十', thresholdAmount: 50, discountAmount: 10 },
+  { ...makeUserCoupon(5, 2), name: '已使用券' },
+]
+const bag = (page: Page) => page.getByRole('complementary', { name: '我的餐袋' })
+const picker = (page: Page) => page.getByRole('dialog', { name: '选择优惠券', exact: true })
+async function selectCoupon(page: Page, name: string) {
+  await picker(page).getByText(name, { exact: true }).click()
+  await expect(
+    picker(page).getByRole('checkbox', { name: `选择${name}`, exact: true }),
+  ).toBeChecked()
+}
+async function addDish(page: Page) {
+  await page.getByRole('button', { name: '添加家常菜2', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
+}
+
+test('标题右侧蓝色按钮，未使用优惠券单列勾选，叠加后同步餐袋与结算试算', async ({ page }) => {
+  const api = await mockMenu(page)
+  const coupons = await mockUserCoupons(page, fixtures)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.goto('/menu')
+  await addDish(page)
+  const button = bag(page).getByRole('button', { name: '选择优惠券', exact: true })
+  await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toBeHidden()
+  await expect(button).toHaveClass(/el-button--primary/)
+  const titleBox = await bag(page)
+    .getByRole('heading', { name: /我的餐袋/ })
+    .boundingBox()
+  const buttonBox = await button.boundingBox()
+  expect(buttonBox!.x).toBeGreaterThanOrEqual(titleBox!.x + titleBox!.width)
+  await button.click()
+  await expect(picker(page).getByRole('article')).toHaveCount(4)
+  expect(coupons.queries.at(-1)).toEqual({ page: 1, pageSize: 6, status: '0' })
+  await expect(
+    picker(page).getByRole('checkbox', { name: '选择已过期但状态未更新', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    picker(page).getByRole('checkbox', { name: '选择满五十减十', exact: true }),
+  ).toBeDisabled()
+  await expect(picker(page)).toContainText('餐品金额还差 ¥34.00')
+  await expect(picker(page)).not.toContainText('已使用券')
+  const boxes = await picker(page)
+    .getByRole('article')
+    .evaluateAll((elements) =>
+      elements.map((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y })),
+    )
+  expect(boxes[1]!.x).toBe(boxes[0]!.x)
+  expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y)
+  await selectCoupon(page, '五元代金券')
+  await selectCoupon(page, '满十五减四')
+  await expect(picker(page)).toContainText('已选 2 张 · 预计优惠 ¥9.00')
+  await page.screenshot({
+    path: test.info().outputPath('coupon-picker-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toHaveText('2')
+  await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toBeVisible()
+  await expect(bag(page).locator('.cart-total')).toContainText(/试算合计\s*¥14\.00/)
+  await expect(bag(page)).toContainText('优惠仅供试算，实际支付暂不使用优惠券。')
+  await page.getByRole('button', { name: '去结算' }).click()
+  const checkout = page.getByRole('dialog', { name: '确认订单', exact: true })
+  await expect(checkout.locator('.checkout-footer')).toContainText('¥14.00')
+  await expect(checkout).toContainText('优惠券试算（2 张）')
+  await checkout.getByRole('button', { name: '提交订单' }).click()
+  const payment = page.getByRole('dialog', { name: '订单支付', exact: true })
+  await expect(payment).toContainText('¥23.00')
+  expect(api.submissions).toHaveLength(1)
+  for (const field of ['amount', 'couponId', 'userCouponId', 'couponIds', 'discountAmount'])
+    expect(api.submissions[0]).not.toHaveProperty(field)
+  expect(coupons.details).toEqual([])
+})
+
+test('分页保留多选，取消不覆盖原选择，确认清空恢复原价', async ({ page }) => {
+  await mockMenu(page)
+  const api = await mockUserCoupons(
+    page,
+    Array.from({ length: 8 }, (_, i) => ({
+      ...makeUserCoupon(i + 1, 0),
+      name: `优惠券${i + 1}`,
+      type: 1 as const,
+      thresholdAmount: 0,
+      discountAmount: 1,
+    })),
+  )
+  await page.goto('/menu')
+  await addDish(page)
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await selectCoupon(page, '优惠券1')
+  await picker(page).locator('.btn-next').click()
+  await selectCoupon(page, '优惠券7')
+  expect(api.queries.at(-1)?.page).toBe(2)
+  await picker(page).locator('.btn-prev').click()
+  await expect(
+    picker(page).getByRole('checkbox', { name: '选择优惠券1', exact: true }),
+  ).toBeChecked()
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥21.00')
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await picker(page).getByRole('button', { name: '清空选择', exact: true }).click()
+  await picker(page).getByRole('button', { name: '取消', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥21.00')
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await picker(page).getByRole('button', { name: '清空选择', exact: true }).click()
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
+  await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toBeHidden()
+})
+
+test('数量变化重新判断门槛，清空餐袋移除优惠试算', async ({ page }) => {
+  await mockMenu(page)
+  await mockUserCoupons(page, [
+    { ...makeUserCoupon(2, 0), name: '满三十减八', thresholdAmount: 30, discountAmount: 8 },
+  ])
+  await page.goto('/menu')
+  await addDish(page)
+  await bag(page).getByRole('button', { name: '增加家常菜2', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥40.00')
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await selectCoupon(page, '满三十减八')
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥32.00')
+  await bag(page).getByRole('button', { name: '减少家常菜2', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
+  await expect(bag(page)).not.toContainText('优惠券试算')
+  await bag(page).getByRole('button', { name: '清空餐袋', exact: true }).click()
+  await page.getByRole('button', { name: '确认清空', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥0.00')
+})
+
+test('读取失败可以重试，空列表可关闭；未选餐品时只展示不允许勾选', async ({ page }) => {
+  await mockMenu(page)
+  await mockUserCoupons(page, fixtures)
+  await page.route(
+    '**/api/userCoupon/page?**',
+    (route) => route.fulfill({ json: { code: 0, msg: '优惠券暂不可用', data: null } }),
+    { times: 1 },
+  )
+  await page.goto('/menu')
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await expect(picker(page)).toContainText('优惠券暂不可用')
+  await expect(picker(page).getByRole('button', { name: '确认选择', exact: true })).toBeDisabled()
+  await picker(page).getByRole('button', { name: '重新加载', exact: true }).click()
+  await expect(picker(page)).toContainText('请先添加餐品')
+  await expect(
+    picker(page).getByRole('checkbox', { name: '选择五元代金券', exact: true }),
+  ).toBeDisabled()
+  await picker(page).getByRole('button', { name: '取消', exact: true }).click()
+  await page.route('**/api/userCoupon/page?**', (route) =>
+    route.fulfill({ json: { code: 1, data: { total: 0, records: [] } } }),
+  )
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await expect(picker(page)).toContainText('暂无未使用的优惠券')
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(picker(page)).toBeHidden()
+})
+
+test('手机弹窗可勾选确认，优惠过期后自动恢复价格且不横向溢出', async ({ page }) => {
+  await mockMenu(page)
+  await page.clock.setFixedTime(new Date('2026-11-08T10:00:00+08:00'))
+  await mockUserCoupons(page, [
+    {
+      ...makeUserCoupon(1, 0),
+      name: '限时五元券',
+      discountAmount: 5,
+      expireTime: '2026-11-08 10:01',
+    },
+  ])
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/menu')
+  await addDish(page)
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await selectCoupon(page, '限时五元券')
+  await expect(picker(page).getByRole('button', { name: '确认选择', exact: true })).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+  await page.screenshot({
+    path: test.info().outputPath('coupon-picker-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥18.00')
+  await page.clock.setFixedTime(new Date('2026-11-08T10:01:00+08:00'))
+  await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
+  await expect(bag(page)).not.toContainText('优惠券试算')
+})

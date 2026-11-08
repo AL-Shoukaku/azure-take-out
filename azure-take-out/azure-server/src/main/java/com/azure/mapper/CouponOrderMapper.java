@@ -64,11 +64,6 @@ public interface CouponOrderMapper {
     void updateExpireAndUnpaidOrdersToClosed();
 
     /**
-     *
-     */
-    void update
-
-    /**
      * 分页查询商家的优惠券订单，支持按订单号、用户名、下单时间、订单状态筛选
      */
     Page<CouponOrderPageQueryVO> adminPageSearch(CouponOrderPageQueryDTO couponOrderPageQueryDTO);

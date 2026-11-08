@@ -714,6 +714,7 @@ CREATE TABLE `orders` (
   `pay_method` int NOT NULL DEFAULT '1' COMMENT '支付方式 1微信,2支付宝',
   `pay_status` tinyint NOT NULL DEFAULT '0' COMMENT '支付状态 0未支付 1已支付 2退款',
   `amount` decimal(10,2) NOT NULL COMMENT '实收金额',
+  `coupon_count` int NOT NULL DEFAULT '0' COMMENT '使用优惠券数量',
   `remark` varchar(100) COLLATE utf8_bin DEFAULT NULL COMMENT '备注',
   `phone` varchar(11) COLLATE utf8_bin DEFAULT NULL COMMENT '手机号',
   `address` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '地址',

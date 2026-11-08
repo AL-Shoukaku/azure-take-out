@@ -33,11 +33,12 @@ class OrdersMapperTest extends SqlTestSupport {
     }
     @Test void insertBackfillsIdAndRoundTripsOrderFields() {
         Orders row = Orders.builder().number("unique-new-order").userId(USER_ID).addressBookId(1L).status(1).payStatus(0).payMethod(1)
-                .orderTime(LocalDateTime.of(2026,10,8,12,30)).amount(new BigDecimal("42.00")).phone("13800000000")
+                .orderTime(LocalDateTime.of(2026,10,8,12,30)).amount(new BigDecimal("42.00")).couponCount(2).phone("13800000000")
                 .consignee("张三").address("测试路1号").remark("少盐").deliveryStatus(1).tablewareStatus(1).packAmount(3).tablewareNumber(2).build();
         OrdersMapper mapper = mapper(OrdersMapper.class); mapper.submitOrder(row); assertThat(row.getId()).isNotNull();
         Orders saved = mapper.getByNumber("unique-new-order"); assertThat(saved.getId()).isEqualTo(row.getId());
         assertThat(saved.getAmount()).isEqualByComparingTo("42.00"); assertThat(saved.getUserId()).isEqualTo(USER_ID);
+        assertThat(saved.getCouponCount()).isEqualTo(2);
         assertThat(saved.getRemark()).isEqualTo("少盐"); assertThat(saved.getPackAmount()).isEqualTo(3);
         assertThat(saved.getTablewareNumber()).isEqualTo(2); assertThat(saved.getOrderTime()).isEqualTo(row.getOrderTime());
     }

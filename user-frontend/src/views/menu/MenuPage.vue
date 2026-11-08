@@ -131,11 +131,13 @@
           <CartPanel
             :closed="shopStatus !== 1"
             :checking="checking || submitting"
+            :coupon-preview="couponPreview"
             @add="changeQuantity('add', $event)"
             @subtract="changeQuantity('subtract', $event)"
             @clean="clearCart"
             @retry="loadCart"
             @checkout="checkout"
+            @select-coupons="openPicker"
           />
         </div>
       </section>
@@ -147,7 +149,19 @@
         :disabled="cartLocked || shopStatus !== 1"
         @add="addProduct"
       />
-      <CheckoutDialog v-model="checkoutOpen" :busy="submitting" @submit="placeOrder" />
+      <CouponPickerDialog
+        v-model="pickerOpen"
+        v-model:selected="selectedCoupons"
+        :subtotal="cart.amount"
+        :fees="fees"
+        :now="couponNow"
+      />
+      <CheckoutDialog
+        v-model="checkoutOpen"
+        :busy="submitting"
+        :coupon-preview="couponPreview"
+        @submit="placeOrder"
+      />
       <PaymentDialog
         v-if="pendingOrder"
         v-model="paymentOpen"
@@ -188,11 +202,21 @@ import CartPanel from './components/CartPanel.vue'
 import ProductCard from './components/ProductCard.vue'
 import ProductDialog from './components/ProductDialog.vue'
 import CheckoutDialog from './components/CheckoutDialog.vue'
+import CouponPickerDialog from './components/CouponPickerDialog.vue'
+import { useCouponPreview } from './useCouponPreview'
 import { useMenu } from './useMenu'
 import { cartProduct, menuPageSize } from './menuDisplay'
 
 const cart = useCartStore()
 const addresses = useAddressesStore()
+const {
+  selectedCoupons,
+  pickerOpen,
+  now: couponNow,
+  fees,
+  couponPreview,
+  openPicker,
+} = useCouponPreview()
 const {
   categories,
   selectedCategory,
