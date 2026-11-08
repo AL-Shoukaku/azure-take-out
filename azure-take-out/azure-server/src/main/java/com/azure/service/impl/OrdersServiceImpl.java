@@ -386,6 +386,8 @@ public class OrdersServiceImpl implements OrdersService {
         BeanUtils.copyProperties(orders, orderVO);
         List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
         orderVO.setOrderDetailList(orderDetailList);
+        List<CouponUseRecord> userCouponList = couponUseRecordMapper.getByOrderId(orders.getId());
+        orderVO.setUserCouponList(userCouponList);
         return orderVO;
     }
 

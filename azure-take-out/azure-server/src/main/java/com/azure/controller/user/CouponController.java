@@ -56,9 +56,9 @@ public class CouponController {
         return Result.success(couponOrderSubmitVO);
     }
 
-    @PostMapping("/pay/{couponOrderId}")
-    public Result<CouponOrderPayVO> pay(@RequestParam String couponOrderNumber) {
-        log.info("用户支付代金券订单，订单ID：{}", couponOrderNumber);
+    @PostMapping("/pay")
+    public Result<CouponOrderPayVO> pay(@RequestParam("couponOrderNumber") String couponOrderNumber) {
+        log.info("用户支付代金券订单，订单号：{}", couponOrderNumber);
         CouponOrderPayVO couponOrderPayVO = couponService.payCouponOrder(couponOrderNumber);
         return Result.success(couponOrderPayVO);
     }

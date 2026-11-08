@@ -35,6 +35,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @Mock private DishMapper dishMapper;
     @Mock private SetmealMapper setmealMapper;
     @Mock private UserCouponMapper userCouponMapper;
+    @Mock private CouponUseRecordMapper couponUseRecordMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
     @Mock private WebSocketServer webSocketServer;
     @Spy private ObjectMapper objectMapper = new JacksonObjectMapper();
@@ -340,8 +341,12 @@ class OrdersServiceImplTest extends ServiceTestSupport {
         when(ordersMapper.getById(9L)).thenReturn(existing(2));
         OrderDetail row = OrderDetail.builder().orderId(9L).dishId(7L).number(2).build();
         when(orderDetailMapper.getByOrderId(9L)).thenReturn(Collections.singletonList(row));
+        CouponUseRecord coupon = new CouponUseRecord();
+        coupon.setOrderId(9L); coupon.setName("下单时的券名称"); coupon.setDiscountAmount(new BigDecimal("20.00"));
+        when(couponUseRecordMapper.getByOrderId(9L)).thenReturn(Collections.singletonList(coupon));
         OrderVO result = service.queryOrderDetail(9L); assertThat(result.getId()).isEqualTo(9L);
         assertThat(result.getNumber()).isEqualTo("order-9"); assertThat(result.getOrderDetailList()).containsExactly(row);
+        assertThat(result.getUserCouponList()).containsExactly(coupon);
     }
     @Test void administratorCanViewOrderOwnedByDifferentUser() {
         com.azure.context.BaseContext.setCurrentId(7L);

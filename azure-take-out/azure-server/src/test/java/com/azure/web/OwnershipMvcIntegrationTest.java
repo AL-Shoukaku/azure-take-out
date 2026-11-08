@@ -109,9 +109,21 @@ class OwnershipMvcIntegrationTest {
         assertThat(BaseContext.getCurrentId()).isNull();
     }
     @Test void userCanQueryOwnOrderIncludingItsItems() throws Exception {
+        jdbc.update("insert into coupon_use_record (order_id,user_id,coupon_id,user_coupon_id,number,type,name,discount_amount,threshold_amount,create_time) " +
+                        "values (1,42,10,20,'HISTORICAL-COUPON',1,'下单时的券名称',20.00,0,?)", LocalDateTime.now());
         mvc.perform(user(get("/user/order/orderDetail/1"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(1)).andExpect(jsonPath("$.data.userId").value(42))
-                .andExpect(jsonPath("$.data.orderDetailList[0].dishId").value(1));
+                .andExpect(jsonPath("$.data.orderDetailList[0].dishId").value(1))
+                .andExpect(jsonPath("$.data.userCouponList.length()").value(1))
+                .andExpect(jsonPath("$.data.userCouponList[0].number").value("HISTORICAL-COUPON"))
+                .andExpect(jsonPath("$.data.userCouponList[0].name").value("下单时的券名称"))
+                .andExpect(jsonPath("$.data.userCouponList[0].discountAmount").value(20.00));
+        mvc.perform(admin(get("/admin/order/details/1"),7L)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.userCouponList.length()").value(1))
+                .andExpect(jsonPath("$.data.userCouponList[0].number").value("HISTORICAL-COUPON"))
+                .andExpect(jsonPath("$.data.userCouponList[0].name").value("下单时的券名称"))
+                .andExpect(jsonPath("$.data.userCouponList[0].discountAmount").value(20.00));
     }
     @ParameterizedTest @ValueSource(strings={"detail","cancel","remind","payment","repetition"})
     void foreignOrderCannotBeReadOrModifiedAndDoesNotChangeCartOrSendMessages(String action) throws Exception {

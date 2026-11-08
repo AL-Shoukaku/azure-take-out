@@ -98,15 +98,19 @@ public class CouponOrderServiceImpl implements CouponOrderService {
         }
 
         // 将用户的优惠券状态改为已退款，订单状态改为已退款，使用乐观锁防止并发问题
+        Integer status = coupon.getStatus();
+        if (!status.equals(UserCoupon.STATUS_UNUSED) && !status.equals(UserCoupon.STATUS_EXPIRED)) {
+            throw new BaseException("只能退款未使用或已过期的优惠券");
+        }
         int update = userCouponMapper.updateToRefund(
                 couponOrder.getUserId(),
                 couponOrder.getCouponId(),
-                UserCoupon.STATUS_UNUSED,
+                status,
                 UserCoupon.STATUS_REFUNDED,
                 LocalDateTime.now()
         );
         if (update == 0) {
-            throw new BaseException("要退款的用户优惠券状态不是未使用！");
+            throw new BaseException("要退款的用户优惠券状态不是未使用或已过期！");
         }
         update = couponOrderMapper.updateToRefunded(
                 orderId,

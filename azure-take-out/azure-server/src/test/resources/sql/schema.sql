@@ -42,6 +42,24 @@ CREATE TABLE `user_coupon` (
   KEY `idx_user_coupon_lock_order` (`lock_order_id`)
 );
 
+CREATE TABLE `coupon_use_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
+  `coupon_id` bigint NOT NULL,
+  `user_coupon_id` bigint NOT NULL,
+  `number` varchar(50) NOT NULL,
+  `type` tinyint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `threshold_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_coupon_use_order_coupon` (`order_id`, `user_coupon_id`),
+  KEY `idx_coupon_use_user_coupon` (`user_coupon_id`),
+  KEY `idx_coupon_use_user_time` (`user_id`, `create_time`)
+);
+
 CREATE TABLE `coupon_order` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,

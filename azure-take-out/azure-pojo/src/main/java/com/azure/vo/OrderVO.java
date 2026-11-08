@@ -1,5 +1,6 @@
 package com.azure.vo;
 
+import com.azure.entity.CouponUseRecord;
 import com.azure.entity.OrderDetail;
 import com.azure.entity.Orders;
 import lombok.AllArgsConstructor;
@@ -18,5 +19,8 @@ public class OrderVO extends Orders implements Serializable {
 
     //订单详情
     private List<OrderDetail> orderDetailList;
+
+    // 订单使用的优惠券信息
+    private List<CouponUseRecord> userCouponList;
 
 }

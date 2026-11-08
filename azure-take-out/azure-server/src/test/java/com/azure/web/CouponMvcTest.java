@@ -4,6 +4,7 @@ import com.azure.exception.BaseException;
 import com.azure.result.PageResult;
 import com.azure.support.WebTestSupport;
 import com.azure.vo.coupon.CouponVO;
+import com.azure.vo.coupon.CouponOrderPayVO;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,6 +22,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class CouponMvcTest extends WebTestSupport {
+    @Test
+    void userPaysCouponOrderByOrderNumberRequestParameter() throws Exception {
+        when(couponService.payCouponOrder("ORDER-7")).thenReturn(CouponOrderPayVO.builder().number("ORDER-7").build());
+
+        successful(user(post("/user/coupon/pay").param("couponOrderNumber", "ORDER-7")))
+                .andExpect(jsonPath("$.data.number").value("ORDER-7"));
+        verify(couponService).payCouponOrder("ORDER-7");
+    }
+
+    @Test
+    void userCouponPaymentRequiresOrderNumber() throws Exception {
+        mvc.perform(user(post("/user/coupon/pay"))).andExpect(status().isBadRequest());
+        verifyNoInteractions(couponService);
+    }
+
     private ObjectNode publication() {
         return json.createObjectNode()
                 .put("name", "午餐券").put("type", 1).put("totalStock", 100)
