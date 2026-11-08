@@ -34,6 +34,7 @@ class OrdersServiceImplTest extends ServiceTestSupport {
     @Mock private UserMapper userMapper;
     @Mock private DishMapper dishMapper;
     @Mock private SetmealMapper setmealMapper;
+    @Mock private UserCouponMapper userCouponMapper;
     @Mock private ShoppingCartMapper shoppingCartMapper;
     @Mock private WebSocketServer webSocketServer;
     @Spy private ObjectMapper objectMapper = new JacksonObjectMapper();

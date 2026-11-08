@@ -75,11 +75,12 @@ public interface UserCouponMapper {
 
     /**
      * 根据订单 id，将对应的用户优惠券状态进行更新，同时设置使用时间，只有当优惠券当前状态为预期状态时才会更新成功
+     * 用于外卖订单支付成功后，将订单中使用的优惠券状态更新为已使用
      * @param orderId           订单 id
      * @param expectedStatus    预期状态
      * @param newStatus         新状态
      * @param useTime           使用时间
      * @return                  更新的记录数，若为0则表示更新失败（可能是优惠券状态不匹配）
      */
-    //void updateStatusAndUseTimeByOrderIdWithExpectStatus(Long orderId, Integer expectedStatus, Integer newStatus, LocalDateTime useTime);
+    int updateStatusAndUseTimeByOrderIdWithExpectStatus(Long orderId, Integer expectedStatus, Integer newStatus, LocalDateTime useTime);
 }

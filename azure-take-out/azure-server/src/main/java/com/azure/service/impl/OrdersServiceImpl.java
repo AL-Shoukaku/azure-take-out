@@ -250,6 +250,7 @@ public class OrdersServiceImpl implements OrdersService {
      * @param ordersPaymentDTO  订单支付数据
      * @return
      */
+    @Transactional
     public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
         // 当前登录用户id
         Long userId = getCurrentUserId();
@@ -296,7 +297,15 @@ public class OrdersServiceImpl implements OrdersService {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
 
-        // TODO: 根据订单的 id，在 user_coupon 表中把对应的优惠券状态更新为已使用，并设置 use_time 为当前时间
+        int rows = userCouponMapper.updateStatusAndUseTimeByOrderIdWithExpectStatus(
+                ordersDB.getId(),
+                UserCoupon.STATUS_LOCKED,
+                UserCoupon.STATUS_USED,
+                LocalDateTime.now()
+        );
+        if (rows != ordersDB.getCouponCount()) {
+            throw new OrderBusinessException("存在优惠券的状态不为锁定中，无法完成支付，请联系管理员");
+        }
 
 
         // 通过 websocket 把来单消息推送给商家端，商家端收到消息后可以播放提示音

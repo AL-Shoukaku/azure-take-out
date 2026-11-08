@@ -23,6 +23,7 @@ class TransactionIntegrationTest extends TransactionTestSupport {
         inject(target,"orderDetailMapper",details); inject(target,"shoppingCartService",cart); inject(target,"addressBookService",addresses);
         inject(target,"userMapper",transactionalMapper(UserMapper.class)); inject(target,"shoppingCartMapper",transactionalMapper(ShoppingCartMapper.class));
         inject(target,"dishMapper",transactionalMapper(DishMapper.class)); inject(target,"setmealMapper",transactionalMapper(SetmealMapper.class));
+        inject(target,"userCouponMapper",transactionalMapper(UserCouponMapper.class));
         inject(target,"webSocketServer",mock(WebSocketServer.class));
         inject(target,"objectMapper",new JacksonObjectMapper());
         return transactionalService(target,OrdersServiceImpl.class);

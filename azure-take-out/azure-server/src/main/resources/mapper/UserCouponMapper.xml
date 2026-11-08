@@ -36,4 +36,12 @@
         and status = #{expectedStatus}
     </update>
 
+    <update id="updateStatusAndUseTimeByOrderIdWithExpectStatus">
+        update user_coupon
+        set status = #{newStatus},
+            use_time = #{useTime}
+        where lock_order_id = #{orderId}
+        and status = #{expectedStatus}
+    </update>
+
 </mapper>
