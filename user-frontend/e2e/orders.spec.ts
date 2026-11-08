@@ -1,8 +1,77 @@
 import { expect, test } from '@playwright/test'
 import { restoreSession } from './helpers/session'
 import { makeOrder, mockOrders } from './helpers/orders'
+import type { OrderCoupon } from '../src/api/orders'
 
 test.beforeEach(async ({ page }) => restoreSession(page))
+
+test('订单详情展示用券快照和实际优惠，待付款锁券及取消后的历史记录均可查看', async ({ page }) => {
+  const coupon: OrderCoupon = {
+    id: 101,
+    orderId: 1,
+    userId: 7,
+    couponId: 201,
+    userCouponId: 301,
+    number: 'COUPON-SNAPSHOT-301',
+    type: 1,
+    name: '百元代金券',
+    discountAmount: 100,
+    thresholdAmount: 0,
+    createTime: '2026-10-22 11:30',
+  }
+  await mockOrders(page, [
+    { ...makeOrder(1, 1), amount: 9, couponCount: 1, userCouponList: [coupon] },
+    {
+      ...makeOrder(2, 2),
+      amount: 51,
+      couponCount: 2,
+      userCouponList: [
+        { ...coupon, id: 102, orderId: 2, name: '三元代金券', discountAmount: 3 },
+        {
+          ...coupon,
+          id: 103,
+          orderId: 2,
+          number: 'COUPON-SNAPSHOT-302',
+          type: 2,
+          name: '满五十减十',
+          discountAmount: 10,
+          thresholdAmount: 50,
+        },
+      ],
+    },
+    { ...makeOrder(3, 6), amount: 9, couponCount: 1, userCouponList: [coupon] },
+    { ...makeOrder(4, 5), userCouponList: null },
+  ])
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/orders/takeout')
+  const dialog = page.getByRole('dialog', { name: '订单详情', exact: true })
+  await page.getByRole('article').nth(0).getByRole('button', { name: '订单详情' }).click()
+  const coupons = dialog.getByRole('region', { name: '订单优惠券', exact: true })
+  await expect(coupons).toContainText('百元代金券')
+  await expect(coupons).toContainText('代金券 · 可抵扣 ¥100.00')
+  await expect(coupons).toContainText('COUPON-SNAPSHOT-301')
+  await expect(coupons).toContainText('所选优惠券已锁定，完成支付后使用。')
+  await expect(dialog.getByTestId('order-discount')).toHaveText('−¥55.00')
+  await expect(dialog.getByTestId('order-total')).toHaveText('¥9.00')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await page.getByRole('article').nth(1).getByRole('button', { name: '订单详情' }).click()
+  await expect(coupons).toContainText('订单优惠券（2 张）')
+  await expect(coupons).toContainText('满减券 · 满 ¥50.00 减 ¥10.00')
+  await expect(dialog.getByTestId('order-discount')).toHaveText('−¥13.00')
+  await expect(dialog.getByTestId('order-total')).toHaveText('¥51.00')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await page.getByRole('article').nth(2).getByRole('button', { name: '订单详情' }).click()
+  await expect(coupons).toContainText('以下为本订单的用券记录。')
+  await expect(coupons).not.toContainText('已锁定')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await page.getByRole('article').nth(3).getByRole('button', { name: '订单详情' }).click()
+  await expect(coupons).toHaveCount(0)
+  await expect(dialog.getByTestId('order-discount')).toHaveCount(0)
+})
 
 test('桌面三列两行，每页六条并展示订单摘要和分页', async ({ page }) => {
   await mockOrders(page)

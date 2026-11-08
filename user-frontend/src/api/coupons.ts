@@ -41,9 +41,8 @@ export function buyCoupon(couponId: number): Promise<CouponSubmittedOrder> {
 }
 
 export function payCouponOrder(number: string): Promise<CouponPaymentResult> {
-  // 当前后端从 query 读取订单号，路径中的占位值不参与订单查询。
   return request({
-    url: `/coupon/pay/${encodeURIComponent(number)}`,
+    url: '/coupon/pay',
     method: 'POST',
     params: { couponOrderNumber: number },
   })

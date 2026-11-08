@@ -38,6 +38,21 @@ export interface OrderItem {
 }
 export interface OrderDetail extends OrderSummary {
   orderDetailList: OrderItem[]
+  couponCount?: number
+  userCouponList?: OrderCoupon[] | null
+}
+export interface OrderCoupon {
+  id: number
+  orderId: number
+  userId: number
+  couponId: number
+  userCouponId: number
+  number: string
+  type: 1 | 2
+  name: string
+  discountAmount: number
+  thresholdAmount: number
+  createTime: string
 }
 export interface OrderStatistics {
   toBeConfirmed: number

@@ -93,17 +93,15 @@
         <span>配送费</span><span>{{ money(cart.deliveryAmount) }}</span>
       </div>
       <div v-if="couponPreview.coupons.length" class="coupon-discount-row">
-        <span>优惠券试算（{{ couponPreview.coupons.length }} 张）</span
+        <span>优惠券优惠（{{ couponPreview.coupons.length }} 张）</span
         ><span>−{{ money(couponPreview.discount) }}</span>
       </div>
     </div>
     <div class="cart-total">
-      <span>{{ couponPreview.coupons.length ? '试算合计' : '合计' }}</span
+      <span>{{ couponPreview.coupons.length ? '预计合计' : '合计' }}</span
       ><strong>{{ money(couponPreview.total) }}</strong>
     </div>
-    <p v-if="couponPreview.coupons.length" class="coupon-preview-note">
-      优惠仅供试算，实际支付暂不使用优惠券。
-    </p>
+    <p v-if="couponPreview.coupons.length" class="coupon-preview-note">优惠金额以下单结果为准。</p>
     <ElButton
       class="checkout-button"
       type="primary"

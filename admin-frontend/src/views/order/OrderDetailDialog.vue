@@ -76,12 +76,28 @@
             </p>
           </div>
         </div>
+        <section v-if="order.userCouponList?.length" class="order-coupons" aria-label="订单优惠券">
+          <span class="detail-label">优惠券</span>
+          <div class="order-coupon-list">
+            <div v-for="coupon in order.userCouponList" :key="coupon.id" class="order-coupon">
+              <strong>{{ coupon.name }}</strong>
+              <p>{{ coupon.type === 1 ? '代金券' : '满减券' }} · {{ couponOffer(coupon) }}</p>
+              <p>券号：{{ coupon.number }}</p>
+              <p>锁定时间：{{ formatTime(coupon.createTime) }}</p>
+            </div>
+          </div>
+        </section>
         <div class="order-fees">
           <span class="detail-label">费用</span>
           <div class="order-fee-grid">
             <div>菜品小计：{{ money(subtotal) }}</div>
             <div>派送费：{{ money(deliveryFee) }}</div>
             <div>打包费：{{ money(order.packAmount) }}</div>
+            <div v-if="order.couponCount || order.userCouponList?.length">
+              优惠券优惠：<span class="order-total" data-testid="order-discount"
+                >−{{ money(discount) }}</span
+              >
+            </div>
             <div>
               合计：<span class="order-total" data-testid="order-total">{{
                 money(order.amount)
@@ -125,7 +141,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElButton, ElCheckbox, ElDialog, vLoading } from 'element-plus'
-import type { OrderDetail } from '@/api/order'
+import type { OrderCoupon, OrderDetail } from '@/api/order'
 import {
   deliveryFee,
   formatTime,
@@ -146,12 +162,29 @@ const props = defineProps<{
 const emit = defineEmits<{ retry: []; action: [action: OrderAction] }>()
 const visible = defineModel<boolean>({ required: true })
 const autoNext = defineModel<boolean>('autoNext', { required: true })
+function couponOffer(coupon: OrderCoupon): string {
+  if (coupon.type === 1) return `可抵扣 ${money(coupon.discountAmount)}`
+  return coupon.thresholdAmount > 0
+    ? `满 ${money(coupon.thresholdAmount)} 减 ${money(coupon.discountAmount)}`
+    : `无门槛减 ${money(coupon.discountAmount)}`
+}
 const subtotal = computed(() =>
   props.order
-    ? (Math.round(props.order.amount * 100) -
-        deliveryFee * 100 -
-        Math.round(props.order.packAmount * 100)) /
-      100
+    ? props.order.orderDetailList.reduce(
+        (sum, item) => sum + Math.round(item.amount * 100) * item.number,
+        0,
+      ) / 100
+    : 0,
+)
+const discount = computed(() =>
+  props.order
+    ? Math.max(
+        0,
+        Math.round(subtotal.value * 100) +
+          deliveryFee * 100 +
+          Math.round(props.order.packAmount * 100) -
+          Math.round(props.order.amount * 100),
+      ) / 100
     : 0,
 )
 </script>
@@ -243,6 +276,7 @@ const subtotal = computed(() =>
   color: #f56c6c;
 }
 .order-dish-section,
+.order-coupons,
 .order-fees {
   display: grid;
   grid-template-columns: 90px minmax(0, 1fr);
@@ -279,6 +313,26 @@ const subtotal = computed(() =>
 .order-fees {
   border-top: 1px solid #e7e6e6;
 }
+.order-coupon-list {
+  display: grid;
+  gap: 12px;
+}
+.order-coupon {
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.order-coupon strong {
+  font-size: 14px;
+}
+.order-coupon p {
+  margin: 8px 0 0;
+  color: #818693;
+  font-size: 12px;
+  line-height: 1.7;
+}
 .order-fee-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -299,6 +353,7 @@ const subtotal = computed(() =>
     padding: 20px;
   }
   .order-dish-section,
+  .order-coupons,
   .order-fees {
     padding: 22px 20px;
   }

@@ -76,10 +76,32 @@
         <div class="fee-row">
           <span>配送费</span><span>{{ money(deliveryFee) }}</span>
         </div>
+        <div
+          v-if="order.couponCount || order.userCouponList?.length"
+          class="fee-row coupon-discount"
+        >
+          <span>优惠券优惠</span
+          ><span data-testid="order-discount">−{{ money(orderDiscount(order)) }}</span>
+        </div>
         <div class="total-row">
           <strong>订单合计</strong
           ><strong data-testid="order-total">{{ money(order.amount) }}</strong>
         </div>
+      </section>
+      <section v-if="order.userCouponList?.length" class="order-coupons" aria-label="订单优惠券">
+        <h3>订单优惠券（{{ order.userCouponList.length }} 张）</h3>
+        <p v-if="order.status === 1" class="coupon-status">所选优惠券已锁定，完成支付后使用。</p>
+        <p v-else-if="order.status === 6" class="coupon-status">以下为本订单的用券记录。</p>
+        <ul>
+          <li v-for="coupon in order.userCouponList" :key="coupon.id">
+            <strong>{{ coupon.name }}</strong>
+            <p class="coupon-offer">
+              {{ coupon.type === 1 ? '代金券' : '满减券' }} · {{ couponOffer(coupon) }}
+            </p>
+            <p>券号：{{ coupon.number }}</p>
+            <p>锁定时间：{{ formatTime(coupon.createTime) }}</p>
+          </li>
+        </ul>
       </section>
       <dl class="order-information">
         <div>
@@ -158,11 +180,13 @@ import {
   formatTime,
   itemTotal,
   money,
+  orderDiscount,
   statusDescriptions,
   statusNames,
   type OrderAction,
 } from '../orderDisplay'
 import OrderActions from './OrderActions.vue'
+import { couponOffer } from '@/views/coupon/couponDisplay'
 defineProps<{ order: Order | null; loading: boolean; error: string; busy: boolean }>()
 const visible = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ retry: []; action: [action: OrderAction] }>()
@@ -281,6 +305,49 @@ const progressSteps: OrderStatus[] = [1, 2, 3, 4, 5]
 .total-row {
   margin-top: 22px;
   font-size: 16px;
+}
+.coupon-discount,
+.coupon-offer {
+  color: var(--user-primary);
+}
+.order-coupons {
+  padding: 24px 0;
+  border-bottom: 1px solid #e3eaf5;
+}
+.order-coupons h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.order-coupons ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.order-coupons li {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid #e3eaf5;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.order-coupons strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.order-coupons p {
+  margin: 8px 0 0;
+  color: #8491a6;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.order-coupons .coupon-offer {
+  color: var(--user-primary);
+}
+.order-coupons .coupon-status {
+  margin: 0 0 14px;
 }
 .order-information {
   display: grid;

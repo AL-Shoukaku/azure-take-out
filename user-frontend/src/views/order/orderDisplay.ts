@@ -42,6 +42,21 @@ export function itemTotal(item: OrderItem): number {
   return (Math.round(item.amount * 100) * item.number) / 100
 }
 
+export function orderDiscount(order: Order): number {
+  const subtotal = order.orderDetailList.reduce(
+    (sum, item) => sum + Math.round(item.amount * 100) * item.number,
+    0,
+  )
+  return (
+    Math.max(
+      0,
+      subtotal +
+        Math.round((order.packAmount + deliveryFee) * 100) -
+        Math.round(order.amount * 100),
+    ) / 100
+  )
+}
+
 export function cardAddress(order: Order, addresses: Address[]): string {
   const address = addresses.find((address) => address.id === order.addressBookId)
   if (address) {

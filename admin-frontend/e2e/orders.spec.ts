@@ -122,6 +122,55 @@ test('订单号手机号日期组合查询、回车、清空、空结果及分�
   await expect(page.getByPlaceholder('开始日期')).toBeEmpty()
 })
 
+test('用券订单详情展示原价菜品小计、实际优惠和每张券的下单快照', async ({ page }) => {
+  await mockOrders(page)
+  await page.route('**/api/order/details/2', (route) =>
+    route.fulfill({
+      json: {
+        code: 1,
+        data: {
+          ...makeOrder(2, 2),
+          amount: 9,
+          couponCount: 2,
+          userCouponList: [
+            {
+              id: 1,
+              name: '十元代金券',
+              type: 1,
+              discountAmount: 10,
+              thresholdAmount: 0,
+              number: 'OWNED-101',
+              createTime: '2026-10-18 12:34:56',
+            },
+            {
+              id: 2,
+              name: '满二十减二十',
+              type: 2,
+              discountAmount: 20,
+              thresholdAmount: 20,
+              number: 'OWNED-102',
+              createTime: '2026-10-18 12:34:56',
+            },
+          ],
+        },
+      },
+    }),
+  )
+  await page.goto('/order/takeout')
+  await row(page, 'order-0002').getByRole('button', { name: '查看', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '订单信息', exact: true })
+  const coupons = dialog.getByRole('region', { name: '订单优惠券', exact: true })
+  await expect(coupons).toContainText('十元代金券')
+  await expect(coupons).toContainText('代金券 · 可抵扣 ￥10.00')
+  await expect(coupons).toContainText('满减券 · 满 ￥20.00 减 ￥20.00')
+  await expect(coupons).toContainText('OWNED-101')
+  await expect(coupons).toContainText('OWNED-102')
+  await expect(dialog.getByTestId('dish-subtotal')).toHaveText('￥24.00')
+  // 券面额共30元，实际仅抵扣24元餐品费，配送和打包费保留。
+  await expect(dialog.getByTestId('order-discount')).toHaveText('−￥24.00')
+  await expect(dialog.getByTestId('order-total')).toHaveText('￥9.00')
+})
+
 test('订单详情金额、两份菜品、取消原因以及关闭后回到列表', async ({ page }) => {
   await mockOrders(page)
   await page.goto('/order/takeout')

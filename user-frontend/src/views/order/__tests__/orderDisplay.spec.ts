@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { cardAddress, itemCount, itemTotal, money, orderTabs, statusNames } from '../orderDisplay'
+import {
+  cardAddress,
+  itemCount,
+  itemTotal,
+  money,
+  orderTabs,
+  statusNames,
+  orderDiscount,
+} from '../orderDisplay'
 import type { Order } from '@/api/orders'
 import type { Address } from '@/api/addresses'
 
@@ -38,5 +46,19 @@ describe('订单展示', () => {
     expect(cardAddress(order, [{ ...address, detail: '新地址' }])).toBe(order.address)
     expect(cardAddress(order, [])).toBe(order.address)
     expect(cardAddress({ ...order, address: '文三路 88 号' }, [address])).toBe('文三路 88 号')
+  })
+  it('实际优惠按菜品原价及后端实收金额计算，超过餐品金额的券面额不计入额外优惠', () => {
+    const order = {
+      orderDetailList: [
+        { number: 2, amount: 19.9 },
+        { number: 1, amount: 3 },
+      ],
+      packAmount: 3,
+      amount: 40.8,
+      userCouponList: [{ discountAmount: 5 }, { discountAmount: 6 }],
+    } as Order
+    expect(orderDiscount(order)).toBe(11)
+    expect(orderDiscount({ ...order, amount: 9 })).toBe(42.8)
+    expect(orderDiscount({ ...order, amount: 51.8 })).toBe(0)
   })
 })

@@ -95,11 +95,11 @@
           <span>配送费</span><span>{{ money(cart.deliveryAmount) }}</span>
         </div>
         <div v-if="couponPreview.coupons.length" class="fee-row coupon-discount-row">
-          <span>优惠券试算（{{ couponPreview.coupons.length }} 张）</span
+          <span>优惠券优惠（{{ couponPreview.coupons.length }} 张）</span
           ><span>−{{ money(couponPreview.discount) }}</span>
         </div>
         <p v-if="couponPreview.coupons.length" class="coupon-preview-note">
-          优惠仅供试算，实际支付暂不使用优惠券。
+          提交订单时锁定所选优惠券，优惠金额以下单结果为准。
         </p>
       </section>
       <ElFormItem label="订单备注" prop="remark"
@@ -115,7 +115,7 @@
     <template #footer
       ><div class="checkout-footer">
         <span
-          >{{ couponPreview.coupons.length ? '试算合计' : '合计' }}
+          >{{ couponPreview.coupons.length ? '预计合计' : '合计' }}
           <strong>{{ money(couponPreview.total) }}</strong></span
         ><ElButton
           form="checkout-form"

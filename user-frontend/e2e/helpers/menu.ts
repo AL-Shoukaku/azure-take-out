@@ -28,12 +28,13 @@ interface FixtureItem {
 }
 export async function mockMenu(
   page: Page,
-  options: { closed?: boolean; addresses?: boolean } = {},
+  options: { closed?: boolean; addresses?: boolean; orderAmount?: number } = {},
 ) {
   await restoreSession(page)
   let cart: FixtureItem[] = []
   const mutations: { action: string; data: unknown }[] = []
   const submissions: Record<string, unknown>[] = []
+  const payments: Record<string, unknown>[] = []
   await page.route('**/api/category/list', (r) =>
     r.fulfill({
       json: {
@@ -150,12 +151,15 @@ export async function mockMenu(
         data: {
           id: 99,
           orderNumber: 'TEST-99',
-          orderAmount: amount,
+          orderAmount: options.orderAmount ?? amount,
           orderTime: '2026-10-22 12:00',
         },
       },
     })
   })
-  await page.route('**/api/order/payment', (r) => r.fulfill({ json: { code: 1, data: {} } }))
-  return { mutations, submissions }
+  await page.route('**/api/order/payment', (r) => {
+    payments.push(r.request().postDataJSON())
+    return r.fulfill({ json: { code: 1, data: {} } })
+  })
+  return { mutations, submissions, payments }
 }

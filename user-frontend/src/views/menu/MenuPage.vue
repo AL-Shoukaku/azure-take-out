@@ -204,6 +204,7 @@ import ProductDialog from './components/ProductDialog.vue'
 import CheckoutDialog from './components/CheckoutDialog.vue'
 import CouponPickerDialog from './components/CouponPickerDialog.vue'
 import { useCouponPreview } from './useCouponPreview'
+import { previewCoupons } from './couponPreview'
 import { useMenu } from './useMenu'
 import { cartProduct, menuPageSize } from './menuDisplay'
 
@@ -375,7 +376,22 @@ async function placeOrder(data: OrderSubmission): Promise<void> {
       ElMessage.warning('店铺暂时无法下单，请稍后再试')
       return
     }
-    const result = await submitOrder(data)
+    const coupons = previewCoupons(
+      selectedCoupons.value,
+      cart.amount,
+      fees.value,
+      Date.now(),
+    ).coupons
+    if (coupons.length !== selectedCoupons.value.length) {
+      selectedCoupons.value = coupons
+      couponNow.value = Date.now()
+      ElMessage.warning('部分优惠券已不可用，请核对金额后重新提交订单')
+      return
+    }
+    const result = await submitOrder({
+      ...data,
+      ...(coupons.length ? { userCouponIds: coupons.map((coupon) => coupon.id) } : {}),
+    })
     if (!valid(token)) return
     pendingOrder.value = { id: result.id, number: result.orderNumber, amount: result.orderAmount }
     paid.value = false

@@ -326,7 +326,7 @@ test.describe('待支付订单去支付', () => {
     }
     expect(writes).toEqual([
       {
-        path: '/api/coupon/pay/COUPON-ORDER-0001',
+        path: '/api/coupon/pay',
         method: 'POST',
         params: { couponOrderNumber: 'COUPON-ORDER-0001' },
       },
@@ -364,7 +364,7 @@ test.describe('待支付订单去支付', () => {
   test('暂不支付不发起请求；支付失败保留弹窗并提示后端错误，可重试', async ({ page }) => {
     const { writes } = await mockCouponOrders(page)
     await page.route(
-      '**/api/coupon/pay/**',
+      /\/api\/coupon\/pay(?:\?|$)/,
       (route) =>
         route.fulfill({ json: { code: 0, msg: '代金券订单已超过支付截止时间', data: null } }),
       { times: 1 },

@@ -26,8 +26,9 @@ async function addDish(page: Page) {
   await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
 }
 
-test('标题右侧蓝色按钮，未使用优惠券单列勾选，叠加后同步餐袋与结算试算', async ({ page }) => {
-  const api = await mockMenu(page)
+test('叠加用券提交用户券ID，支付与成功页面使用后端折后金额', async ({ page }) => {
+  // 刻意与前端预计14元不同，验证付款以后端金额为准。
+  const api = await mockMenu(page, { orderAmount: 13 })
   const coupons = await mockUserCoupons(page, fixtures)
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/menu')
@@ -69,19 +70,25 @@ test('标题右侧蓝色按钮，未使用优惠券单列勾选，叠加后同�
   await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
   await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toHaveText('2')
   await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toBeVisible()
-  await expect(bag(page).locator('.cart-total')).toContainText(/试算合计\s*¥14\.00/)
-  await expect(bag(page)).toContainText('优惠仅供试算，实际支付暂不使用优惠券。')
+  await expect(bag(page).locator('.cart-total')).toContainText(/预计合计\s*¥14\.00/)
+  await expect(bag(page)).toContainText('优惠金额以下单结果为准。')
   await page.getByRole('button', { name: '去结算' }).click()
   const checkout = page.getByRole('dialog', { name: '确认订单', exact: true })
   await expect(checkout.locator('.checkout-footer')).toContainText('¥14.00')
-  await expect(checkout).toContainText('优惠券试算（2 张）')
+  await expect(checkout).toContainText('优惠券优惠（2 张）')
+  await expect(checkout).toContainText('提交订单时锁定所选优惠券')
   await checkout.getByRole('button', { name: '提交订单' }).click()
   const payment = page.getByRole('dialog', { name: '订单支付', exact: true })
-  await expect(payment).toContainText('¥23.00')
+  await expect(payment).toContainText('¥13.00')
   expect(api.submissions).toHaveLength(1)
+  expect(api.submissions[0]).toHaveProperty('userCouponIds', [1, 2])
   for (const field of ['amount', 'couponId', 'userCouponId', 'couponIds', 'discountAmount'])
     expect(api.submissions[0]).not.toHaveProperty(field)
   expect(coupons.details).toEqual([])
+  await expect(bag(page).locator('.coupon-picker-badge .el-badge__content')).toBeHidden()
+  await payment.getByRole('button', { name: '确认支付', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: '支付成功', exact: true })).toContainText('¥13.00')
+  expect(api.payments).toEqual([{ orderNumber: 'TEST-99', payMethod: 1 }])
 })
 
 test('分页保留多选，取消不覆盖原选择，确认清空恢复原价', async ({ page }) => {
@@ -135,7 +142,7 @@ test('数量变化重新判断门槛，清空餐袋移除优惠试算', async ({
   await expect(bag(page).locator('.cart-total')).toContainText('¥32.00')
   await bag(page).getByRole('button', { name: '减少家常菜2', exact: true }).click()
   await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
-  await expect(bag(page)).not.toContainText('优惠券试算')
+  await expect(bag(page)).not.toContainText('优惠券优惠')
   await bag(page).getByRole('button', { name: '清空餐袋', exact: true }).click()
   await page.getByRole('button', { name: '确认清空', exact: true }).click()
   await expect(bag(page).locator('.cart-total')).toContainText('¥0.00')
@@ -195,5 +202,40 @@ test('手机弹窗可勾选确认，优惠过期后自动恢复价格且不横�
   await expect(bag(page).locator('.cart-total')).toContainText('¥18.00')
   await page.clock.setFixedTime(new Date('2026-11-08T10:01:00+08:00'))
   await expect(bag(page).locator('.cart-total')).toContainText('¥23.00')
-  await expect(bag(page)).not.toContainText('优惠券试算')
+  await expect(bag(page)).not.toContainText('优惠券优惠')
+})
+
+test('后端拒绝已锁定优惠券时保留餐袋和选择，允许取消用券后重新提交', async ({ page }) => {
+  const api = await mockMenu(page)
+  await mockUserCoupons(page, fixtures)
+  await page.route(
+    '**/api/order/submit',
+    (route) =>
+      route.fulfill({
+        json: { code: 0, msg: '存在状态不为未使用的优惠券，请重新下单', data: null },
+      }),
+    { times: 1 },
+  )
+  await page.goto('/menu')
+  await addDish(page)
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await selectCoupon(page, '五元代金券')
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await page.getByRole('button', { name: '去结算' }).click()
+  const checkout = page.getByRole('dialog', { name: '确认订单', exact: true })
+  await checkout.getByRole('button', { name: '提交订单' }).click()
+  await expect(
+    page.getByText('存在状态不为未使用的优惠券，请重新下单', { exact: true }),
+  ).toBeVisible()
+  await expect(checkout).toBeVisible()
+  await expect(bag(page).locator('.cart-total')).toContainText('¥18.00')
+  await expect(page.getByRole('dialog', { name: '订单支付', exact: true })).toHaveCount(0)
+  await checkout.getByRole('button', { name: '关闭此对话框' }).click()
+  await bag(page).getByRole('button', { name: '选择优惠券', exact: true }).click()
+  await picker(page).getByRole('button', { name: '清空选择', exact: true }).click()
+  await picker(page).getByRole('button', { name: '确认选择', exact: true }).click()
+  await page.getByRole('button', { name: '去结算' }).click()
+  await checkout.getByRole('button', { name: '提交订单' }).click()
+  await expect(page.getByRole('dialog', { name: '订单支付', exact: true })).toContainText('¥23.00')
+  expect(api.submissions[0]).not.toHaveProperty('userCouponIds')
 })

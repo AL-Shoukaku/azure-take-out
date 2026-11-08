@@ -69,9 +69,10 @@ export async function mockCouponOrders(
     })
   })
   const writes: { path: string; method: string; params: Record<string, string> }[] = []
-  await page.route('**/api/coupon/pay/**', (route) => {
+  await page.route(/\/api\/coupon\/pay(?:\?|$)/, (route) => {
     const request = route.request()
     expect(request.headers().authentication).toBe('e2e-user-token')
+    expect(request.method()).toBe('POST')
     const url = new URL(request.url())
     const params = Object.fromEntries(url.searchParams)
     writes.push({ path: url.pathname, method: request.method(), params })

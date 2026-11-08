@@ -12,6 +12,20 @@ export interface OrderItem {
   amount: number
   image: string | null
 }
+// 订单下单时保存的用券快照，不依赖优惠券当前的状态或配置。
+export interface OrderCoupon {
+  id: number
+  orderId: number
+  userId: number
+  couponId: number
+  userCouponId: number
+  number: string
+  type: 1 | 2
+  name: string
+  discountAmount: number
+  thresholdAmount: number
+  createTime: string
+}
 export interface Order {
   id: number
   number: string
@@ -39,6 +53,8 @@ export interface Order {
   tablewareStatus: 0 | 1
   orderDishes: string | null
   orderDetailList: OrderItem[]
+  couponCount?: number
+  userCouponList?: OrderCoupon[] | null
 }
 export interface OrderPageResult {
   total: number
@@ -59,6 +75,7 @@ export interface OrderSubmission {
   estimatedDeliveryTime?: string
   tablewareStatus: 0 | 1
   tablewareNumber: number
+  userCouponIds?: number[]
 }
 export interface SubmittedOrder {
   id: number

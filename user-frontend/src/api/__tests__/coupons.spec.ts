@@ -48,7 +48,7 @@ it('支付匹配当前后端的路径和 query 订单号，不提交前端金额
   const adapter = respond(result)
   await expect(payCouponOrder('ORDER-1')).resolves.toEqual(result)
   expect(adapter.mock.calls[0]![0]).toMatchObject({
-    url: '/coupon/pay/ORDER-1',
+    url: '/coupon/pay',
     method: 'post',
     params: { couponOrderNumber: 'ORDER-1' },
   })

@@ -50,7 +50,7 @@ export async function mockCouponCheckout(page: Page, fixtures: CouponFixture[]) 
     if (api.failures[action]) return fail(api.failures[action])
     if (action === 'pay') {
       const order = [...orders.values()].find((order) => order.number === params.couponOrderNumber)
-      if (!order || url.pathname !== `/api/coupon/pay/${order.number}`) return fail('订单号不正确')
+      if (!order || url.pathname !== '/api/coupon/pay') return fail('订单号不正确')
       return success({ number: order.number, expireTime: '2026-12-09 18:30' })
     }
     const coupon = records.find((coupon) => coupon.id === Number(params.couponId))!

@@ -151,7 +151,7 @@ test('代金券支付成功显示后端返回的实付金额、订单号和过�
   expect(api.writes).toEqual([
     { path: '/api/coupon/buy', method: 'POST', params: { couponId: '1' }, body: null },
     {
-      path: '/api/coupon/pay/COUPON-ORDER-1',
+      path: '/api/coupon/pay',
       method: 'POST',
       params: { couponOrderNumber: 'COUPON-ORDER-1' },
       body: null,
@@ -222,7 +222,7 @@ test('支付失败保留订单重试，支付期间阻止重复提交和导航�
     document.querySelector<HTMLAnchorElement>('.main-navigation a')!.click()
   })
   await expect(page).toHaveURL('/coupons/take')
-  expect(api.writes.filter((write) => write.path.includes('/pay/'))).toHaveLength(2)
+  expect(api.writes.filter((write) => write.path === '/api/coupon/pay')).toHaveLength(2)
   api.release()
   await expect(page.getByRole('dialog', { name: '支付成功', exact: true })).toBeVisible()
 })

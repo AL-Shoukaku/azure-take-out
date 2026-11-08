@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AxiosAdapter } from 'axios'
-import { cancelOrder, getOrder, getOrders, payOrder, remindOrder, repeatOrder } from '../orders'
+import {
+  cancelOrder,
+  getOrder,
+  getOrders,
+  payOrder,
+  remindOrder,
+  repeatOrder,
+  submitOrder,
+} from '../orders'
 import { getCart } from '../cart'
 import { http } from '@/utils/request'
 
@@ -21,6 +29,31 @@ function adapter(data: unknown = null) {
 }
 
 describe('用户订单及购物车接口', () => {
+  it('下单传入用户持有的券ID列表，保留后端的折后订单金额', async () => {
+    const mock = adapter({
+      id: 7,
+      orderNumber: 'ORDER-7',
+      orderAmount: 7,
+      orderTime: '2026-11-08 10:00',
+    })
+    await expect(
+      submitOrder({
+        addressBookId: 1,
+        payMethod: 1,
+        remark: '',
+        deliveryStatus: 1,
+        tablewareStatus: 1,
+        tablewareNumber: 0,
+        userCouponIds: [12, 13],
+      }),
+    ).resolves.toMatchObject({ orderAmount: 7 })
+    const config = mock.mock.calls[0]![0]
+    expect(config).toMatchObject({ url: '/order/submit', method: 'post' })
+    const data = JSON.parse(config.data as string)
+    expect(data.userCouponIds).toEqual([12, 13])
+    expect(data).not.toHaveProperty('amount')
+  })
+
   it('使用固定六条的新接口，状态列表使用后端支持的逗号格式', async () => {
     const mock = adapter({ total: 0, records: [] })
     await getOrders(2, [2, 3, 4])
