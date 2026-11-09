@@ -1,5 +1,7 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.constant.StatusConstant;
 import com.azure.context.BaseContext;
 import com.azure.dto.coupon.CouponDTO;
@@ -17,6 +19,7 @@ import com.azure.mapper.UserCouponMapper;
 import com.azure.result.PageResult;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.*;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import org.springframework.beans.BeanUtils;
@@ -42,6 +45,9 @@ public class CouponServiceImpl implements CouponService {
 
     @Autowired
     private CouponOrderMapper couponOrderMapper;
+
+    @Autowired
+    private CacheClient cacheClient;
 
     /**
      * 商家发布优惠券
@@ -76,6 +82,8 @@ public class CouponServiceImpl implements CouponService {
         if (row == 0) {
             throw new BaseException("优惠券不存在");
         }
+        // 数据库更新成功后清理列表缓存
+        cacheClient.deleteByKey(RedisConstants.COUPON_LIST_KEY);
     }
 
     /**
@@ -95,6 +103,8 @@ public class CouponServiceImpl implements CouponService {
         if (row == 0) {
             throw new BaseException("优惠券不存");
         }
+        // 数据库更新成功后清理列表缓存
+        cacheClient.deleteByKey(RedisConstants.COUPON_LIST_KEY);
     }
 
     /**
@@ -135,7 +145,12 @@ public class CouponServiceImpl implements CouponService {
      */
     @Override
     public List<AvailableCouponVO> queryAvailableCoupons() {
-        return couponMapper.getAvailableCoupons();
+        return cacheClient.getOrLoad(
+                RedisConstants.COUPON_LIST_KEY,
+                new TypeReference<List<AvailableCouponVO>>() {},
+                () -> couponMapper.getAvailableCoupons(),
+                RedisConstants.CACHE_COUPON_LIST_TTL
+        );
     }
 
     /**

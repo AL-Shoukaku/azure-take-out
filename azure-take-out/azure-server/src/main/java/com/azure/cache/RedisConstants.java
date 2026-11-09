@@ -7,6 +7,7 @@ public class RedisConstants {
     public static final String SETMEAL_KEY_PREFIX = "setmeal:";         // 套餐 key 前缀
     public static final String SETMEALDISH_KEY_PREFIX = "setmealDish:"; // 套餐内订单 key 前缀
     public static final String CATEGORY_KEY_PREFIX = "category:";       // 分类 key 前缀
+    public static final String COUPON_LIST_KEY = "coupon:list";          // 优惠券列表 key
 
     // 锁 key 前缀
     public static final String LOCK_KEY_PREFIX = "lock:";               // 锁 key 前缀
@@ -18,6 +19,7 @@ public class RedisConstants {
     public static final long CACHE_SETMEAL_TTL = 30 * 60;           // 套餐缓存过期时间
     public static final long CACHE_SETMEALDISH_TTL = 30 * 60;     // 套餐内订单缓存过期时间
     public static final long CACHE_CATEGORY_TTL = 30 * 60;         // 分类缓存过期时间
+    public static final long CACHE_COUPON_LIST_TTL = 30;      // 优惠券列表缓存过期时间
 
     // 获取互斥锁的最大重试次数
     public static final int LOCK_MAX_RETRY_COUNT = 5;

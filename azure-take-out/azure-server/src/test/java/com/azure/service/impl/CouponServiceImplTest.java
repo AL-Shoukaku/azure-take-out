@@ -1,5 +1,7 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.dto.coupon.CouponDTO;
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
@@ -38,6 +40,7 @@ class CouponServiceImplTest extends ServiceTestSupport {
     @Mock private UserCouponMapper userCouponMapper;
     @Mock private CouponOrderMapper couponOrderMapper;
     @Mock private UserMapper userMapper;
+    @Mock private CacheClient cacheClient;
     @Captor private ArgumentCaptor<Coupon> coupon;
 
     private static final LocalDateTime START = LocalDateTime.of(2026, 11, 1, 10, 0);
@@ -163,7 +166,9 @@ class CouponServiceImplTest extends ServiceTestSupport {
 
         service.updateCoupon(dto);
 
-        verify(mapper).updateCoupon(coupon.capture());
+        var operations = inOrder(mapper, cacheClient);
+        operations.verify(mapper).updateCoupon(coupon.capture());
+        operations.verify(cacheClient).deleteByKey(RedisConstants.COUPON_LIST_KEY);
         Coupon expected = new Coupon();
         expected.setId(7L);
         expected.setName("新名称");
@@ -179,6 +184,7 @@ class CouponServiceImplTest extends ServiceTestSupport {
         dto.setName("不存在的券");
         assertThatThrownBy(() -> service.updateCoupon(dto))
                 .isInstanceOf(BaseException.class).hasMessage("优惠券不存在");
+        verifyNoInteractions(cacheClient);
     }
 
     @ParameterizedTest
@@ -186,7 +192,9 @@ class CouponServiceImplTest extends ServiceTestSupport {
     void startAndStopUseRequestedStatus(int status) {
         when(mapper.updateStatus(7L, status)).thenReturn(1);
         service.startOrStop(7L, status);
-        verify(mapper).updateStatus(7L, status);
+        var operations = inOrder(mapper, cacheClient);
+        operations.verify(mapper).updateStatus(7L, status);
+        operations.verify(cacheClient).deleteByKey(RedisConstants.COUPON_LIST_KEY);
         verifyNoMoreInteractions(mapper);
     }
 
@@ -194,13 +202,14 @@ class CouponServiceImplTest extends ServiceTestSupport {
     @CsvSource(value = {"null,1", "7,null", "-1,1", "7,-1", "7,2"}, nullValues = "null")
     void invalidStatusRequestsNeverReachDatabase(Long id, Integer status) {
         assertThatThrownBy(() -> service.startOrStop(id, status)).isInstanceOf(BaseException.class);
-        verifyNoInteractions(mapper);
+        verifyNoInteractions(mapper, cacheClient);
     }
 
     @Test
     void changingStatusOfMissingCouponFails() {
         assertThatThrownBy(() -> service.startOrStop(999L, 1)).isInstanceOf(BaseException.class);
         verify(mapper).updateStatus(999L, 1);
+        verifyNoInteractions(cacheClient);
     }
 
     @Test
