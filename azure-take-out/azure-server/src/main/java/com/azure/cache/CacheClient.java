@@ -1,6 +1,8 @@
 package com.azure.cache;
 
+import com.azure.entity.Coupon;
 import com.azure.exception.CacheBusinessException;
+import com.azure.mapper.CouponMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -32,6 +36,9 @@ public class CacheClient {
 
     @Autowired
     private RedissonClient redissonClient;
+
+    @Autowired
+    private CouponMapper couponMapper;
 
     /**
      * 设置带有过期时间的缓存，时间单位为秒，带有 10% 的上下浮动，避免缓存雪崩
@@ -144,6 +151,72 @@ public class CacheClient {
      */
     public void deleteByPrefixAfterCommit(String prefix) {
         runAfterCommit(prefix + "*", () -> deleteByPrefix(prefix));
+    }
+
+    /**
+     * 专门用于查询单张优惠券信息的方法。
+     * 未命中时，会根据优惠券的活动结束时间计算过期时间。
+     * @param couponId  优惠券ID
+     * @return          优惠券信息
+     */
+    public Coupon getOrLoadCoupon(Long couponId) {
+        String key = RedisConstants.COUPON_INFO_KEY_PREFIX + couponId;
+        TypeReference<Coupon> type = new TypeReference<>() {};
+        Supplier<Coupon> loader = () -> couponMapper.selectById(couponId);
+        String value = stringRedisTemplate.opsForValue().get(key);
+        // 缓存命中时，如果是空串就返回 null，否则反序列化为对象并返回
+        if (value != null) {
+            return (value.isEmpty()) ? null : deSerialize(value, type);
+        }
+
+        // 缓存未命中，尝试获取互斥锁，获取后才能加载数据并缓存，防止缓存击穿
+        String lockKey = "lock:" + key;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean lockAcquired = lock.tryLock();
+
+        // 获取不到锁，最多重试 5 次，每次等待 50 毫秒，检查缓存仍未命中时重试
+        for (int retry = 0; retry < RedisConstants.LOCK_MAX_RETRY_COUNT && !lockAcquired; retry++) {
+
+            try {
+                Thread.sleep(50); // 等待 50 毫秒后重试
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CacheBusinessException("缓存加载被中断", e);
+            }
+            value = stringRedisTemplate.opsForValue().get(key);
+            if (value != null) {
+                return (value.isEmpty()) ? null : deSerialize(value, type);
+            }
+            lockAcquired = lock.tryLock();
+        }
+        if (!lockAcquired) {
+            throw new CacheBusinessException("无法获取缓存锁！");
+        }
+
+        // 获取到锁后，先加载并缓存数据，最后释放锁
+        Coupon result = null;
+        try {
+            // 再次检查缓存是否已经被其他线程加载了数据，避免重复加载
+            value = stringRedisTemplate.opsForValue().get(key);
+            if (value != null) {
+                return (value.isEmpty()) ? null : deSerialize(value, type);
+            }
+            // 加载数据，如果为 null，则缓存空串，避免缓存穿透，过期时间为无效数据的统一 TTL
+            result = loader.get();
+            if (result == null) {
+                stringRedisTemplate.opsForValue().set(key, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.SECONDS);
+            } else {
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime endTime = result.getEndTime();
+                long ttl = (long) (Duration.between(now, endTime).getSeconds() * 1.2); // 上浮 20%，确保在活动结束以后过期
+                ttl = Math.max(ttl, RedisConstants.CACHE_COUPON_INFO_MIN_TTL); // 最短过期时间为 60 秒，防止过短或活动已经过期
+                set(key, result, ttl);
+            }
+        } finally {
+            // 释放锁，double check 或加载数据抛异常时也不能泄漏锁
+            lock.unlock();
+        }
+        return result;
     }
 
     /** 有活跃事务时把删除动作挂到 afterCommit，否则立即执行 */

@@ -84,6 +84,7 @@ public class CouponServiceImpl implements CouponService {
         }
         // 数据库更新成功后清理列表缓存
         cacheClient.deleteByKey(RedisConstants.COUPON_LIST_KEY);
+        cacheClient.deleteByKey(RedisConstants.COUPON_INFO_KEY_PREFIX + coupon.getId());
     }
 
     /**
@@ -105,10 +106,12 @@ public class CouponServiceImpl implements CouponService {
         }
         // 数据库更新成功后清理列表缓存
         cacheClient.deleteByKey(RedisConstants.COUPON_LIST_KEY);
+        cacheClient.deleteByKey(RedisConstants.COUPON_INFO_KEY_PREFIX + couponId);
     }
 
     /**
      * 根据优惠券ID查询优惠券详情
+     * 商家端修改优惠券信息时回显用的
      * @param couponId 优惠券ID
      * @return 优惠券详情
      */
@@ -261,7 +264,7 @@ public class CouponServiceImpl implements CouponService {
         if (couponId == null || couponId < 0) {
             throw new BaseException("优惠券ID不合法");
         }
-        Coupon coupon = couponMapper.selectById(couponId);
+        Coupon coupon = cacheClient.getOrLoadCoupon(couponId);
         if (coupon == null) {
             throw new BaseException("优惠券不存在");
         }
@@ -320,7 +323,7 @@ public class CouponServiceImpl implements CouponService {
      * @return 用户优惠券
      */
     private UserCoupon createUserCouponWithOrder(CouponOrder couponOrder) {
-        Coupon coupon = couponMapper.selectById(couponOrder.getCouponId());
+        Coupon coupon = cacheClient.getOrLoadCoupon(couponOrder.getCouponId());
         if (coupon == null) {
             throw new BaseException("优惠券不存在");
         }
