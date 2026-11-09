@@ -9,6 +9,8 @@ public class RedisConstants {
     public static final String CATEGORY_KEY_PREFIX = "category:";       // 分类 key 前缀
     public static final String COUPON_LIST_KEY = "coupon:list";          // 优惠券列表 key
     public static final String COUPON_INFO_KEY_PREFIX = "coupon:info:"; // 优惠券信息 key 前缀
+    public static final String COUPON_STOCK_KEY_PREFIX = "coupon:stock:"; // 优惠券库存 key 前缀
+    public static final String COUPON_USER_KEY_PREFIX = "coupon:user:"; // 用户购买记录 key 前缀
 
     // 锁 key 前缀
     public static final String LOCK_KEY_PREFIX = "lock:";               // 锁 key 前缀
@@ -22,6 +24,8 @@ public class RedisConstants {
     public static final long CACHE_CATEGORY_TTL = 30 * 60;         // 分类缓存过期时间
     public static final long CACHE_COUPON_LIST_TTL = 30;      // 优惠券列表缓存过期时间
     public static final long CACHE_COUPON_INFO_MIN_TTL = 60;      // 优惠券信息缓存最短过期时间
+    public static final long CACHE_COUPON_USER_MIN_TTL = 30 * 60;      // 优惠券信息缓存最长过期时间
+    public static final long CACHE_COUPON_STOCK_MIN_TTL = 30 * 60;      // 优惠券库存缓存过期时间
 
     // 获取互斥锁的最大重试次数
     public static final int LOCK_MAX_RETRY_COUNT = 5;

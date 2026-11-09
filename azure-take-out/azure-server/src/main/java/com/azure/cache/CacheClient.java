@@ -11,14 +11,17 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.RedisException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -40,6 +43,16 @@ public class CacheClient {
     @Autowired
     private CouponMapper couponMapper;
 
+    private final static DefaultRedisScript<Long> SADD_SCRIPT;
+
+    // 初始化 lua 脚本
+    static {
+        SADD_SCRIPT = new DefaultRedisScript<>();
+        SADD_SCRIPT.setLocation(new ClassPathResource("lua/sadd.lua"));
+        SADD_SCRIPT.setResultType(Long.class);
+    }
+
+
     /**
      * 设置带有过期时间的缓存，时间单位为秒，带有 10% 的上下浮动，避免缓存雪崩
      * @param key            缓存的键
@@ -54,6 +67,18 @@ public class CacheClient {
         stringRedisTemplate.opsForValue().set(key, value, ttl, TimeUnit.SECONDS);
     }
 
+    /**
+     * 设置带有过期时间的 Set 缓存，时间单位为秒，带有 10% 的上下浮动，避免缓存雪崩
+     * @param key            缓存的键
+     * @param value          缓存的值
+     * @param time           缓存的过期时间，单位为秒
+     */
+    public void sadd(String key, String value, long time) {
+        long maxTime = (long) (time * 1.1); // 上浮 10%
+        long minTime = (long) (time * 0.9); // 下浮 10%
+        long ttl = (long) (Math.random() * (maxTime - minTime) + minTime); // 随机过期时间
+        stringRedisTemplate.execute(SADD_SCRIPT, Collections.singletonList(key), value, String.valueOf(ttl));
+    }
 
     /**
      * 从 Redis 中根据 key 获取对象，如果不存在则使用 loader 加载数据并缓存，缓存时间为 ttl 秒

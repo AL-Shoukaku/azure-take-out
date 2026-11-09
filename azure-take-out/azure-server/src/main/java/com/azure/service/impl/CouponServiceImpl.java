@@ -66,6 +66,11 @@ public class CouponServiceImpl implements CouponService {
         coupon.setCreateTime(now);
         coupon.setUpdateTime(now);
         couponMapper.insertCoupon(coupon);
+        // 数据插入成功后，将库存信息和用户购买记录放入 Redis 中，时间设置为活动结束时间以后
+        long ttl = (long) (java.time.Duration.between(now, coupon.getEndTime()).getSeconds() * 1.2); // 上浮 20%，确保在活动结束以后过期
+        ttl = Math.max(ttl, RedisConstants.CACHE_COUPON_STOCK_MIN_TTL);                              // 最短过期时间为 60 分钟
+        cacheClient.set(RedisConstants.COUPON_STOCK_KEY_PREFIX + coupon.getId(), coupon.getStock(), ttl);
+        cacheClient.sadd(RedisConstants.COUPON_USER_KEY_PREFIX + coupon.getId(), "-1", ttl); // 初始化用户购买记录集合
     }
 
     /**
