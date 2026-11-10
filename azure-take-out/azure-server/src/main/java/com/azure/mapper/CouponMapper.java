@@ -65,4 +65,7 @@ public interface CouponMapper {
      */
     @Update("UPDATE coupon SET stock = stock + 1, update_time = NOW() WHERE id = #{couponId}")
     void addStockByOne(Long couponId);
+
+    @Update("UPDATE coupon SET stock = stock - 1, update_time = NOW() WHERE id = #{couponId} AND stock > 0")
+    int decreaseStockByOne(Long couponId);
 }

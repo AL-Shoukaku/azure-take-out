@@ -172,8 +172,11 @@ public class CouponServiceImpl implements CouponService {
         Long userId = BaseContext.getCurrentId();
         Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION);
         // 扣减库存，并将优惠券发放给用户
-        coupon.setStock(coupon.getStock() - 1);
-        couponMapper.updateCoupon(coupon);
+        //coupon.setStock(coupon.getStock() - 1);
+        //couponMapper.updateCoupon(coupon);
+        if (couponMapper.decreaseStockByOne(couponId) == 0) {
+            throw new BaseException("优惠券库存不足");
+        }
         UserCoupon userCoupon = createUserCoupon(coupon, userId);
         userCouponMapper.insertUserCoupon(userCoupon);
 
@@ -195,8 +198,9 @@ public class CouponServiceImpl implements CouponService {
         Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_VOUCHER);
 
         // 扣减库存，并提交优惠券订单
-        coupon.setStock(coupon.getStock() - 1);
-        couponMapper.updateCoupon(coupon);
+        if (couponMapper.decreaseStockByOne(couponId) == 0) {
+            throw new BaseException("优惠券库存不足");
+        }
         CouponOrder couponOrder = createCouponOrder(coupon, userId);
         couponOrderMapper.insertCouponOrder(couponOrder);
 
@@ -286,15 +290,13 @@ public class CouponServiceImpl implements CouponService {
             throw new BaseException("优惠券不在活动时间内");
         }
         // 检查库存是否大于0
-        if (coupon.getStock() <= 0) {
-            throw new BaseException("优惠券库存不足");
-        }
-        // 检查用户是否已经领取过该优惠券，满减券从 user_coupon 表中查询，代金券从 coupon_order 表中查询
-        if (coupon.getType().equals(Coupon.TYPE_FULL_REDUCTION) && userCouponMapper.userHasGetCoupon(userId, couponId) > 0) {
-            throw new BaseException("用户已领取过该满减券");
-        }
-        if (coupon.getType().equals(Coupon.TYPE_VOUCHER) && couponOrderMapper.userHasBuyCoupon(userId, couponId) > 0) {
-            throw new BaseException("用户已购买过该代金券");
+        long result = cacheClient.checkAndDecrStock(couponId, userId);
+        if (result == -1) {
+            throw new BaseException("优惠券已经售罄");
+        } else if (result == -2) {
+            throw new BaseException("用户已领取过该优惠券");
+        } else if (result == -3) {
+            throw new BaseException("服务繁忙，请稍后再试");
         }
         return coupon;
     }

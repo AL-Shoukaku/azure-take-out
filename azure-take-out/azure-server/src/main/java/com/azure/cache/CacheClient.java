@@ -21,7 +21,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -45,11 +47,17 @@ public class CacheClient {
 
     private final static DefaultRedisScript<Long> SADD_SCRIPT;
 
+    private final static DefaultRedisScript<Long> CHECK_COUPON_SCRIPT;
+
     // 初始化 lua 脚本
     static {
         SADD_SCRIPT = new DefaultRedisScript<>();
         SADD_SCRIPT.setLocation(new ClassPathResource("lua/sadd.lua"));
         SADD_SCRIPT.setResultType(Long.class);
+
+        CHECK_COUPON_SCRIPT = new DefaultRedisScript<>();
+        CHECK_COUPON_SCRIPT.setLocation(new ClassPathResource("lua/checkCoupon.lua"));
+        CHECK_COUPON_SCRIPT.setResultType(Long.class);
     }
 
 
@@ -242,6 +250,21 @@ public class CacheClient {
             lock.unlock();
         }
         return result;
+    }
+
+    /**
+     * 检查优惠券库存并尝试扣减库存，使用 Lua 脚本保证原子性。
+     * @param couponId  优惠券ID
+     * @param userId    用户ID
+     * @return          为 0 代表成功，-1 代表库存不足，-2 代表用户已领取过该优惠券，-3 代表有key不存在
+     */
+    public Long checkAndDecrStock(Long couponId, Long userId) {
+        String coupon_key = RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId;
+        String user_key = RedisConstants.COUPON_USER_KEY_PREFIX + couponId;
+        List<String> keys = new ArrayList<>();
+        keys.add(coupon_key);
+        keys.add(user_key);
+        return stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, keys, userId.toString());
     }
 
     /** 有活跃事务时把删除动作挂到 afterCommit，否则立即执行 */
