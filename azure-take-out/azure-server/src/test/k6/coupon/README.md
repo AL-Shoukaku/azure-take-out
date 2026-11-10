@@ -7,7 +7,7 @@
 先启动项目后端、MySQL、Redis。在项目根目录执行以下命令。准备脚本使用 Python 3 标准库，不需要 pip 或 npm 安装依赖。
 
 ```bash
-python3 tests/k6/coupon/prepare.py
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py
 ```
 
 按提示输入商家管理员密码，默认管理员账号 `admin`。脚本会通过正常接口创建1000个独立用户，提前登录取得 Token，再发布、启售6张专用券，分别用于三个测试的领取和购买场景。注册/登录不计入压测。
@@ -20,7 +20,7 @@ python3 tests/k6/coupon/prepare.py
 
 ```bash
 # 1000个不同用户，每人查询+领取+购买，共3000次目标HTTP请求，100个并发执行用户
-k6 run tests/k6/coupon/performance.js
+k6 run azure-take-out/azure-server/src/test/k6/coupon/performance.js
 ```
 
 报告同时给出：
@@ -36,13 +36,13 @@ k6 run tests/k6/coupon/performance.js
 
 ```bash
 # 只查列表，查询模式可以重复运行
-k6 run -e ACTION=list tests/k6/coupon/performance.js
+k6 run -e ACTION=list azure-take-out/azure-server/src/test/k6/coupon/performance.js
 
 # 只领取满减券
-k6 run -e ACTION=claim tests/k6/coupon/performance.js
+k6 run -e ACTION=claim azure-take-out/azure-server/src/test/k6/coupon/performance.js
 
 # 只创建待支付购券订单
-k6 run -e ACTION=buy tests/k6/coupon/performance.js
+k6 run -e ACTION=buy azure-take-out/azure-server/src/test/k6/coupon/performance.js
 ```
 
 性能测试库存充足、用户各不相同，所有流程均应成功；库存不足、重复购买、401、500都记为异常。报告保留分接口耗时，方便判断是查列表、领取还是建单变快，不能只看三个接口的混合平均数。
@@ -51,20 +51,20 @@ k6 run -e ACTION=buy tests/k6/coupon/performance.js
 
 ```bash
 # 1000个不同用户抢100张代金券，预期100次成功、900次库存不足
-k6 run tests/k6/coupon/oversell.js
+k6 run azure-take-out/azure-server/src/test/k6/coupon/oversell.js
 
 # 另用1000个不同用户身份抢100张满减券
-k6 run -e ACTION=claim tests/k6/coupon/oversell.js
+k6 run -e ACTION=claim azure-take-out/azure-server/src/test/k6/coupon/oversell.js
 ```
 
 ### 3. 一人一单测试
 
 ```bash
 # 100个虚拟用户共用同一真实用户的 Token，并发提交100次，预期1次成功
-k6 run tests/k6/coupon/single-user.js
+k6 run azure-take-out/azure-server/src/test/k6/coupon/single-user.js
 
 # 免费领券也独立验证
-k6 run -e ACTION=claim tests/k6/coupon/single-user.js
+k6 run -e ACTION=claim azure-take-out/azure-server/src/test/k6/coupon/single-user.js
 ```
 
 该测试默认券库存1000，确保重复请求被拒绝是由于限购而非售罄。多个 VU 使用同一个 Token，模拟同用户并发请求，并非100个不同用户。
@@ -73,7 +73,7 @@ k6 run -e ACTION=claim tests/k6/coupon/single-user.js
 
 控制台输出目标/实际请求数、业务成功数、预期拒绝数、异常数，以及平均/P95/P99响应耗时。P95表示95%的请求耗时不超过该数值。断言不通过时 k6 返回非0退出码；保留失败结果，优化后再比较，不要改断言让现有问题通过。
 
-JSON报告自动存入 `tests/k6/coupon/results/`，文件名包含标签、场景、时间戳。报告只写指标和测试券ID，不复制 Token。`coupon_flow_duration`统计完整流程，`coupon_list_duration`/`coupon_claim_duration`/`coupon_buy_duration`分别统计三个接口。`coupon_duration`是目标HTTP请求的混合指标；k6内置HTTP指标还包含setup里的鉴权/专用券检查。
+JSON报告自动存入 `azure-take-out/azure-server/src/test/k6/coupon/results/`，文件名包含标签、场景、时间戳。报告只写指标和测试券ID，不复制 Token。`coupon_flow_duration`统计完整流程，`coupon_list_duration`/`coupon_claim_duration`/`coupon_buy_duration`分别统计三个接口。`coupon_duration`是目标HTTP请求的混合指标；k6内置HTTP指标还包含setup里的鉴权/专用券检查。
 
 **HTTP断言通过还不足以证明没有超卖。** 每次写入测试后，打开 `verify.sql`，填入刚才控制台/JSON里的优惠券ID和初始库存，在测试数据库执行只读查询：
 
@@ -96,16 +96,16 @@ JSON报告自动存入 `tests/k6/coupon/results/`，文件名包含标签、场�
 | 增加压力 | 5000 | 200 | 15000 |
 | 更高并发 | 5000 | 500 | 15000 |
 
-小规模确认可执行 `python3 tests/k6/coupon/prepare.py --users 100 --oversell-stock 10`，然后 `k6 run -e VUS=10 tests/k6/coupon/performance.js`。默认对比命令：
+小规模确认可执行 `python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --users 100 --oversell-stock 10`，然后 `k6 run -e VUS=10 azure-take-out/azure-server/src/test/k6/coupon/performance.js`。默认对比命令：
 
 ```bash
 # 每轮重新准备新账号、新券，避免上轮限购记录干扰
-python3 tests/k6/coupon/prepare.py --users 1000 --oversell-stock 100 --label baseline
-k6 run -e VUS=100 tests/k6/coupon/performance.js
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --users 1000 --oversell-stock 100 --label baseline
+k6 run -e VUS=100 azure-take-out/azure-server/src/test/k6/coupon/performance.js
 
 # 完成缓存优化后，使用相同用户数量/库存/并发/机器配置再跑
-python3 tests/k6/coupon/prepare.py --users 1000 --oversell-stock 100 --label cached
-k6 run -e VUS=100 tests/k6/coupon/performance.js
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --users 1000 --oversell-stock 100 --label cached
+k6 run -e VUS=100 azure-take-out/azure-server/src/test/k6/coupon/performance.js
 ```
 
 增加压力时使用 `prepare.py --users 5000 --oversell-stock 500`，再设置 `VUS=200` 或 `VUS=500`。每次新一轮都先重新prepare；不要用同一组性能专用券连续跑两个并发档位。
@@ -147,8 +147,8 @@ k6 run -e VUS=100 tests/k6/coupon/performance.js
 例如后端不是8080端口：
 
 ```bash
-python3 tests/k6/coupon/prepare.py --base-url http://localhost:8081
-k6 run tests/k6/coupon/performance.js
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --base-url http://localhost:8081
+k6 run azure-take-out/azure-server/src/test/k6/coupon/performance.js
 ```
 
 地址会保存到本地数据文件，之后k6无需重复指定。Token默认2小时过期，过期后重新prepare。正式压测阶段不要把注册、登录或支付混入领券/建单计时。

@@ -89,7 +89,7 @@ def prepare(args):
     output.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     output.chmod(0o600)
     print(f"准备完成：{output}\n未支付、未修改已有优惠券，也没有清理已有数据。")
-    print("现在可在项目根目录执行：k6 run tests/k6/coupon/performance.js")
+    print("现在可在项目根目录执行：k6 run azure-take-out/azure-server/src/test/k6/coupon/performance.js")
     print("Token 默认有效期为 2 小时。每个写入场景只跑一次；重复测试请重新准备专用券。")
 
 

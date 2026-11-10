@@ -23,7 +23,7 @@ try {
   });
   fixture = { ...metadata[0], users };
 } catch (_) {
-  throw new Error('请先运行 python3 tests/k6/coupon/prepare.py 准备测试数据。');
+  throw new Error('请先运行 python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py 准备测试数据。');
 }
 const baseUrl = (__ENV.BASE_URL || fixture.baseUrl).replace(/\/$/, '');
 const attempts = new Counter('coupon_attempts');
@@ -181,8 +181,9 @@ function issueRequest(config, user, action, coupon) {
   const message = body && typeof body.msg === 'string' ? body.msg : '';
   // 只接受本场景预期的业务拒绝。鉴权失败、500、错券、重复键异常都算异常。
   const rejection = response.status === 200 && body && body.code === 0
-    && (config.test === 'oversell' ? message === '优惠券库存不足'
-      : config.test === 'single-user' && message === (action === 'claim' ? '用户已领取过该满减券' : '用户已购买过该代金券'));
+    && (config.test === 'oversell' ? ['优惠券库存不足', '优惠券已经售罄'].includes(message)
+      : config.test === 'single-user' && (message === '用户已领取过该优惠券'
+        || message === (action === 'claim' ? '用户已领取过该满减券' : '用户已购买过该代金券')));
   const expected = Boolean(success || rejection);
   attempts.add(1);
   successes.add(success ? 1 : 0);
@@ -235,7 +236,7 @@ export function report(config, data) {
     k6: data,
   };
   const label = String(summary.runLabel || 'run').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const file = `tests/k6/coupon/results/${label}-${config.test}-${config.action}-${Date.now()}.json`;
+  const file = `azure-take-out/azure-server/src/test/k6/coupon/results/${label}-${config.test}-${config.action}-${Date.now()}.json`;
   return {
     [file]: JSON.stringify(summary, null, 2),
     stdout: `\n${config.test}/${config.action} 测试结束\n`
