@@ -13,6 +13,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -252,6 +255,65 @@ class CacheClientTest {
         cacheClient.deleteByKey(KEY);
 
         verify(redisTemplate).delete(KEY);
+    }
+
+    @Test
+    void stockRestoreRunsOnceWithoutTransaction() {
+        String stockKey = RedisConstants.COUPON_STOCK_KEY_PREFIX + 7;
+
+        cacheClient.incrStockAfterCommit(stockKey);
+
+        verify(redisTemplate).execute(any(RedisScript.class), eq(List.of(stockKey)));
+        verifyNoMoreInteractions(redisTemplate);
+    }
+
+    @Test
+    void stockRestoreWaitsForCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            cacheClient.incrStockAfterCommit(KEY);
+            verifyNoInteractions(redisTemplate);
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+            verify(redisTemplate).execute(any(RedisScript.class), eq(List.of(KEY)));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void stockRestoreIsSkippedOnRollback() {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            cacheClient.incrStockAfterCommit(KEY);
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+            verifyNoInteractions(redisTemplate);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void stockRestoreFailureDoesNotRetryOrPreventOtherCommitCallbacks() {
+        when(redisTemplate.execute(any(RedisScript.class), eq(List.of(KEY))))
+                .thenThrow(new DataAccessResourceFailureException("Redis unavailable"));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            cacheClient.incrStockAfterCommit(KEY);
+            cacheClient.incrStockAfterCommit(KEY + ":other");
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+            verify(redisTemplate).execute(any(RedisScript.class), eq(List.of(KEY)));
+            verify(redisTemplate).execute(any(RedisScript.class), eq(List.of(KEY + ":other")));
+            verifyNoMoreInteractions(redisTemplate);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

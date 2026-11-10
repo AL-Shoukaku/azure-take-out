@@ -1,5 +1,7 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.constant.MessageConstant;
 import com.azure.context.BaseContext;
 import com.azure.dto.coupon.CouponOrderPageQueryDTO;
@@ -35,6 +37,9 @@ public class CouponOrderServiceImpl implements CouponOrderService {
 
     @Autowired
     private CouponMapper couponMapper;
+
+    @Autowired
+    private CacheClient cacheClient;
 
     /**
      * 商家分页查询优惠券订单，支持按订单号、用户名、下单时间、订单状态筛选
@@ -123,6 +128,7 @@ public class CouponOrderServiceImpl implements CouponOrderService {
             throw new BaseException("要退款的订单状态不是已支付！");
         }
         couponMapper.addStockByOne(couponOrder.getCouponId());
+        cacheClient.incrStockAfterCommit(RedisConstants.COUPON_STOCK_KEY_PREFIX + couponOrder.getCouponId());
     }
 
     private Long getCurrentUserId() {

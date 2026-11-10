@@ -1,5 +1,7 @@
 package com.azure.task;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.entity.CouponOrder;
 import com.azure.mapper.CouponMapper;
 import com.azure.mapper.CouponOrderMapper;
@@ -26,6 +28,9 @@ public class CouponTask {
     @Autowired
     private UserCouponMapper userCouponMapper;
 
+    @Autowired
+    private CacheClient cacheClient;
+
     /**
      * 处理超时代金券订单
      */
@@ -40,6 +45,7 @@ public class CouponTask {
                 continue;
             }
             couponMapper.addStockByOne(order.getCouponId());
+            cacheClient.incrStockAfterCommit(RedisConstants.COUPON_STOCK_KEY_PREFIX + order.getCouponId());
         }
     }
 

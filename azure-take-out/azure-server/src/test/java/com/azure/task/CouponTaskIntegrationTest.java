@@ -1,5 +1,7 @@
 package com.azure.task;
 
+import com.azure.cache.CacheClient;
+import com.azure.cache.RedisConstants;
 import com.azure.entity.CouponOrder;
 import com.azure.mapper.CouponMapper;
 import com.azure.mapper.CouponOrderMapper;
@@ -7,6 +9,8 @@ import com.azure.support.TransactionTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,12 +25,17 @@ class CouponTaskIntegrationTest extends TransactionTestSupport {
     private CouponOrderMapper orders;
     private CouponMapper coupons;
     private CouponTask task;
+    private StringRedisTemplate redis;
+    private CacheClient cache;
 
     @BeforeEach
     void initializeTask() {
         jdbc = new JdbcTemplate(dataSource);
         orders = transactionalMapper(CouponOrderMapper.class);
         coupons = transactionalMapper(CouponMapper.class);
+        redis = mock(StringRedisTemplate.class);
+        cache = mockedCacheClient();
+        inject(cache, "stringRedisTemplate", redis);
         task = taskWith(orders, coupons);
         LocalDateTime now = LocalDateTime.now().withNano(0);
         jdbc.update("INSERT INTO coupon (id, type, name, total_stock, stock, discount_amount, threshold_amount, price, " +
@@ -39,6 +48,7 @@ class CouponTaskIntegrationTest extends TransactionTestSupport {
         CouponTask target = new CouponTask();
         inject(target, "couponOrderMapper", orderMapper);
         inject(target, "couponMapper", couponMapper);
+        inject(target, "cacheClient", cache);
         return transactionalService(target, CouponTask.class);
     }
 
@@ -90,6 +100,7 @@ class CouponTaskIntegrationTest extends TransactionTestSupport {
 
         task.processTimeOutCouponOrders();
         assertThat(stock()).isEqualTo(98);
+        verify(redis, times(2)).execute(any(RedisScript.class), eq(List.of(RedisConstants.COUPON_STOCK_KEY_PREFIX + 1)));
     }
 
     @Test
@@ -103,6 +114,7 @@ class CouponTaskIntegrationTest extends TransactionTestSupport {
 
         assertThat(orders.selectById(candidate.getId()).getStatus()).isEqualTo(CouponOrder.STATUS_PAID);
         assertThat(stock()).isEqualTo(96);
+        verifyNoInteractions(redis);
     }
 
     @Test
@@ -117,6 +129,7 @@ class CouponTaskIntegrationTest extends TransactionTestSupport {
                 .isInstanceOf(IllegalStateException.class).hasMessage("库存更新失败");
 
         assertThat(stock()).isEqualTo(96);
+        verifyNoInteractions(redis);
         for (CouponOrder order : List.of(first, second)) {
             var saved = orders.selectById(order.getId());
             assertThat(saved.getStatus()).isEqualTo(CouponOrder.STATUS_UNPAID);

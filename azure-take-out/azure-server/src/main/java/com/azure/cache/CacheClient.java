@@ -49,6 +49,8 @@ public class CacheClient {
 
     private final static DefaultRedisScript<Long> CHECK_COUPON_SCRIPT;
 
+    private final static DefaultRedisScript<Long> INCR_STOCK_SCRIPT;
+
     // 初始化 lua 脚本
     static {
         SADD_SCRIPT = new DefaultRedisScript<>();
@@ -58,6 +60,10 @@ public class CacheClient {
         CHECK_COUPON_SCRIPT = new DefaultRedisScript<>();
         CHECK_COUPON_SCRIPT.setLocation(new ClassPathResource("lua/checkCoupon.lua"));
         CHECK_COUPON_SCRIPT.setResultType(Long.class);
+
+        INCR_STOCK_SCRIPT = new DefaultRedisScript<>();
+        INCR_STOCK_SCRIPT.setLocation(new ClassPathResource("lua/incrStock.lua"));
+        INCR_STOCK_SCRIPT.setResultType(Long.class);
     }
 
 
@@ -265,6 +271,31 @@ public class CacheClient {
         keys.add(coupon_key);
         keys.add(user_key);
         return stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, keys, userId.toString());
+    }
+
+    /**
+     * 事务提交后恢复优惠券库存；key 不存在时跳过，存在时保留原 TTL。
+     * 无事务时立即执行。失败只记录日志，不重试，避免响应丢失时重复加库存。
+     * @param key   优惠券库存的 Redis key
+     */
+    public void incrStockAfterCommit(String key) {
+        Runnable increase = () -> {
+            try {
+                stringRedisTemplate.execute(INCR_STOCK_SCRIPT, Collections.singletonList(key));
+            } catch (DataAccessException | RedisException e) {
+                log.error("数据库已提交，Redis 恢复优惠券库存失败，key：{}", key, e);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    increase.run();
+                }
+            });
+        } else {
+            increase.run();
+        }
     }
 
     /** 有活跃事务时把删除动作挂到 afterCommit，否则立即执行 */
