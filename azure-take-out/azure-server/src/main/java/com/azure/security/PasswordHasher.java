@@ -58,10 +58,7 @@ public class PasswordHasher {
         if (isLegacyMd5(storedHash)) {
             String actual = DigestUtils.md5DigestAsHex(
                     rawPassword.getBytes(StandardCharsets.UTF_8));
-            // 两个值都是固定长度的 ASCII 摘要，使用摘要字节比较而非普通字符串比较。
-            return MessageDigest.isEqual(
-                    actual.getBytes(StandardCharsets.US_ASCII),
-                    storedHash.getBytes(StandardCharsets.US_ASCII));
+            return actual.equals(storedHash);
         }
 
         if (!isArgon2id(storedHash)) {
@@ -78,23 +75,10 @@ public class PasswordHasher {
     }
 
     /**
-     * 判断已经验证成功的密码哈希是否需要重新编码。
-     * 旧 MD5 必须升级；Argon2id 的内存或迭代参数低于当前配置时也需要升级。
-     * 本方法不验证密码，调用方应先 matches 成功，再用本次原始密码生成新哈希。
+     * 判断数据库中保存的哈希是否需要升级为新的 Argon2id 编码。即是否为 MD5 格式
      */
     public boolean needsUpgrade(String storedHash) {
-        if (isLegacyMd5(storedHash)) {
-            return true;
-        }
-        if (!isArgon2id(storedHash)) {
-            return false;
-        }
-        try {
-            return passwordEncoder.upgradeEncoding(storedHash);
-        } catch (IllegalArgumentException e) {
-            // 无法识别的存储值不能作为自动升级的依据。
-            return false;
-        }
+        return isLegacyMd5(storedHash);
     }
 
     private boolean isLegacyMd5(String storedHash) {
