@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import execution from 'k6/execution';
 import { SharedArray } from 'k6/data';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
 // 登录和发布在 prepare.py 中完成，不占用压测请求与计时。
@@ -44,6 +44,12 @@ const flowLatency = new Trend('coupon_flow_duration', true);
 // 用首轮开始到末轮结束计算批次耗时，排除setup预检查和k6启动时间。
 const startedAt = new Trend('coupon_started_at');
 const finishedAt = new Trend('coupon_finished_at');
+const buyResponseLatency = new Trend('coupon_buy_response_duration', true);
+const orderReadyLatency = new Trend('coupon_order_ready_duration', true);
+const orderReadyAt = new Trend('coupon_order_ready_at');
+const ordersReady = new Counter('coupon_orders_ready');
+const orderTimeouts = new Counter('coupon_order_timeouts');
+const orderLookupErrors = new Counter('coupon_order_lookup_errors');
 let loggedError = false;
 
 function positiveInteger(name, fallback) {
@@ -52,8 +58,7 @@ function positiveInteger(name, fallback) {
   return value;
 }
 
-export function configure(test) {
-  const action = __ENV.ACTION || (test === 'performance' ? 'flow' : 'buy');
+export function configure(test, action = __ENV.ACTION || (test === 'performance' ? 'flow' : 'buy')) {
   if (!['flow', 'list', 'claim', 'buy'].includes(action) || (test !== 'performance' && ['flow', 'list'].includes(action))) {
     throw new Error('ACTION 可选 flow、list、claim、buy；正确性测试只能选择 claim 或 buy');
   }
@@ -79,6 +84,17 @@ export function configure(test) {
   return { test, action, iterations, vus, userIndex, coupon, coupons, expectedSuccesses };
 }
 
+export function configurePurchase(test) {
+  const config = configure('performance', 'buy');
+  return {
+    ...config,
+    test,
+    purchase: true,
+    orderWaitMs: test === 'buy-orders' ? positiveInteger('ORDER_WAIT_MS', 30000) : null,
+    orderPollMs: test === 'buy-orders' ? positiveInteger('ORDER_POLL_MS', 250) : null,
+  };
+}
+
 export function optionsFor(config) {
   return {
     scenarios: {
@@ -95,6 +111,7 @@ export function optionsFor(config) {
       coupon_successes: [`count==${config.expectedSuccesses * (config.action === 'flow' ? 3 : 1)}`],
       coupon_errors: ['count==0'],
       coupon_expected_response: ['rate==1'],
+      ...(config.orderWaitMs ? { coupon_orders_ready: [`count==${config.iterations}`] } : {}),
       ...(config.action === 'flow' ? {
         coupon_flow_attempts: [`count==${config.iterations}`],
         coupon_flow_successes: [`count==${config.iterations}`],
@@ -139,7 +156,7 @@ export function preflight(config) {
 }
 
 export function runRequest(config) {
-  startedAt.add(Date.now());
+  if (!config.purchase) startedAt.add(Date.now());
   try {
     executeIteration(config);
   } finally {
@@ -170,11 +187,18 @@ function issueRequest(config, user, action, coupon) {
     tags: { name: `coupon_${config.test}_${action}` },
     timeout: __ENV.REQUEST_TIMEOUT || '10s',
   };
+  const sentAt = config.purchase ? Date.now() : null;
   const response = action === 'list'
     ? http.get(`${baseUrl}/user/coupon/available`, params)
     : http.post(`${baseUrl}/user/coupon/${action === 'claim' ? 'get' : 'buy'}?couponId=${coupon.id}`, null, params);
+  const receivedAt = config.purchase ? Date.now() : null;
+  if (config.purchase) {
+    startedAt.add(sentAt);
+    buyResponseLatency.add(receivedAt - sentAt);
+  }
   const body = bodyOf(response);
-  const success = response.status === 200 && body && body.code === 1
+  const success = (response.status === 200 || (config.purchase && response.status === 202))
+    && body && body.code === 1
     && (action === 'list' ? Array.isArray(body.data)
       && (config.action !== 'flow' || config.coupons.every((target) => body.data.some((row) => String(row.id) === String(target.id))))
       : body.data && typeof body.data.number === 'string' && body.data.number.length > 0);
@@ -198,7 +222,49 @@ function issueRequest(config, user, action, coupon) {
     console.error(`异常样本 ${action}：HTTP ${response.status}，业务消息=${message || '响应数据不符合预期（完整流程要求列表包含两张专用券）'}`);
     loggedError = true;
   }
+  if (config.orderWaitMs) {
+    if (success) {
+      waitForOrder(config, user, body.data.number, sentAt, receivedAt + config.orderWaitMs);
+    } else {
+      ordersReady.add(0);
+    }
+  }
   return Boolean(success);
+}
+
+function waitForOrder(config, user, number, sentAt, deadline) {
+  const url = `${baseUrl}/user/couponOrder/historyOrders?page=1&pageSize=10`;
+  for (let remaining = deadline - Date.now(); remaining > 0; remaining = deadline - Date.now()) {
+    const response = http.get(url, {
+      headers: { authentication: user.token },
+      tags: { name: 'coupon_order_readiness' },
+      timeout: `${remaining}ms`,
+    });
+    const observedAt = Date.now();
+    if (observedAt >= deadline) break;
+    const body = bodyOf(response);
+    const records = body && body.code === 1 && body.data && body.data.records;
+    const order = Array.isArray(records) && records.find((row) => row && row.number === number);
+    if (response.status !== 200 || !Array.isArray(records) || (order && order.status !== 0)) {
+      ordersReady.add(0);
+      orderLookupErrors.add(1);
+      if (!loggedError) {
+        console.error(`订单查询异常，订单号=${number}，HTTP=${response.status}，订单状态=${order ? order.status : '未知'}`);
+        loggedError = true;
+      }
+      return;
+    }
+    if (order) {
+      ordersReady.add(1);
+      orderReadyAt.add(observedAt);
+      orderReadyLatency.add(observedAt - sentAt);
+      return;
+    }
+    const delay = Math.min(config.orderPollMs, deadline - Date.now());
+    if (delay > 0) sleep(delay / 1000);
+  }
+  ordersReady.add(0);
+  orderTimeouts.add(1);
 }
 
 export function report(config, data) {
@@ -207,6 +273,7 @@ export function report(config, data) {
     Object.entries(metric.thresholds || {}).filter(([, result]) => !result.ok).map(([rule]) => `${name}: ${rule}`));
   const duration = data.metrics.coupon_started_at && data.metrics.coupon_finished_at
     ? (value('coupon_finished_at', 'max') - value('coupon_started_at', 'min')) / 1000 : 0;
+  const allOrdersReady = config.orderWaitMs && value('coupon_orders_ready') === config.iterations;
   const summary = {
     runLabel: __ENV.LABEL || fixture.label,
     test: config.test, action: config.action, baseUrl,
@@ -231,8 +298,23 @@ export function report(config, data) {
       flowDurationMs: data.metrics.coupon_flow_duration ? data.metrics.coupon_flow_duration.values : {},
       successfulFlowsPerSecond: duration > 0 ? value('coupon_flow_successes') / duration : null,
     } : {}),
+    ...(config.purchase ? {
+      buyResponseDurationMs: data.metrics.coupon_buy_response_duration?.values || {},
+    } : {}),
+    ...(config.orderWaitMs ? {
+      ordersReady: value('coupon_orders_ready') ?? 0,
+      orderTimeouts: value('coupon_order_timeouts') ?? 0,
+      orderLookupErrors: value('coupon_order_lookup_errors') ?? 0,
+      orderPollIntervalMs: config.orderPollMs,
+      orderWaitLimitMs: config.orderWaitMs,
+      orderReadyDurationMs: data.metrics.coupon_order_ready_duration?.values || {},
+      batchOrdersReadyMs: allOrdersReady ? value('coupon_order_ready_at', 'max') - value('coupon_started_at', 'min') : null,
+    } : {}),
     failedThresholds: failed,
-    note: '结果对应当前同步接口。数据库行数、重复订单及库存账实一致性还需执行 verify.sql 核对；未测量 SQL 次数。',
+    note: config.orderWaitMs
+      ? '建单完成时间为首次查到待支付订单的时间，包含轮询及查询延迟。请用 verify.sql 核对数据库。'
+      : config.purchase ? '仅统计购券请求的响应时间。请用 verify.sql 核对数据库。'
+        : '结果对应当前同步接口。数据库行数、重复订单及库存账实一致性还需执行 verify.sql 核对；未测量 SQL 次数。',
     k6: data,
   };
   const label = String(summary.runLabel || 'run').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -242,9 +324,13 @@ export function report(config, data) {
     stdout: `\n${config.test}/${config.action} 测试结束\n`
       + `总运行时间 ${duration.toFixed(3)} 秒；目标 HTTP 请求 ${summary.plannedRequests}，实际 ${summary.attempts}；成功 ${summary.successes}；预期拒绝 ${summary.expectedRejections}；异常 ${summary.errors}\n`
       + (config.action === 'flow' ? `完整流程成功 ${summary.completedFlows}/${config.iterations}；单个流程耗时(ms)：平均=${value('coupon_flow_duration', 'avg')}，P95=${value('coupon_flow_duration', 'p(95)')}，P99=${value('coupon_flow_duration', 'p(99)')}\n` : '')
-      + ['list', 'claim', 'buy'].filter((action) => data.metrics[`coupon_${action}_duration`]).map((action) =>
+      + ['list', 'claim', 'buy'].filter((action) => !config.purchase && data.metrics[`coupon_${action}_duration`]).map((action) =>
         `${action} 接口耗时(ms)：平均=${value(`coupon_${action}_duration`, 'avg')}，P95=${value(`coupon_${action}_duration`, 'p(95)')}，P99=${value(`coupon_${action}_duration`, 'p(99)')}\n`).join('')
-      + `HTTP 断言：${failed.length ? '未通过：' + failed.join('; ') : '通过'}\n`
+      + (config.purchase ? `购券请求到收到响应(ms)｜平均=${value('coupon_buy_response_duration', 'avg')}，P95=${value('coupon_buy_response_duration', 'p(95)')}，P99=${value('coupon_buy_response_duration', 'p(99)')}\n` : '')
+      + (config.orderWaitMs ? `待支付订单 ${summary.ordersReady}/${config.iterations}，等待超时 ${summary.orderTimeouts}，查询异常 ${summary.orderLookupErrors}\n`
+        + `单笔从购券到待支付(ms)｜平均=${value('coupon_order_ready_duration', 'avg')}，P95=${value('coupon_order_ready_duration', 'p(95)')}，P99=${value('coupon_order_ready_duration', 'p(99)')}\n`
+        + `首个购券请求到最后一笔订单可查(ms)｜${summary.batchOrdersReadyMs ?? '未全部确认'}\n` : '')
+      + `${config.purchase ? "" : "HTTP "}断言：${failed.length ? '未通过：' + failed.join('; ') : '通过'}\n`
       + `报告：${file}\n`
       + config.coupons.map((coupon) => `请使用 ${coupon.action} 券 ID=${coupon.id}、初始库存=${coupon.stock} 执行 verify.sql 核对数据库。\n`).join(''),
   };

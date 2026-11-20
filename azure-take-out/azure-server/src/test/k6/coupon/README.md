@@ -1,6 +1,6 @@
 # 优惠券 k6 测试
 
-三个入口对应性能、超卖、一人一单。当前验证同步接口：免费领券产生 `user_coupon`，购买代金券只创建待支付 `coupon_order`，不会调用支付接口。
+本目录覆盖性能、超卖、一人一单，以及购券接口响应和整批建单耗时。免费领券产生 `user_coupon`，购买代金券只创建待支付 `coupon_order`，测试不会调用支付接口。
 
 ## 第一次运行
 
@@ -69,6 +69,25 @@ k6 run -e ACTION=claim azure-take-out/azure-server/src/test/k6/coupon/single-use
 
 该测试默认券库存1000，确保重复请求被拒绝是由于限购而非售罄。多个 VU 使用同一个 Token，模拟同用户并发请求，并非100个不同用户。
 
+### 4. 购券接口响应与整批建单
+
+同步版和 RabbitMQ 异步版都可以用下面两个脚本。两者都使用 `prepare.py` 创建的性能测试代金券，每次只发起购券，默认 100 个 VU、1000 个不同用户。
+
+```bash
+# 只发购券请求，统计发出 HTTP 请求到收到响应的平均 / P95 / P99
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --label sync-response
+k6 run azure-take-out/azure-server/src/test/k6/coupon/buy-response.js
+
+# 换一批账号和券，统计首个购券请求到最后一笔待支付订单可查的时间
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --label sync-orders
+k6 run azure-take-out/azure-server/src/test/k6/coupon/buy-orders.js
+```
+
+- `buy-response.js` 检查接口响应成功且有 `data.number`。异步版返回“创建中”时，这一项只代表请求已受理。
+- `buy-orders.js` 用每个用户自己的 Token 查询订单历史，按响应中的订单号匹配 `status=0` 的待支付订单。整批耗时写入 `batchOrdersReadyMs`，单笔耗时分布写入 `orderReadyDurationMs`。任一订单未确认，整批耗时为 `null`，k6 断言失败。
+- 订单查询在购券响应后立即开始，之后默认每隔 250 ms 查询一次，单笔最多等待 30 秒。可用 `ORDER_POLL_MS` 和 `ORDER_WAIT_MS` 调整。整批耗时包含查询延迟，并受每个 VU 等待自己的订单后才发起下一轮的影响。同步版和异步版对比时保持参数相同。
+- 异步版继续返回业务成功码 `1` 和字符串订单号 `data.number` 即可沿用这两个脚本，HTTP 200 和 202 均支持。建单结束后用 `verify.sql` 核对订单数、重复订单和库存。
+
 ## 如何判断结果
 
 控制台输出目标/实际请求数、业务成功数、预期拒绝数、异常数，以及平均/P95/P99响应耗时。P95表示95%的请求耗时不超过该数值。断言不通过时 k6 返回非0退出码；保留失败结果，优化后再比较，不要改断言让现有问题通过。
@@ -83,7 +102,7 @@ JSON报告自动存入 `azure-take-out/azure-server/src/test/k6/coupon/results/`
 - 完整流程需对报告中的两张券分别核对：每张应分配1000张。3000次成功HTTP请求包含1000次列表查询，不能理解为产生3000笔订单。
 - 购券订单15分钟后会自动关闭并归还库存，因此应在测试结束后立即核对。
 
-目前没有Redis券库存，不能虚构Redis一致性检查。接入后补充Redis库存与数据库核对；异步建单后还要等待最终落库，当前脚本不能把“已受理”当成功订单。
+verify.sql 核对 MySQL 订单和库存。异步建单时，先确认待支付订单，再核对库存。
 
 ## 增加规模、对比优化前后
 
