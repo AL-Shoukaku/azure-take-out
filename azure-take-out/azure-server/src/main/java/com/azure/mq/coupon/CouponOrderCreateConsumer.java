@@ -42,11 +42,14 @@ public class CouponOrderCreateConsumer {
         if (coupon == null || userId == null || coupon.getId() == null) {
             throw new RuntimeException("异常的优惠券订单消息！");
         }
+        if (couponOrderMapper.selectByNumberAndUserId(orderNumber, userId) != null) {
+            return;
+        }
         CouponOrder couponOrder = createCouponOrder(coupon, userId, couponNumber, orderNumber);
+        couponOrderMapper.insertCouponOrder(couponOrder);
         if (couponMapper.decreaseStockByOne(coupon.getId()) == 0) {
             throw new RuntimeException("创建优惠券订单时，库存不足");
         }
-        couponOrderMapper.insertCouponOrder(couponOrder);
     }
 
     /**
