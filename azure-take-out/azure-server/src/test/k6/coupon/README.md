@@ -71,22 +71,22 @@ k6 run -e ACTION=claim azure-take-out/azure-server/src/test/k6/coupon/single-use
 
 ### 4. 购券接口响应与整批建单
 
-同步版和 RabbitMQ 异步版都可以用下面两个脚本。两者都使用 `prepare.py` 创建的性能测试代金券，每次只发起购券，默认 100 个 VU、1000 个不同用户。
+同步版用 `buy-response.js` 测购券响应，RabbitMQ 异步版用两个脚本分别测响应和待支付就绪。两者都使用 `prepare.py` 创建的性能测试代金券，默认 100 个 VU、1000 个不同用户。
 
 ```bash
 # 只发购券请求，统计发出 HTTP 请求到收到响应的平均 / P95 / P99
 python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --label sync-response
 k6 run azure-take-out/azure-server/src/test/k6/coupon/buy-response.js
 
-# 换一批账号和券，统计首个购券请求到最后一笔待支付订单可查的时间
-python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --label sync-orders
+# 在支持单笔订单状态查询的异步版统计整批待支付就绪耗时
+python3 azure-take-out/azure-server/src/test/k6/coupon/prepare.py --label async-orders
 k6 run azure-take-out/azure-server/src/test/k6/coupon/buy-orders.js
 ```
 
 - `buy-response.js` 检查接口响应成功且有 `data.number`。异步版返回“创建中”时，这一项只代表请求已受理。
-- `buy-orders.js` 用每个用户自己的 Token 查询订单历史，按响应中的订单号匹配 `status=0` 的待支付订单。整批耗时写入 `batchOrdersReadyMs`，单笔耗时分布写入 `orderReadyDurationMs`。任一订单未确认，整批耗时为 `null`，k6 断言失败。
-- 订单查询在购券响应后立即开始，之后默认每隔 250 ms 查询一次，单笔最多等待 30 秒。可用 `ORDER_POLL_MS` 和 `ORDER_WAIT_MS` 调整。整批耗时包含查询延迟，并受每个 VU 等待自己的订单后才发起下一轮的影响。同步版和异步版对比时保持参数相同。
-- 异步版继续返回业务成功码 `1` 和字符串订单号 `data.number` 即可沿用这两个脚本，HTTP 200 和 202 均支持。建单结束后用 `verify.sql` 核对订单数、重复订单和库存。
+- `buy-orders.js` 用每个用户自己的 Token 调用 `GET /user/couponOrder/status?number=...`。返回 `data: null` 时继续查询，返回同号订单的支付信息时记为就绪。业务拒绝或异常响应计为查询异常。整批耗时写入 `batchOrdersReadyMs`，单笔耗时分布写入 `orderReadyDurationMs`。任一订单未确认，整批耗时为 `null`，k6 断言失败。
+- 订单查询在购券响应后立即开始。和前端相同，暂未查到时默认每隔 1 秒再查一次，单笔最多等待 12 秒。可用 `ORDER_POLL_MS` 和 `ORDER_WAIT_MS` 调整。整批耗时包含轮询等待和查询延迟，每个 VU 等本轮查询结束后再发起下一轮。
+- 两个脚本都要求购券接口返回业务成功码 `1` 和字符串订单号 `data.number`，HTTP 200 和 202 均支持。建单结束后用 `verify.sql` 核对订单数、重复订单和库存。
 
 ## 如何判断结果
 
@@ -160,6 +160,8 @@ k6 run -e VUS=100 azure-take-out/azure-server/src/test/k6/coupon/performance.js
 | `USER_INDEX` | 0 | 一人一单使用第几个测试用户（从0开始） |
 | `MAX_DURATION` | `5m` | 最长运行时间；超时少发请求会断言失败 |
 | `REQUEST_TIMEOUT` | `10s` | 单个目标请求超时 |
+| `ORDER_POLL_MS` | 1000 | `buy-orders.js` 查不到订单时等待的毫秒数 |
+| `ORDER_WAIT_MS` | 12000 | `buy-orders.js` 收到购券响应后查询订单的最长等待时间（毫秒） |
 
 准备脚本还支持 `--base-url`、`--admin`、`--workers`、`--single-stock`、`--output`。管理员密码可通过 `ADMIN_PASSWORD` 环境变量传入，测试用户密码可通过 `K6_USER_PASSWORD` 传入，默认测试用户密码为 `K6Coupon123!`。
 

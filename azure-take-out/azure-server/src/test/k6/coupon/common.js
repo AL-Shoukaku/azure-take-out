@@ -90,8 +90,8 @@ export function configurePurchase(test) {
     ...config,
     test,
     purchase: true,
-    orderWaitMs: test === 'buy-orders' ? positiveInteger('ORDER_WAIT_MS', 30000) : null,
-    orderPollMs: test === 'buy-orders' ? positiveInteger('ORDER_POLL_MS', 250) : null,
+    orderWaitMs: test === 'buy-orders' ? positiveInteger('ORDER_WAIT_MS', 12000) : null,
+    orderPollMs: test === 'buy-orders' ? positiveInteger('ORDER_POLL_MS', 1000) : null,
   };
 }
 
@@ -233,7 +233,7 @@ function issueRequest(config, user, action, coupon) {
 }
 
 function waitForOrder(config, user, number, sentAt, deadline) {
-  const url = `${baseUrl}/user/couponOrder/historyOrders?page=1&pageSize=10`;
+  const url = `${baseUrl}/user/couponOrder/status?number=${encodeURIComponent(number)}`;
   for (let remaining = deadline - Date.now(); remaining > 0; remaining = deadline - Date.now()) {
     const response = http.get(url, {
       headers: { authentication: user.token },
@@ -243,18 +243,20 @@ function waitForOrder(config, user, number, sentAt, deadline) {
     const observedAt = Date.now();
     if (observedAt >= deadline) break;
     const body = bodyOf(response);
-    const records = body && body.code === 1 && body.data && body.data.records;
-    const order = Array.isArray(records) && records.find((row) => row && row.number === number);
-    if (response.status !== 200 || !Array.isArray(records) || (order && order.status !== 0)) {
+    const order = body?.data;
+    const pending = order === null;
+    const ready = order?.number === number && Number.isFinite(order.price)
+      && typeof order.payDeadline === 'string' && order.payDeadline.length > 0;
+    if (response.status !== 200 || body?.code !== 1 || (!pending && !ready)) {
       ordersReady.add(0);
       orderLookupErrors.add(1);
       if (!loggedError) {
-        console.error(`订单查询异常，订单号=${number}，HTTP=${response.status}，订单状态=${order ? order.status : '未知'}`);
+        console.error(`订单查询异常，订单号=${number}，HTTP=${response.status}，业务消息=${body?.msg || '响应数据不符合预期'}`);
         loggedError = true;
       }
       return;
     }
-    if (order) {
+    if (ready) {
       ordersReady.add(1);
       orderReadyAt.add(observedAt);
       orderReadyLatency.add(observedAt - sentAt);
