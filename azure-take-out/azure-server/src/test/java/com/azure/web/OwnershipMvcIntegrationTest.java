@@ -72,6 +72,43 @@ class OwnershipMvcIntegrationTest {
     }
     private int count(String table) { return jdbc.queryForObject("select count(*) from "+table,Integer.class); }
 
+    @Test
+    void couponOrderStatusUsesAuthenticatedOwnerAndExactNumber() throws Exception {
+        LocalDateTime created = LocalDateTime.now().withSecond(0).withNano(0);
+        String insert = "INSERT INTO coupon_order (user_id,coupon_id,number,coupon_number,username,coupon_name,"
+                + "type,price,discount_amount,threshold_amount,status,pay_deadline,create_time) "
+                + "VALUES (?,1,?,?,'测试用户','测试代金券',1,8.80,20,0,?, ?, ?)";
+        jdbc.update(insert, 42L, "MINE-ORDER", "MINE-COUPON", 0, created.plusMinutes(15), created);
+        jdbc.update(insert, 43L, "OTHER-ORDER", "OTHER-COUPON", 0, created.plusMinutes(15), created);
+
+        jdbc.update(insert, 42L, "CLOSED-ORDER", "CLOSED-COUPON", 3, created.plusMinutes(15), created);
+        jdbc.update(insert, 42L, "EXPIRED-ORDER", "EXPIRED-COUPON", 0, created.minusMinutes(1), created.minusMinutes(16));
+
+        String url = "/user/couponOrder/status";
+        mvc.perform(user(get(url).param("number", "MINE-ORDER")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.number").value("MINE-ORDER"))
+                .andExpect(jsonPath("$.data.price").value(8.8))
+                .andExpect(jsonPath("$.data.payDeadline").value(
+                        created.plusMinutes(15).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
+
+        for (String number : List.of("OTHER-ORDER", "MINE", "NOT-YET-CREATED")) {
+            mvc.perform(user(get(url).param("number", number).param("userId", "43")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(1))
+                    .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()));
+        }
+        for (String number : List.of("CLOSED-ORDER", "EXPIRED-ORDER")) {
+            mvc.perform(user(get(url).param("number", number)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.msg").value("订单已创建，请前往购券订单查看最新状态。"));
+        }
+        mvc.perform(get(url).param("number", "MINE-ORDER")).andExpect(status().isUnauthorized());
+    }
+
     @Test void completingDeliveryPersistsTimeAndRejectsRepeatedCompletion() throws Exception {
         jdbc.update("update orders set status=4,pay_status=1,delivery_time=null where id=1");
         LocalDateTime before=LocalDateTime.now();

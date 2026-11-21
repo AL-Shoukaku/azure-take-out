@@ -38,4 +38,9 @@ public interface CouponOrderService {
      * 用于异步下单时，前端轮询查询是否已经生成订单
      */
     CouponOrderSubmitVO hasCouponOrder(String couponNumber);
+
+    /**
+     * 按订单号查询本人的购券订单，查不到时返回 null。
+     */
+    CouponOrderSubmitVO queryUserOrderStatus(String orderNumber);
 }

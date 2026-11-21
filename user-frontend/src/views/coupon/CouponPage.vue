@@ -15,6 +15,19 @@
       </div>
     </header>
 
+    <ElAlert
+      v-if="orderNotice"
+      class="order-notice"
+      :title="orderNotice"
+      type="info"
+      :closable="false"
+      show-icon
+    >
+      <ElButton link type="primary" @click="router.push({ name: 'coupon-orders' })">
+        查看购券订单
+      </ElButton>
+    </ElAlert>
+
     <div v-if="loading" class="coupon-grid" aria-label="正在加载优惠券" aria-busy="true">
       <ElSkeleton v-for="index in 3" :key="index" :rows="6" class="loading-card" animated />
     </div>
@@ -111,7 +124,12 @@ import { useSessionStore } from '@/stores/session'
 import { getToken } from '@/utils/auth'
 import { money } from '@/utils/pricing'
 import { couponOffer, couponState, formatActivityTime, stateNames } from './couponDisplay'
-import { type CouponReceipt, type CouponPaymentOrder } from './couponOrders'
+import {
+  paymentSeconds,
+  waitForCouponOrder,
+  type CouponPaymentOrder,
+  type CouponReceipt,
+} from './couponOrders'
 import CouponPaymentDialog from './components/CouponPaymentDialog.vue'
 import CouponSuccessDialog from './components/CouponSuccessDialog.vue'
 
@@ -135,7 +153,9 @@ const paymentOrder = ref<CouponPaymentOrder | null>(null),
 const receipt = ref<CouponReceipt | null>(null),
   successOpen = ref(false)
 const received = ref(new Set<number>())
-const submitted = ref(new Set<number>())
+const submitted = ref(new Map<number, 'creating' | 'accepted' | 'created'>())
+const orderNotice = ref('')
+let orderLookup: AbortController | undefined
 
 watch(
   () => session.user?.id,
@@ -145,13 +165,18 @@ watch(
     successOpen.value = false
     receipt.value = null
     received.value = new Set()
-    submitted.value = new Set()
+    orderLookup?.abort()
+    orderNotice.value = ''
+    submitted.value.clear()
   },
   { immediate: true },
 )
 function actionLabel(coupon: AvailableCoupon): string {
   if (received.value.has(coupon.id)) return coupon.type === 1 ? '已购买' : '已领取'
-  if (submitted.value.has(coupon.id)) return '已下单'
+  const status = submitted.value.get(coupon.id)
+  if (status === 'creating') return '订单创建中'
+  if (status === 'accepted') return '已提交'
+  if (status === 'created') return '已下单'
   return coupon.type === 1 ? `${money(coupon.price)} 购买` : '立即领取'
 }
 
@@ -201,19 +226,9 @@ async function takeCoupon(coupon: AvailableCoupon): Promise<void> {
       }
       successOpen.value = true
     } else {
-      const result = await buyCoupon(coupon.id)
-      if (!current()) return
-      const order: CouponPaymentOrder = {
-        ...result,
-        couponId: coupon.id,
-        name: coupon.name,
-        offer: couponOffer(coupon),
-      }
-      submitted.value.add(coupon.id)
-      paymentOrder.value = order
-      paymentOpen.value = true
+      await submitCouponPurchase(coupon, current)
     }
-    await load()
+    if (current()) await load()
   } catch (cause) {
     if (current()) {
       ElMessage.error(cause instanceof Error ? cause.message : '操作失败，请稍后重试')
@@ -222,6 +237,49 @@ async function takeCoupon(coupon: AvailableCoupon): Promise<void> {
   } finally {
     actionCouponId.value = null
   }
+}
+
+async function submitCouponPurchase(
+  coupon: AvailableCoupon,
+  current: () => boolean,
+): Promise<void> {
+  const result = await buyCoupon(coupon.id)
+  if (!current()) return
+  if (!result?.number) throw new Error('购券接口未返回订单号，请查看购券订单')
+
+  const lookup = new AbortController()
+  orderLookup = lookup
+  orderNotice.value = ''
+  submitted.value.set(coupon.id, 'creating')
+  let lookupMessage: string | undefined
+  const order = await waitForCouponOrder(result.number, lookup.signal).catch((cause: unknown) => {
+    if (cause instanceof Error) lookupMessage = cause.message
+    return undefined
+  })
+  orderLookup = undefined
+
+  if (!current() || lookup.signal.aborted) return
+  submitted.value.set(coupon.id, order ? 'created' : 'accepted')
+  if (!order) {
+    orderNotice.value = lookupMessage ?? '购券请求已提交，暂未确认订单，请稍后查看。'
+    return
+  }
+
+  now.value = Date.now()
+  if (paymentSeconds(order.payDeadline, now.value) <= 0) {
+    orderNotice.value = '订单已创建，请前往购券订单查看最新状态。'
+    return
+  }
+
+  paymentOrder.value = {
+    number: order.number,
+    price: order.price,
+    payDeadline: order.payDeadline,
+    couponId: coupon.id,
+    name: coupon.name,
+    offer: couponOffer(coupon),
+  }
+  paymentOpen.value = true
 }
 
 function paymentSucceeded(result: CouponPaymentResult): void {
@@ -240,7 +298,7 @@ function paymentSucceeded(result: CouponPaymentResult): void {
   void load()
 }
 
-onBeforeRouteLeave((to) => !busy.value || to.name === 'login')
+onBeforeRouteLeave((to) => !busy.value || !!orderLookup || to.name === 'login')
 onMounted(() => {
   void load()
   timer = setInterval(() => {
@@ -250,6 +308,7 @@ onMounted(() => {
 onScopeDispose(() => {
   active = false
   revision++
+  orderLookup?.abort()
   clearInterval(timer)
 })
 </script>
@@ -284,6 +343,9 @@ h1 {
   height: 42px;
   margin: 0;
   border-radius: 8px;
+}
+.order-notice {
+  margin-bottom: 20px;
 }
 .refresh-button {
   color: #526580;

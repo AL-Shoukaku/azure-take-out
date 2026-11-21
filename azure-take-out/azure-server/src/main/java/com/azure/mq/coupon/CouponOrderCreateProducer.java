@@ -17,7 +17,8 @@ public class CouponOrderCreateProducer {
         CouponOrderCreateMessage couponOrderCreateMessage = new CouponOrderCreateMessage();
         couponOrderCreateMessage.setCoupon(coupon);
         couponOrderCreateMessage.setUserId(userId);
-        couponOrderCreateMessage.setCouponNumber(orderNumber);
+        couponOrderCreateMessage.setCouponNumber(couponNumber);
+        couponOrderCreateMessage.setOrderNumber(orderNumber);
         rabbitTemplate.convertAndSend(RabbitConstants.COUPON_ORDER_CREATE_QUEUE, couponOrderCreateMessage);
     }
 }

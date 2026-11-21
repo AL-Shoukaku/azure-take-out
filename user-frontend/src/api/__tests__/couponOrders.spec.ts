@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AxiosAdapter } from 'axios'
-import { getCouponOrder, getCouponOrders } from '../couponOrders'
+import { getCouponOrder, getCouponOrders, getCouponOrderStatus } from '../couponOrders'
 import { http } from '@/utils/request'
 
 const original = http.defaults.adapter
@@ -32,6 +32,18 @@ describe('用户优惠券订单接口', () => {
     })
     expect(mock.mock.calls[1]![0].params).toEqual({ page: 1, pageSize: 6, status: 0 })
     expect(mock.mock.calls[2]![0].params).toEqual({ page: 1, pageSize: 6 })
+  })
+
+  it('按订单号查询建单状态，待建单时返回 null', async () => {
+    const mock = adapter()
+    const options = { signal: new AbortController().signal, timeout: 3000 }
+    await expect(getCouponOrderStatus('ORDER-9', options)).resolves.toBeNull()
+    expect(mock.mock.calls[0]![0]).toMatchObject({
+      url: '/couponOrder/status',
+      method: 'get',
+      params: { number: 'ORDER-9' },
+      ...options,
+    })
   })
 
   it('详情使用本人订单接口并返回完整订单', async () => {

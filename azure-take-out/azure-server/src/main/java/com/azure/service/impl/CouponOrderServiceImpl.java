@@ -152,6 +152,27 @@ public class CouponOrderServiceImpl implements CouponOrderService {
                 .build();
     }
 
+    /**
+     * 查询本人的购券订单，供异步建单后轮询。
+     */
+    @Override
+    public CouponOrderSubmitVO queryUserOrderStatus(String orderNumber) {
+        Long userId = getCurrentUserId();
+        CouponOrder couponOrder = couponOrderMapper.selectByNumberAndUserId(orderNumber, userId);
+        if (couponOrder == null) {
+            return null;
+        }
+        if (!CouponOrder.STATUS_UNPAID.equals(couponOrder.getStatus())
+                || !couponOrder.getPayDeadline().isAfter(LocalDateTime.now())) {
+            throw new BaseException("订单已创建，请前往购券订单查看最新状态。");
+        }
+        return CouponOrderSubmitVO.builder()
+                .number(couponOrder.getNumber())
+                .price(couponOrder.getPrice())
+                .payDeadline(couponOrder.getPayDeadline())
+                .build();
+    }
+
     private Long getCurrentUserId() {
         Long userId = BaseContext.getCurrentId();
         if (userId == null) {

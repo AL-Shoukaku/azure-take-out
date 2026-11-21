@@ -9,6 +9,11 @@ spring:
       url: jdbc:h2:mem:azure_boot;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER,VALUE
       username: sa
       password: ""
+  rabbitmq:
+    dynamic: false
+    listener:
+      simple:
+        auto-startup: false
   sql:
     init:
       mode: always
@@ -26,6 +31,11 @@ azure:
     database: test
     username: sa
     password: ""
+  rabbitmq:
+    host: unused.invalid
+    port: 5672
+    username: test
+    password: test
   redis:
     host: unused.invalid
     port: 1

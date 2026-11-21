@@ -23,8 +23,6 @@ export interface CouponClaimResult {
 
 export interface CouponSubmittedOrder {
   number: string
-  price: number
-  payDeadline: string
 }
 
 export interface CouponPaymentResult {

@@ -31,8 +31,8 @@ it('领取通过 query 传券 ID，保留后端的券号和有效期', async () 
   expect(adapter.mock.calls[0]![0].data).toBeUndefined()
 })
 
-it('购券下单使用服务端金额、订单号及支付截止时间', async () => {
-  const result = { number: 'ORDER-1', price: 8.8, payDeadline: '2026-11-07 10:15' }
+it('购券请求受理后返回订单号', async () => {
+  const result = { number: 'ORDER-1' }
   const adapter = respond(result)
   await expect(buyCoupon(1)).resolves.toEqual(result)
   expect(adapter.mock.calls[0]![0]).toMatchObject({

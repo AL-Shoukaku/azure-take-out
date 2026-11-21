@@ -161,6 +161,53 @@ test('代金券支付成功显示后端返回的实付金额、订单号和过�
   await expect(page).toHaveURL('/menu')
 })
 
+test('购券受理后等待同号订单，查到待支付才打开付款弹窗', async ({ page }) => {
+  const api = await mockCouponCheckout(page, coupons)
+  api.orderVisible = false
+  await page.goto('/coupons/take')
+  const voucher = card(page, '午餐代金券')
+  await voucher.getByRole('button', { name: '¥9.90 购买', exact: true }).click()
+  await expect(voucher.getByRole('button', { name: '订单创建中' })).toBeDisabled()
+  await expect.poll(() => api.orderLookups).toBeGreaterThan(0)
+  const payment = page.getByRole('dialog', { name: '代金券支付', exact: true })
+  await expect(payment).toHaveCount(0)
+
+  api.orderVisible = true
+  await expect(payment).toContainText('COUPON-ORDER-1')
+  await expect(payment).toContainText('¥8.80')
+  expect(api.orderLookups).toBeGreaterThan(1)
+  expect(api.writes).toHaveLength(1)
+})
+
+test('订单暂未确认时保留受理状态并提供订单页入口', async ({ page }) => {
+  const api = await mockCouponCheckout(page, coupons)
+  api.orderVisible = false
+  await page.goto('/coupons/take')
+  const voucher = card(page, '午餐代金券')
+  await voucher.getByRole('button', { name: '¥9.90 购买', exact: true }).click()
+
+  await expect(page.getByText('购券请求已提交，暂未确认订单，请稍后查看。')).toBeVisible({
+    timeout: 16_000,
+  })
+  await expect(voucher.getByRole('button', { name: '已提交' })).toBeDisabled()
+  await expect(page.getByRole('dialog', { name: '代金券支付', exact: true })).toHaveCount(0)
+  expect(api.writes).toHaveLength(1)
+  await page.getByRole('button', { name: '查看购券订单', exact: true }).click()
+  await expect(page).toHaveURL('/orders/coupons')
+})
+
+test('订单已关闭时显示后端提示并结束等待', async ({ page }) => {
+  const api = await mockCouponCheckout(page, coupons)
+  api.failures.status = '订单已创建，请前往购券订单查看最新状态。'
+  await page.goto('/coupons/take')
+  await card(page, '午餐代金券').getByRole('button', { name: '¥9.90 购买', exact: true }).click()
+
+  await expect(page.getByText(api.failures.status)).toBeVisible()
+  await expect(page.getByRole('button', { name: '查看购券订单', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '代金券支付', exact: true })).toHaveCount(0)
+  expect(api.orderLookups).toBe(1)
+})
+
 test('暂不支付后返回抢券列表，刷新也不展示继续支付入口', async ({ page }) => {
   const api = await mockCouponCheckout(page, coupons)
   await page.goto('/coupons/take')

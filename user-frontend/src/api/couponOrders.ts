@@ -24,6 +24,8 @@ export interface CouponOrderDetail extends CouponOrderSummary {
   couponNumber: string
   type: 1 | 2
 }
+export type CouponOrderPaymentInfo = Pick<CouponOrderSummary, 'number' | 'price' | 'payDeadline'>
+
 export interface CouponOrderPageResult {
   total: number
   records: CouponOrderSummary[]
@@ -40,6 +42,18 @@ export function getCouponOrders(
     params: { page, pageSize, ...(status === null ? {} : { status }) },
   })
 }
+export function getCouponOrderStatus(
+  number: string,
+  options: { signal: AbortSignal; timeout: number },
+): Promise<CouponOrderPaymentInfo | null> {
+  return request({
+    url: '/couponOrder/status',
+    method: 'GET',
+    params: { number },
+    ...options,
+  })
+}
+
 export function getCouponOrder(id: number): Promise<CouponOrderDetail> {
   return request<CouponOrderDetail>({ url: `/couponOrder/orderDetail/${id}`, method: 'GET' })
 }
