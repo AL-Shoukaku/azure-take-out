@@ -16,6 +16,7 @@ import com.azure.mapper.UserCouponMapper;
 import com.azure.result.PageResult;
 import com.azure.service.CouponOrderService;
 import com.azure.vo.coupon.CouponOrderPageQueryVO;
+import com.azure.vo.coupon.CouponOrderSubmitVO;
 import com.azure.vo.coupon.CouponOrderVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -129,6 +130,26 @@ public class CouponOrderServiceImpl implements CouponOrderService {
         }
         couponMapper.addStockByOne(couponOrder.getCouponId());
         cacheClient.incrStockAfterCommit(RedisConstants.COUPON_STOCK_KEY_PREFIX + couponOrder.getCouponId());
+    }
+
+    /**
+     * 用户查询是否拥有某个优惠券订单
+     * 用于异步下单时，前端轮询查询是否已经生成订单
+     * @param couponNumber 优惠券订单号
+     * @return 优惠券订单信息
+     */
+    @Override
+    public CouponOrderSubmitVO hasCouponOrder(String couponNumber) {
+        Long userId = getCurrentUserId();
+        CouponOrder couponOrder = couponOrderMapper.selectByNumberAndUserId(couponNumber, userId);
+        if (couponOrder == null) {
+            throw new BaseException("用户没有该优惠券订单");
+        }
+        return CouponOrderSubmitVO.builder()
+                .number(couponOrder.getNumber())
+                .price(couponOrder.getPrice())
+                .payDeadline(couponOrder.getPayDeadline())
+                .build();
     }
 
     private Long getCurrentUserId() {

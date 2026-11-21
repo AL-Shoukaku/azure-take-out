@@ -16,6 +16,7 @@ import com.azure.mapper.CouponMapper;
 import com.azure.mapper.CouponOrderMapper;
 import com.azure.mapper.UserMapper;
 import com.azure.mapper.UserCouponMapper;
+import com.azure.mq.coupon.CouponOrderCreateProducer;
 import com.azure.result.PageResult;
 import com.azure.service.CouponService;
 import com.azure.vo.coupon.*;
@@ -48,6 +49,9 @@ public class CouponServiceImpl implements CouponService {
 
     @Autowired
     private CacheClient cacheClient;
+
+    @Autowired
+    private CouponOrderCreateProducer couponOrderCreateProducer;
 
     /**
      * 商家发布优惠券
@@ -191,24 +195,24 @@ public class CouponServiceImpl implements CouponService {
      * @param couponId  优惠券ID
      */
     @Override
-    @Transactional
     public CouponOrderSubmitVO userBuyCoupon(Long couponId) {
         LocalDateTime now = LocalDateTime.now();
         Long userId = BaseContext.getCurrentId();
         Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_VOUCHER);
+        String couponNumber = UUID.randomUUID().toString().replace("-", "");
+        String orderNumber = UUID.randomUUID().toString().replace("-", "");
 
-        // 扣减库存，并提交优惠券订单
-        if (couponMapper.decreaseStockByOne(couponId) == 0) {
-            throw new BaseException("优惠券库存不足");
-        }
-        CouponOrder couponOrder = createCouponOrder(coupon, userId);
-        couponOrderMapper.insertCouponOrder(couponOrder);
+        // 向消息队列发送订单创建的消息，异步下单
+        couponOrderCreateProducer.sendMessage(
+                userId,
+                coupon,
+                couponNumber,
+                orderNumber
+        );
 
-        return CouponOrderSubmitVO.builder()
-                .number(couponOrder.getNumber())
-                .price(couponOrder.getPrice())
-                .payDeadline(couponOrder.getPayDeadline())
-                .build();
+        return CouponOrderSubmitVO.builder().
+                number(orderNumber).
+                build();
     }
 
     /**

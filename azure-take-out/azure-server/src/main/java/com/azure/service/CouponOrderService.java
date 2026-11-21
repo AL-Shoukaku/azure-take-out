@@ -3,6 +3,7 @@ package com.azure.service;
 import com.azure.dto.coupon.CouponOrderPageQueryDTO;
 import com.azure.dto.coupon.CouponOrderRefundDTO;
 import com.azure.result.PageResult;
+import com.azure.vo.coupon.CouponOrderSubmitVO;
 import com.azure.vo.coupon.CouponOrderVO;
 
 public interface CouponOrderService {
@@ -31,4 +32,10 @@ public interface CouponOrderService {
      * 商家退款优惠券订单
      */
     void refundCouponOrder(CouponOrderRefundDTO couponOrderRefundDTO);
+
+    /**
+     * 用户查询是否拥有某个优惠券订单
+     * 用于异步下单时，前端轮询查询是否已经生成订单
+     */
+    CouponOrderSubmitVO hasCouponOrder(String couponNumber);
 }

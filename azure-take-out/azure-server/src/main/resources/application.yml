@@ -22,6 +22,11 @@ spring:
       port: ${azure.redis.port}
       database: ${azure.redis.database}
     # password:无密码
+  rabbitmq:
+    host: ${azure.rabbitmq.host}
+    port: ${azure.rabbitmq.port}
+    username: ${azure.rabbitmq.username}
+    password: ${azure.rabbitmq.password}
 
 mybatis:
   #mapper配置文件
