@@ -1,5 +1,6 @@
 package com.azure.service.impl;
 
+import com.azure.cache.CacheClient;
 import com.azure.context.BaseContext;
 import com.azure.entity.Coupon;
 import com.azure.entity.CouponOrder;
@@ -9,36 +10,79 @@ import com.azure.mapper.CouponMapper;
 import com.azure.mapper.CouponOrderMapper;
 import com.azure.mapper.UserCouponMapper;
 import com.azure.mapper.UserMapper;
+import com.azure.message.CouponOrderCreateMessage;
+import com.azure.mq.RabbitConstants;
+import com.azure.mq.coupon.CouponOrderCreateConsumer;
+import com.azure.mq.coupon.CouponOrderCreateProducer;
 import com.azure.support.TransactionTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /** 使用真实 SQL 和事务验证购券支付、发券以及失败回滚。 */
 class CouponPaymentIntegrationTest extends TransactionTestSupport {
     private JdbcTemplate jdbc;
     private CouponServiceImpl service;
     private CouponOrderMapper orders;
+    private CouponOrderCreateConsumer consumer;
+    private RabbitTemplate rabbitTemplate;
     private Long couponId;
 
     @BeforeEach
     void initializePayment() {
         jdbc = new JdbcTemplate(dataSource);
         orders = transactionalMapper(CouponOrderMapper.class);
+        CouponMapper coupons = transactionalMapper(CouponMapper.class);
+        CacheClient cacheClient = mock(CacheClient.class);
+
+        rabbitTemplate = mock(RabbitTemplate.class);
+        doAnswer(invocation -> {
+            CorrelationData correlation = invocation.getArgument(2);
+            correlation.getFuture().complete(new CorrelationData.Confirm(true, null));
+            return null;
+        }).when(rabbitTemplate).convertAndSend(eq(RabbitConstants.COUPON_ORDER_CREATE_QUEUE),
+                any(CouponOrderCreateMessage.class), any(CorrelationData.class));
+        CouponOrderCreateProducer producer = new CouponOrderCreateProducer();
+        inject(producer, "rabbitTemplate", rabbitTemplate);
+
+        RedissonClient redisson = mock(RedissonClient.class);
+        when(redisson.getLock(anyString())).thenReturn(mock(RLock.class));
+        consumer = new CouponOrderCreateConsumer();
+        inject(consumer, "userMapper", transactionalMapper(UserMapper.class));
+        inject(consumer, "couponOrderMapper", orders);
+        inject(consumer, "couponMapper", coupons);
+        inject(consumer, "redissonClient", redisson);
+        inject(consumer, "cacheClient", cacheClient);
+        inject(consumer, "transactionTemplate", new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
+
         CouponServiceImpl target = new CouponServiceImpl();
-        inject(target, "couponMapper", transactionalMapper(CouponMapper.class));
         inject(target, "couponOrderMapper", orders);
         inject(target, "userCouponMapper", transactionalMapper(UserCouponMapper.class));
-        inject(target, "userMapper", transactionalMapper(UserMapper.class));
+        inject(target, "cacheClient", cacheClient);
+        inject(target, "couponOrderCreateProducer", producer);
         service = transactionalService(target, CouponServiceImpl.class);
 
         LocalDateTime now = LocalDateTime.now();
@@ -56,13 +100,26 @@ class CouponPaymentIntegrationTest extends TransactionTestSupport {
         template.setValidTime(30);
         template.setCreateTime(now);
         template.setUpdateTime(now);
-        transactionalMapper(CouponMapper.class).insertCoupon(template);
+        coupons.insertCoupon(template);
         couponId = jdbc.queryForObject("SELECT id FROM coupon WHERE name = ?", Long.class, template.getName());
+        when(cacheClient.getOrLoadCoupon(couponId)).thenAnswer(invocation -> coupons.selectById(couponId));
+        when(cacheClient.checkAndDecrStock(eq(couponId), eq(USER_ID), anyString(), eq(Coupon.TYPE_VOUCHER)))
+                .thenReturn(0L);
+        when(cacheClient.hasCouponReservation(eq(couponId), anyString())).thenReturn(true);
     }
 
     private CouponOrder purchase() {
         String number = service.userBuyCoupon(couponId).getNumber();
-        return orders.selectByNumberAndUserId(number, USER_ID);
+        assertThat(orders.selectByNumberAndUserId(number, USER_ID)).isNull();
+
+        ArgumentCaptor<CouponOrderCreateMessage> message = ArgumentCaptor.forClass(CouponOrderCreateMessage.class);
+        verify(rabbitTemplate).convertAndSend(eq(RabbitConstants.COUPON_ORDER_CREATE_QUEUE),
+                message.capture(), any(CorrelationData.class));
+        consumer.receiveCouponOrderCreateMessage(message.getValue());
+
+        CouponOrder order = orders.selectByNumberAndUserId(number, USER_ID);
+        assertThat(order).isNotNull();
+        return order;
     }
 
     private CouponOrder stored(CouponOrder order) {
