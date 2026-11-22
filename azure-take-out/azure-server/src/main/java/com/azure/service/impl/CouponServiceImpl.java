@@ -212,6 +212,7 @@ public class CouponServiceImpl implements CouponService {
                                     orderNumber
                             );
         if (!success) {
+            cacheClient.restoreCouponReservation(couponId, userId, orderNumber);
             throw new BaseException("创建优惠券订单的消息没有成功入队！");
         }
         return CouponOrderSubmitVO.builder().

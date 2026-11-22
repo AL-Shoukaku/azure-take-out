@@ -27,7 +27,7 @@ public class CouponOrderCreateProducer {
      * @param coupon        优惠券模板
      * @param couponNumber  优惠券编号
      * @param orderNumber   订单号
-     * @return              消息是否成功入队
+     * @return              明确收到 Return 时返回 false，其余情况按订单号继续查单
      */
     public boolean sendMessage(Long userId, Coupon coupon, String couponNumber, String orderNumber) {
         CouponOrderCreateMessage couponOrderCreateMessage = new CouponOrderCreateMessage();
@@ -42,7 +42,13 @@ public class CouponOrderCreateProducer {
         );
         try {
             CorrelationData.Confirm confirm = correlationData.getFuture().get(5, TimeUnit.SECONDS);
-            return confirm.isAck() && correlationData.getReturned() == null;
+            if (correlationData.getReturned() != null) {
+                return false;
+            }
+            if (!confirm.isAck()) {
+                log.warn("优惠券订单发布结果未知，订单号={}，确认原因={}", orderNumber, confirm.getReason());
+            }
+            return true;
         } catch (InterruptedException | ExecutionException | TimeoutException  e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();

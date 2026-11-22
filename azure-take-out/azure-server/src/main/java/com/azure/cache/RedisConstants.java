@@ -15,6 +15,7 @@ public class RedisConstants {
 
     // 锁 key 前缀
     public static final String LOCK_KEY_PREFIX = "lock:";               // 锁 key 前缀
+    public static final String COUPON_ORDER_LOCK_KEY_PREFIX = LOCK_KEY_PREFIX + COUPON_ORDER_KEY_PREFIX;
 
     // 过期时间,单位：秒
     public static final long CACHE_NULL_TTL = 60;                   // 无效数据的过期时间

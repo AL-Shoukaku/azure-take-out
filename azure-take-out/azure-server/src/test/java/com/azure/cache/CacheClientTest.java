@@ -1,13 +1,16 @@
 package com.azure.cache;
 
+import com.azure.entity.CouponOrder;
 import com.azure.exception.CacheBusinessException;
 import com.azure.handler.GlobalExceptionHandler;
+import com.azure.mapper.CouponOrderMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.redisson.api.RKeys;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -44,6 +47,7 @@ class CacheClientTest {
     private final ValueOperations<String, String> valueOps = mock(ValueOperations.class);
     private final ObjectMapper objectMapper = mock(ObjectMapper.class);
     private final RedissonClient redissonClient = mock(RedissonClient.class);
+    private final CouponOrderMapper couponOrderMapper = mock(CouponOrderMapper.class);
     private final RLock lock = mock(RLock.class);
     private final RKeys keys = mock(RKeys.class);
 
@@ -72,6 +76,7 @@ class CacheClientTest {
         ReflectionTestUtils.setField(cacheClient, "stringRedisTemplate", redisTemplate);
         ReflectionTestUtils.setField(cacheClient, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(cacheClient, "redissonClient", redissonClient);
+        ReflectionTestUtils.setField(cacheClient, "couponOrderMapper", couponOrderMapper);
     }
 
     /** 不应该被执行的 loader，一旦执行直接让测试失败 */
@@ -258,7 +263,8 @@ class CacheClientTest {
     }
 
     @Test
-    void reservationRestorePassesKeysAndArgumentsInScriptOrder() {
+    void reservationRestoreChecksOrderUnderLockBeforeRunningScript() {
+        when(redissonClient.getLock("lock:coupon:order:order-1")).thenReturn(lock);
         List<String> reservationKeys = List.of("coupon:stock:7", "coupon:user:7", "coupon:order:7");
         when(redisTemplate.execute(any(RedisScript.class), eq(reservationKeys), eq("25"), eq("order-1")))
                 .thenReturn(-3L);
@@ -266,9 +272,36 @@ class CacheClientTest {
         assertThat(cacheClient.restoreCouponReservation(7L, 25L, "order-1")).isEqualTo(-3L);
 
         ArgumentCaptor<RedisScript<Long>> script = ArgumentCaptor.captor();
-        verify(redisTemplate).execute(script.capture(), eq(reservationKeys), eq("25"), eq("order-1"));
+        InOrder calls = inOrder(lock, couponOrderMapper, redisTemplate);
+        calls.verify(lock).lock();
+        calls.verify(couponOrderMapper).selectByNumberAndUserId("order-1", 25L);
+        calls.verify(redisTemplate).execute(script.capture(), eq(reservationKeys), eq("25"), eq("order-1"));
+        calls.verify(lock).unlock();
         assertThat(script.getValue().getResultType()).isEqualTo(Long.class);
         assertThat(script.getValue().getScriptAsString()).contains("SREM");
+    }
+
+    @Test
+    void reservationRestoreSkipsExistingOrderAndReleasesLock() {
+        when(redissonClient.getLock("lock:coupon:order:order-1")).thenReturn(lock);
+        when(couponOrderMapper.selectByNumberAndUserId("order-1", 25L)).thenReturn(new CouponOrder());
+
+        assertThat(cacheClient.restoreCouponReservation(7L, 25L, "order-1")).isEqualTo(0L);
+
+        verifyNoInteractions(redisTemplate);
+        verify(lock).unlock();
+    }
+
+    @Test
+    void reservationRestoreReleasesLockWhenLookupFails() {
+        when(redissonClient.getLock("lock:coupon:order:order-1")).thenReturn(lock);
+        var failure = new DataAccessResourceFailureException("database unavailable");
+        when(couponOrderMapper.selectByNumberAndUserId("order-1", 25L)).thenThrow(failure);
+
+        assertThatThrownBy(() -> cacheClient.restoreCouponReservation(7L, 25L, "order-1")).isSameAs(failure);
+
+        verifyNoInteractions(redisTemplate);
+        verify(lock).unlock();
     }
 
     @Test

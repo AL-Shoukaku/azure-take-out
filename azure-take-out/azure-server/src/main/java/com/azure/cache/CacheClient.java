@@ -3,6 +3,7 @@ package com.azure.cache;
 import com.azure.entity.Coupon;
 import com.azure.exception.CacheBusinessException;
 import com.azure.mapper.CouponMapper;
+import com.azure.mapper.CouponOrderMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +44,9 @@ public class CacheClient {
 
     @Autowired
     private CouponMapper couponMapper;
+
+    @Autowired
+    private CouponOrderMapper couponOrderMapper;
 
     private final static DefaultRedisScript<Long> SADD_SCRIPT;
 
@@ -283,20 +287,42 @@ public class CacheClient {
     }
 
     /**
-     * 恢复指定购券订单的 Redis 预扣。
+     * 检查购券预扣标记。订单号 Set 缺失时让建单重试。
+     */
+    public boolean hasCouponReservation(Long couponId, String orderNumber) {
+        String key = RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId;
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(key, orderNumber))) {
+            return true;
+        }
+        if (!Boolean.TRUE.equals(stringRedisTemplate.hasKey(key))) {
+            throw new CacheBusinessException("购券订单预扣缓存缺失，券ID=" + couponId);
+        }
+        return false;
+    }
+
+    /**
+     * 持有订单号锁期间查询订单，并恢复尚未建单的购券预扣。
      * @param couponId     优惠券 ID
      * @param userId       原购券用户 ID
      * @param orderNumber  原购券订单号
-     * @return             1 表示已恢复，0 表示预扣不存在，-3 表示缓存缺失或用户标记异常
+     * @return             1 表示已恢复，0 表示订单已存在或预扣不存在，-3 表示缓存缺失或用户标记异常
      */
     public Long restoreCouponReservation(Long couponId, Long userId, String orderNumber) {
-        List<String> keys = List.of(
-                RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId,
-                RedisConstants.COUPON_USER_KEY_PREFIX + couponId,
-                RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId
-        );
-        return stringRedisTemplate.execute(
-                RESTORE_COUPON_RESERVATION_SCRIPT, keys, userId.toString(), orderNumber);
+        RLock lock = redissonClient.getLock(RedisConstants.COUPON_ORDER_LOCK_KEY_PREFIX + orderNumber);
+        lock.lock();
+        try {
+            if (couponOrderMapper.selectByNumberAndUserId(orderNumber, userId) != null) {
+                return 0L;
+            }
+            List<String> keys = List.of(
+                    RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId,
+                    RedisConstants.COUPON_USER_KEY_PREFIX + couponId,
+                    RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId);
+            return stringRedisTemplate.execute(
+                    RESTORE_COUPON_RESERVATION_SCRIPT, keys, userId.toString(), orderNumber);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
