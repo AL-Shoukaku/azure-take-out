@@ -11,6 +11,7 @@ public class RedisConstants {
     public static final String COUPON_INFO_KEY_PREFIX = "coupon:info:"; // 优惠券信息 key 前缀
     public static final String COUPON_STOCK_KEY_PREFIX = "coupon:stock:"; // 优惠券库存 key 前缀
     public static final String COUPON_USER_KEY_PREFIX = "coupon:user:"; // 用户购买记录 key 前缀
+    public static final String COUPON_ORDER_KEY_PREFIX = "coupon:order:"; // 购券预扣订单号集合 key 前缀
 
     // 锁 key 前缀
     public static final String LOCK_KEY_PREFIX = "lock:";               // 锁 key 前缀

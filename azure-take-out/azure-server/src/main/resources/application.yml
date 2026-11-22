@@ -27,6 +27,10 @@ spring:
     port: ${azure.rabbitmq.port}
     username: ${azure.rabbitmq.username}
     password: ${azure.rabbitmq.password}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
 
 mybatis:
   #mapper配置文件

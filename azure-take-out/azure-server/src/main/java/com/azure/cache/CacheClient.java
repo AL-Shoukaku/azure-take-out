@@ -21,7 +21,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -82,16 +81,16 @@ public class CacheClient {
     }
 
     /**
-     * 设置带有过期时间的 Set 缓存，时间单位为秒，带有 10% 的上下浮动，避免缓存雪崩
-     * @param key            缓存的键
-     * @param value          缓存的值
-     * @param time           缓存的过期时间，单位为秒
+     * 为 Set 写入同一个成员和过期时间，带有 10% 的上下浮动。
+     * @param keys   Set 的键
+     * @param value  要写入的成员
+     * @param time   缓存过期时间，单位为秒
      */
-    public void sadd(String key, String value, long time) {
+    public void sadd(List<String> keys, String value, long time) {
         long maxTime = (long) (time * 1.1); // 上浮 10%
         long minTime = (long) (time * 0.9); // 下浮 10%
         long ttl = (long) (Math.random() * (maxTime - minTime) + minTime); // 随机过期时间
-        stringRedisTemplate.execute(SADD_SCRIPT, Collections.singletonList(key), value, String.valueOf(ttl));
+        stringRedisTemplate.execute(SADD_SCRIPT, keys, value, String.valueOf(ttl));
     }
 
     /**
@@ -261,16 +260,20 @@ public class CacheClient {
     /**
      * 检查优惠券库存并尝试扣减库存，使用 Lua 脚本保证原子性。
      * @param couponId  优惠券ID
-     * @param userId    用户ID
-     * @return          为 0 代表成功，-1 代表库存不足，-2 代表用户已领取过该优惠券，-3 代表有key不存在
+     * @param userId       用户ID
+     * @param orderNumber  购券预扣的订单号，领券时传 null
+     * @return             为 0 代表成功，-1 代表库存不足，-2 代表用户已领取过该优惠券，-3 代表抢券缓存不可用
      */
-    public Long checkAndDecrStock(Long couponId, Long userId) {
-        String coupon_key = RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId;
-        String user_key = RedisConstants.COUPON_USER_KEY_PREFIX + couponId;
-        List<String> keys = new ArrayList<>();
-        keys.add(coupon_key);
-        keys.add(user_key);
-        return stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, keys, userId.toString());
+    public Long checkAndDecrStock(Long couponId, Long userId, String orderNumber) {
+        String stockKey = RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId;
+        String userKey = RedisConstants.COUPON_USER_KEY_PREFIX + couponId;
+        if (orderNumber == null) {
+            return stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, List.of(stockKey, userKey), userId.toString());
+        }
+
+        String orderKey = RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId;
+        return stringRedisTemplate.execute(
+                CHECK_COUPON_SCRIPT, List.of(stockKey, userKey, orderKey), userId.toString(), orderNumber);
     }
 
     /**

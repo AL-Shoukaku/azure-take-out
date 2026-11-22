@@ -70,11 +70,13 @@ public class CouponServiceImpl implements CouponService {
         coupon.setCreateTime(now);
         coupon.setUpdateTime(now);
         couponMapper.insertCoupon(coupon);
-        // 数据插入成功后，将库存信息和用户购买记录放入 Redis 中，时间设置为活动结束时间以后
+        // 数据插入成功后，初始化库存和抢券记录缓存
         long ttl = (long) (java.time.Duration.between(now, coupon.getEndTime()).getSeconds() * 1.2); // 上浮 20%，确保在活动结束以后过期
         ttl = Math.max(ttl, RedisConstants.CACHE_COUPON_STOCK_MIN_TTL);                              // 最短过期时间为 60 分钟
         cacheClient.set(RedisConstants.COUPON_STOCK_KEY_PREFIX + coupon.getId(), coupon.getStock(), ttl);
-        cacheClient.sadd(RedisConstants.COUPON_USER_KEY_PREFIX + coupon.getId(), "-1", ttl); // 初始化用户购买记录集合
+        cacheClient.sadd(List.of(
+                RedisConstants.COUPON_USER_KEY_PREFIX + coupon.getId(),
+                RedisConstants.COUPON_ORDER_KEY_PREFIX + coupon.getId()), "-1", ttl);
     }
 
     /**
@@ -174,7 +176,7 @@ public class CouponServiceImpl implements CouponService {
     public CouponClaimVO userGetCoupon(Long couponId) {
         LocalDateTime now = LocalDateTime.now();
         Long userId = BaseContext.getCurrentId();
-        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION);
+        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION, null);
         // 扣减库存，并将优惠券发放给用户
         //coupon.setStock(coupon.getStock() - 1);
         //couponMapper.updateCoupon(coupon);
@@ -198,18 +200,20 @@ public class CouponServiceImpl implements CouponService {
     public CouponOrderSubmitVO userBuyCoupon(Long couponId) {
         LocalDateTime now = LocalDateTime.now();
         Long userId = BaseContext.getCurrentId();
-        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_VOUCHER);
-        String couponNumber = UUID.randomUUID().toString().replace("-", "");
         String orderNumber = UUID.randomUUID().toString().replace("-", "");
+        String couponNumber = UUID.randomUUID().toString().replace("-", "");
+        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_VOUCHER, orderNumber);
 
         // 向消息队列发送订单创建的消息，异步下单
-        couponOrderCreateProducer.sendMessage(
-                userId,
-                coupon,
-                couponNumber,
-                orderNumber
-        );
-
+        boolean success = couponOrderCreateProducer.sendMessage(
+                                    userId,
+                                    coupon,
+                                    couponNumber,
+                                    orderNumber
+                            );
+        if (!success) {
+            throw new BaseException("创建优惠券订单的消息没有成功入队！");
+        }
         return CouponOrderSubmitVO.builder().
                 number(orderNumber).
                 build();
@@ -271,9 +275,11 @@ public class CouponServiceImpl implements CouponService {
      * @param userId        用户ID
      * @param now           当前时间
      * @param expectType    预期的优惠券类型
+     * @param orderNumber   购券订单号，领券时传 null
      * @return              优惠券信息
      */
-    private Coupon checkCouponAvailable(Long couponId, Long userId, LocalDateTime now, Integer expectType) {
+    private Coupon checkCouponAvailable(
+            Long couponId, Long userId, LocalDateTime now, Integer expectType, String orderNumber) {
         if (couponId == null || couponId < 0) {
             throw new BaseException("优惠券ID不合法");
         }
@@ -294,7 +300,7 @@ public class CouponServiceImpl implements CouponService {
             throw new BaseException("优惠券不在活动时间内");
         }
         // 检查库存是否大于0
-        long result = cacheClient.checkAndDecrStock(couponId, userId);
+        long result = cacheClient.checkAndDecrStock(couponId, userId, orderNumber);
         if (result == -1) {
             throw new BaseException("优惠券已经售罄");
         } else if (result == -2) {

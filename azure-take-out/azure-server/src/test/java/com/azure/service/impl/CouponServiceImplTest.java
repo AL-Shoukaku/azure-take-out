@@ -6,14 +6,11 @@ import com.azure.dto.coupon.CouponDTO;
 import com.azure.dto.coupon.CouponPageQueryDTO;
 import com.azure.dto.coupon.CouponUpdateDTO;
 import com.azure.entity.Coupon;
-import com.azure.entity.CouponOrder;
-import com.azure.entity.User;
 import com.azure.entity.UserCoupon;
 import com.azure.exception.BaseException;
 import com.azure.mapper.CouponMapper;
-import com.azure.mapper.CouponOrderMapper;
 import com.azure.mapper.UserCouponMapper;
-import com.azure.mapper.UserMapper;
+import com.azure.mq.coupon.CouponOrderCreateProducer;
 import com.azure.result.PageResult;
 import com.azure.support.ServiceTestSupport;
 import com.azure.vo.coupon.CouponVO;
@@ -25,10 +22,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,8 +37,7 @@ class CouponServiceImplTest extends ServiceTestSupport {
     @InjectMocks private CouponServiceImpl service;
     @Mock private CouponMapper mapper;
     @Mock private UserCouponMapper userCouponMapper;
-    @Mock private CouponOrderMapper couponOrderMapper;
-    @Mock private UserMapper userMapper;
+    @Mock private CouponOrderCreateProducer producer;
     @Mock private CacheClient cacheClient;
     @Captor private ArgumentCaptor<Coupon> coupon;
 
@@ -77,37 +75,36 @@ class CouponServiceImplTest extends ServiceTestSupport {
     @Test
     void claimingPreservesDecimalAmountsAndLeavesUserCouponIdForDatabase() {
         Coupon template = availableCoupon(Coupon.TYPE_FULL_REDUCTION);
-        when(mapper.selectById(7L)).thenReturn(template);
+        when(cacheClient.getOrLoadCoupon(7L)).thenReturn(template);
+        when(cacheClient.checkAndDecrStock(7L, USER_ID, null)).thenReturn(0L);
+        when(mapper.decreaseStockByOne(7L)).thenReturn(1);
 
         service.userGetCoupon(7L);
 
         ArgumentCaptor<UserCoupon> issued = ArgumentCaptor.forClass(UserCoupon.class);
-        verify(userCouponMapper).userHasGetCoupon(USER_ID, 7L);
+        verify(cacheClient).checkAndDecrStock(7L, USER_ID, null);
         verify(userCouponMapper).insertUserCoupon(issued.capture());
         assertThat(issued.getValue().getId()).isNull();
         assertThat(issued.getValue().getCouponId()).isEqualTo(7L);
         assertThat(issued.getValue().getUserId()).isEqualTo(USER_ID);
         assertThat(issued.getValue().getDiscountAmount()).isEqualByComparingTo("20.10");
         assertThat(issued.getValue().getThresholdAmount()).isEqualByComparingTo("50.20");
-        verify(mapper).updateCoupon(coupon.capture());
-        assertThat(coupon.getValue().getStock()).isEqualTo(99);
+        verify(mapper).decreaseStockByOne(7L);
     }
 
     @Test
-    void purchaseCreatesUnpaidOrderWithDecimalPriceAndFaceValue() {
+    void purchaseReservesStockWithTheSameOrderNumberItPublishesAndReturns() {
         Coupon template = availableCoupon(Coupon.TYPE_VOUCHER);
-        when(mapper.selectById(7L)).thenReturn(template);
-        when(userMapper.getById(USER_ID)).thenReturn(User.builder().id(USER_ID).username("测试用户").build());
+        when(cacheClient.getOrLoadCoupon(7L)).thenReturn(template);
+        when(cacheClient.checkAndDecrStock(eq(7L), eq(USER_ID), anyString())).thenReturn(0L);
+        when(producer.sendMessage(eq(USER_ID), same(template), anyString(), anyString())).thenReturn(true);
 
-        service.userBuyCoupon(7L);
+        String orderNumber = service.userBuyCoupon(7L).getNumber();
 
-        ArgumentCaptor<CouponOrder> order = ArgumentCaptor.forClass(CouponOrder.class);
-        verify(couponOrderMapper).insertCouponOrder(order.capture());
-        assertThat(order.getValue().getPrice()).isEqualByComparingTo("9.90");
-        assertThat(order.getValue().getDiscountAmount()).isEqualByComparingTo("20.10");
-        assertThat(order.getValue().getThresholdAmount()).isEqualByComparingTo("0");
-        assertThat(order.getValue().getStatus()).isEqualTo(CouponOrder.STATUS_UNPAID);
-        assertThat(order.getValue().getId()).isNull();
+        assertThat(orderNumber).isNotBlank();
+        InOrder calls = inOrder(cacheClient, producer);
+        calls.verify(cacheClient).checkAndDecrStock(7L, USER_ID, orderNumber);
+        calls.verify(producer).sendMessage(eq(USER_ID), same(template), anyString(), eq(orderNumber));
         verify(userCouponMapper, never()).insertUserCoupon(any());
     }
 
@@ -120,14 +117,24 @@ class CouponServiceImplTest extends ServiceTestSupport {
             dto.setPrice(BigDecimal.ZERO);
             dto.setThresholdAmount(new BigDecimal("50"));
         }
+        doAnswer(invocation -> {
+            Coupon inserted = invocation.getArgument(0);
+            inserted.setId(7L);
+            return 1;
+        }).when(mapper).insertCoupon(any(Coupon.class));
         LocalDateTime before = LocalDateTime.now();
 
         service.publishCoupon(dto);
 
         verify(mapper).insertCoupon(coupon.capture());
+        ArgumentCaptor<Long> ttl = ArgumentCaptor.forClass(Long.class);
+        verify(cacheClient).set(eq(RedisConstants.COUPON_STOCK_KEY_PREFIX + 7L), eq(100), ttl.capture());
+        verify(cacheClient).sadd(List.of(
+                RedisConstants.COUPON_USER_KEY_PREFIX + 7L,
+                RedisConstants.COUPON_ORDER_KEY_PREFIX + 7L), "-1", ttl.getValue());
         Coupon saved = coupon.getValue();
         assertThat(saved).usingRecursiveComparison()
-                .ignoringFields("stock", "status", "createTime", "updateTime")
+                .ignoringFields("id", "stock", "status", "createTime", "updateTime")
                 .isEqualTo(dto);
         assertThat(saved.getStock()).isEqualTo(100);
         assertThat(saved.getStatus()).isZero();
