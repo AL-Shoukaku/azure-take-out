@@ -258,6 +258,20 @@ class CacheClientTest {
     }
 
     @Test
+    void reservationRestorePassesKeysAndArgumentsInScriptOrder() {
+        List<String> reservationKeys = List.of("coupon:stock:7", "coupon:user:7", "coupon:order:7");
+        when(redisTemplate.execute(any(RedisScript.class), eq(reservationKeys), eq("25"), eq("order-1")))
+                .thenReturn(-3L);
+
+        assertThat(cacheClient.restoreCouponReservation(7L, 25L, "order-1")).isEqualTo(-3L);
+
+        ArgumentCaptor<RedisScript<Long>> script = ArgumentCaptor.captor();
+        verify(redisTemplate).execute(script.capture(), eq(reservationKeys), eq("25"), eq("order-1"));
+        assertThat(script.getValue().getResultType()).isEqualTo(Long.class);
+        assertThat(script.getValue().getScriptAsString()).contains("SREM");
+    }
+
+    @Test
     void stockRestoreRunsOnceWithoutTransaction() {
         String stockKey = RedisConstants.COUPON_STOCK_KEY_PREFIX + 7;
 

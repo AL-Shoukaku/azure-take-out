@@ -48,6 +48,8 @@ public class CacheClient {
 
     private final static DefaultRedisScript<Long> CHECK_COUPON_SCRIPT;
 
+    private final static DefaultRedisScript<Long> RESTORE_COUPON_RESERVATION_SCRIPT;
+
     private final static DefaultRedisScript<Long> INCR_STOCK_SCRIPT;
 
     // 初始化 lua 脚本
@@ -59,6 +61,10 @@ public class CacheClient {
         CHECK_COUPON_SCRIPT = new DefaultRedisScript<>();
         CHECK_COUPON_SCRIPT.setLocation(new ClassPathResource("lua/checkCoupon.lua"));
         CHECK_COUPON_SCRIPT.setResultType(Long.class);
+
+        RESTORE_COUPON_RESERVATION_SCRIPT = new DefaultRedisScript<>();
+        RESTORE_COUPON_RESERVATION_SCRIPT.setLocation(new ClassPathResource("lua/restoreCouponReservation.lua"));
+        RESTORE_COUPON_RESERVATION_SCRIPT.setResultType(Long.class);
 
         INCR_STOCK_SCRIPT = new DefaultRedisScript<>();
         INCR_STOCK_SCRIPT.setLocation(new ClassPathResource("lua/incrStock.lua"));
@@ -274,6 +280,23 @@ public class CacheClient {
         String orderKey = RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId;
         return stringRedisTemplate.execute(
                 CHECK_COUPON_SCRIPT, List.of(stockKey, userKey, orderKey), userId.toString(), orderNumber);
+    }
+
+    /**
+     * 恢复指定购券订单的 Redis 预扣。
+     * @param couponId     优惠券 ID
+     * @param userId       原购券用户 ID
+     * @param orderNumber  原购券订单号
+     * @return             1 表示已恢复，0 表示预扣不存在，-3 表示缓存缺失或用户标记异常
+     */
+    public Long restoreCouponReservation(Long couponId, Long userId, String orderNumber) {
+        List<String> keys = List.of(
+                RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId,
+                RedisConstants.COUPON_USER_KEY_PREFIX + couponId,
+                RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId
+        );
+        return stringRedisTemplate.execute(
+                RESTORE_COUPON_RESERVATION_SCRIPT, keys, userId.toString(), orderNumber);
     }
 
     /**
