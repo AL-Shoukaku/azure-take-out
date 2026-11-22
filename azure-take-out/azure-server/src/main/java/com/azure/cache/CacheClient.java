@@ -268,22 +268,57 @@ public class CacheClient {
     }
 
     /**
-     * 检查优惠券库存并尝试扣减库存，使用 Lua 脚本保证原子性。
-     * @param couponId  优惠券ID
-     * @param userId       用户ID
-     * @param orderNumber  购券预扣的订单号，领券时传 null
-     * @return             为 0 代表成功，-1 代表库存不足，-2 代表用户已领取过该优惠券，-3 代表抢券缓存不可用
+     * 原子预扣领券或购券库存，领券事务回滚后恢复本次预扣。
+     * @param couponId           优惠券 ID
+     * @param userId             用户 ID
+     * @param reservationNumber  领券券号或购券订单号
+     * @param couponType         优惠券类型
+     * @return                   0 表示成功，-1 表示库存不足，-2 表示已领取，-3 表示缓存不可用
      */
-    public Long checkAndDecrStock(Long couponId, Long userId, String orderNumber) {
-        String stockKey = RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId;
-        String userKey = RedisConstants.COUPON_USER_KEY_PREFIX + couponId;
-        if (orderNumber == null) {
-            return stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, List.of(stockKey, userKey), userId.toString());
+    public Long checkAndDecrStock(Long couponId, Long userId, String reservationNumber, Integer couponType) {
+        boolean claim = Coupon.TYPE_FULL_REDUCTION.equals(couponType);
+        if (claim && !TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("领券预扣需要事务同步");
         }
 
-        String orderKey = RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId;
-        return stringRedisTemplate.execute(
-                CHECK_COUPON_SCRIPT, List.of(stockKey, userKey, orderKey), userId.toString(), orderNumber);
+        String stockKey = RedisConstants.COUPON_STOCK_KEY_PREFIX + couponId;
+        String userKey = RedisConstants.COUPON_USER_KEY_PREFIX + couponId;
+        List<String> keys = claim
+                ? List.of(stockKey, userKey)
+                : List.of(stockKey, userKey, RedisConstants.COUPON_ORDER_KEY_PREFIX + couponId);
+        String reservation = claim ? "claim:" + reservationNumber : reservationNumber;
+        String user = userId.toString();
+        Long result = null;
+        try {
+            result = stringRedisTemplate.execute(CHECK_COUPON_SCRIPT, keys, user, reservation);
+            return result;
+        } finally {
+            if (claim && (result == null || result == 0L)) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_UNKNOWN) {
+                            log.warn("领券事务结果未知，券ID={}，用户ID={}，预扣标记={}", couponId, userId, reservation);
+                            return;
+                        }
+                        if (status != STATUS_ROLLED_BACK) {
+                            return;
+                        }
+                        try {
+                            Long restored = stringRedisTemplate.execute(
+                                    RESTORE_COUPON_RESERVATION_SCRIPT, keys, user, reservation);
+                            if (restored == null || restored < 0) {
+                                log.error("领券回滚后恢复预扣失败，券ID={}，用户ID={}，预扣标记={}，结果={}",
+                                        couponId, userId, reservation, restored);
+                            }
+                        } catch (DataAccessException | RedisException e) {
+                            log.error("领券回滚后恢复预扣异常，券ID={}，用户ID={}，预扣标记={}",
+                                    couponId, userId, reservation, e);
+                        }
+                    }
+                });
+            }
+        }
     }
 
     /**

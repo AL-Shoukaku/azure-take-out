@@ -76,14 +76,15 @@ class CouponServiceImplTest extends ServiceTestSupport {
     void claimingPreservesDecimalAmountsAndLeavesUserCouponIdForDatabase() {
         Coupon template = availableCoupon(Coupon.TYPE_FULL_REDUCTION);
         when(cacheClient.getOrLoadCoupon(7L)).thenReturn(template);
-        when(cacheClient.checkAndDecrStock(7L, USER_ID, null)).thenReturn(0L);
+        when(cacheClient.checkAndDecrStock(eq(7L), eq(USER_ID), anyString(), eq(Coupon.TYPE_FULL_REDUCTION)))
+                .thenReturn(0L);
         when(mapper.decreaseStockByOne(7L)).thenReturn(1);
 
         service.userGetCoupon(7L);
 
         ArgumentCaptor<UserCoupon> issued = ArgumentCaptor.forClass(UserCoupon.class);
-        verify(cacheClient).checkAndDecrStock(7L, USER_ID, null);
         verify(userCouponMapper).insertUserCoupon(issued.capture());
+        verify(cacheClient).checkAndDecrStock(7L, USER_ID, issued.getValue().getNumber(), Coupon.TYPE_FULL_REDUCTION);
         assertThat(issued.getValue().getId()).isNull();
         assertThat(issued.getValue().getCouponId()).isEqualTo(7L);
         assertThat(issued.getValue().getUserId()).isEqualTo(USER_ID);
@@ -96,14 +97,15 @@ class CouponServiceImplTest extends ServiceTestSupport {
     void purchaseReservesStockWithTheSameOrderNumberItPublishesAndReturns() {
         Coupon template = availableCoupon(Coupon.TYPE_VOUCHER);
         when(cacheClient.getOrLoadCoupon(7L)).thenReturn(template);
-        when(cacheClient.checkAndDecrStock(eq(7L), eq(USER_ID), anyString())).thenReturn(0L);
+        when(cacheClient.checkAndDecrStock(eq(7L), eq(USER_ID), anyString(), eq(Coupon.TYPE_VOUCHER)))
+                .thenReturn(0L);
         when(producer.sendMessage(eq(USER_ID), same(template), anyString(), anyString())).thenReturn(true);
 
         String orderNumber = service.userBuyCoupon(7L).getNumber();
 
         assertThat(orderNumber).isNotBlank();
         InOrder calls = inOrder(cacheClient, producer);
-        calls.verify(cacheClient).checkAndDecrStock(7L, USER_ID, orderNumber);
+        calls.verify(cacheClient).checkAndDecrStock(7L, USER_ID, orderNumber, Coupon.TYPE_VOUCHER);
         calls.verify(producer).sendMessage(eq(USER_ID), same(template), anyString(), eq(orderNumber));
         verify(userCouponMapper, never()).insertUserCoupon(any());
     }

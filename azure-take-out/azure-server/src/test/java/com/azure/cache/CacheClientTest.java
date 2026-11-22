@@ -1,5 +1,6 @@
 package com.azure.cache;
 
+import com.azure.entity.Coupon;
 import com.azure.entity.CouponOrder;
 import com.azure.exception.CacheBusinessException;
 import com.azure.handler.GlobalExceptionHandler;
@@ -9,6 +10,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.redisson.api.RKeys;
@@ -302,6 +305,48 @@ class CacheClientTest {
 
         verifyNoInteractions(redisTemplate);
         verify(lock).unlock();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {TransactionSynchronization.STATUS_COMMITTED,
+            TransactionSynchronization.STATUS_ROLLED_BACK, TransactionSynchronization.STATUS_UNKNOWN})
+    void claimReservationIsRestoredOnlyAfterConfirmedRollback(int status) {
+        List<String> keys = List.of("coupon:stock:7", "coupon:user:7");
+        when(redisTemplate.execute(any(RedisScript.class), eq(keys), eq("25"), eq("claim:coupon-1")))
+                .thenReturn(0L, 1L);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThat(cacheClient.checkAndDecrStock(7L, 25L, "coupon-1", Coupon.TYPE_FULL_REDUCTION)).isEqualTo(0L);
+            verify(redisTemplate).execute(any(RedisScript.class), eq(keys), eq("25"), eq("claim:coupon-1"));
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(synchronization -> synchronization.afterCompletion(status));
+
+            ArgumentCaptor<RedisScript<Long>> scripts = ArgumentCaptor.captor();
+            int expectedCalls = status == TransactionSynchronization.STATUS_ROLLED_BACK ? 2 : 1;
+            verify(redisTemplate, times(expectedCalls))
+                    .execute(scripts.capture(), eq(keys), eq("25"), eq("claim:coupon-1"));
+            if (expectedCalls == 2) {
+                assertThat(scripts.getValue().getScriptAsString()).contains("SREM");
+            }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void rejectedClaimDoesNotRegisterCompensation() {
+        List<String> keys = List.of("coupon:stock:7", "coupon:user:7");
+        when(redisTemplate.execute(any(RedisScript.class), eq(keys), eq("25"), eq("claim:coupon-2")))
+                .thenReturn(-2L);
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThat(cacheClient.checkAndDecrStock(7L, 25L, "coupon-2", Coupon.TYPE_FULL_REDUCTION)).isEqualTo(-2L);
+            assertThat(TransactionSynchronizationManager.getSynchronizations()).isEmpty();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

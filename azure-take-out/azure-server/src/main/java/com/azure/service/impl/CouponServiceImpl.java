@@ -176,14 +176,12 @@ public class CouponServiceImpl implements CouponService {
     public CouponClaimVO userGetCoupon(Long couponId) {
         LocalDateTime now = LocalDateTime.now();
         Long userId = BaseContext.getCurrentId();
-        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION, null);
-        // 扣减库存，并将优惠券发放给用户
-        //coupon.setStock(coupon.getStock() - 1);
-        //couponMapper.updateCoupon(coupon);
+        String couponNumber = UUID.randomUUID().toString().replace("-", "");
+        Coupon coupon = checkCouponAvailable(couponId, userId, now, Coupon.TYPE_FULL_REDUCTION, couponNumber);
         if (couponMapper.decreaseStockByOne(couponId) == 0) {
             throw new BaseException("优惠券库存不足");
         }
-        UserCoupon userCoupon = createUserCoupon(coupon, userId);
+        UserCoupon userCoupon = createUserCoupon(coupon, userId, couponNumber);
         userCouponMapper.insertUserCoupon(userCoupon);
 
         return CouponClaimVO.builder()
@@ -276,11 +274,11 @@ public class CouponServiceImpl implements CouponService {
      * @param userId        用户ID
      * @param now           当前时间
      * @param expectType    预期的优惠券类型
-     * @param orderNumber   购券订单号，领券时传 null
+     * @param reservationNumber  领券券号或购券订单号
      * @return              优惠券信息
      */
     private Coupon checkCouponAvailable(
-            Long couponId, Long userId, LocalDateTime now, Integer expectType, String orderNumber) {
+            Long couponId, Long userId, LocalDateTime now, Integer expectType, String reservationNumber) {
         if (couponId == null || couponId < 0) {
             throw new BaseException("优惠券ID不合法");
         }
@@ -301,7 +299,7 @@ public class CouponServiceImpl implements CouponService {
             throw new BaseException("优惠券不在活动时间内");
         }
         // 检查库存是否大于0
-        long result = cacheClient.checkAndDecrStock(couponId, userId, orderNumber);
+        long result = cacheClient.checkAndDecrStock(couponId, userId, reservationNumber, expectType);
         if (result == -1) {
             throw new BaseException("优惠券已经售罄");
         } else if (result == -2) {
@@ -315,10 +313,11 @@ public class CouponServiceImpl implements CouponService {
     /**
      * 创建用户优惠券
      * @param coupon    优惠券模板
-     * @param userId    用户ID
-     * @return          用户优惠券
+     * @param userId        用户ID
+     * @param couponNumber  领券时预生成的券号
+     * @return              用户优惠券
      */
-    private UserCoupon createUserCoupon(Coupon coupon, Long userId) {
+    private UserCoupon createUserCoupon(Coupon coupon, Long userId, String couponNumber) {
         if (userId == null) {
             throw new BaseException("用户未登录");
         }
@@ -328,7 +327,7 @@ public class CouponServiceImpl implements CouponService {
         BeanUtils.copyProperties(coupon, userCoupon, "id");
         userCoupon.setUserId(userId);
         userCoupon.setCouponId(coupon.getId());
-        userCoupon.setNumber(UUID.randomUUID().toString().replace("-", ""));
+        userCoupon.setNumber(couponNumber);
         userCoupon.setStatus(UserCoupon.STATUS_UNUSED);
         userCoupon.setCreateTime(now);
         userCoupon.setExpireTime(now.plusDays(coupon.getValidTime()));
