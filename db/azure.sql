@@ -1,4 +1,4 @@
--- 碧蓝外卖完整演示数据及优惠券表结构，共 16 张表，导入前请备份自己的数据。
+-- 碧蓝外卖完整演示数据及优惠券表结构，共 17 张表，导入前请备份自己的数据。
 -- 商品图片已随仓库保存在 assets/initImage，Maven 构建时自动打包；无需额外下载或复制图片。
 -- 管理员 admin、店员 staff、用户 demo01 ~ demo24，密码均为 123456，使用独立随机盐的 Argon2id 哈希。
 -- 日期基于导入时间：过去30天营业数据 + 当前订单；账号 demo01 可演示全部六种订单状态。
@@ -1298,3 +1298,13 @@ CREATE TABLE `coupon_order` (
   KEY `idx_coupon_order_user_template_status` (`user_id`, `coupon_id`, `status`),
   KEY `idx_coupon_order_status_deadline` (`status`, `pay_deadline`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='优惠券购买订单';
+
+DROP TABLE IF EXISTS `coupon_order_publish_retry`;
+CREATE TABLE `coupon_order_publish_retry` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `coupon_id` bigint NOT NULL COMMENT '优惠券ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `order_number` varchar(50) NOT NULL COMMENT '购券订单号',
+  `message` text NOT NULL COMMENT '原发送消息的JSON字符串',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='待补发的购券消息';

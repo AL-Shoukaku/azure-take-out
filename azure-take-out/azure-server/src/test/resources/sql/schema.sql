@@ -87,6 +87,15 @@ CREATE TABLE `coupon_order` (
   KEY `idx_coupon_order_status_deadline` (`status`, `pay_deadline`)
 );
 
+CREATE TABLE `coupon_order_publish_retry` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `coupon_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
+  `order_number` varchar(50) NOT NULL,
+  `message` text NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
 CREATE TABLE `address_book` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
